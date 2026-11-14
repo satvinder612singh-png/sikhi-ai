@@ -126,6 +126,22 @@ export const SIKHI_SOURCES: SourceItem[] = [
     ],
     keywords: ["rehat", "maryada", "conduct", "gurdwara", "prayer", "nitnem", "equality", "rules", "amrit", "5 ks"],
   },
+  {
+    id: "sggs-kudrat-ecology",
+    title: "Sri Guru Granth Sahib Ji — Pavan Guru Pani Pita & Kudrat",
+    gurmukhi: "ਪਵਣੁ ਗੁਰੂ ਪਾਣੀ ਪਿਤਾ ਮਾਤਾ ਧਰਤਿ ਮਹਤੁ ॥",
+    category: "Primary Scripture",
+    reference: "Ang 8 & Ang 463 • Guru Nanak Dev Ji",
+    period: "16th Century CE • Japji Sahib & Asa Di Vaar",
+    excerpt:
+      "Elevates Air to the Guru, Water to the Father, and Earth to the Great Mother, establishing the sacredness of Kudrat (Nature) and ecological stewardship as living Seva.",
+    detailedNotes: [
+      "In the concluding Salok of Japji Sahib (Ang 8), Guru Nanak Dev Ji establishes a relational cosmology—'Pavan Guru Pani Pita Mata Dharat Mahat'—where Air is revered as the Guru, Water as the Father, and the vast Earth as the Great Mother in whose lap day and night nurture all living beings.",
+      "In Asa Di Vaar (Ang 463), Gurbani proclaims 'Balihari Kudrat Vasia Tera Ant Na Jai Lakhia'—the Creator is not separate from creation, but abides within Kudrat (Nature) itself. Polluting rivers, degrading soil, or exploiting ecosystems is therefore a direct violation of sacred kinship.",
+      "Coupled with Bhagat Kabir Ji's teaching of Santokh (contentment and simplicity, Ang 1372) and the Sikh prayer for Sarbat da Bhala (the welfare of all creation), Gurmat calls for zero-waste Langar, ethical consumption, and active climate stewardship."
+    ],
+    keywords: ["ecology", "nature", "kudrat", "pavan", "pani", "dharat", "environment", "earth", "water", "air", "climate", "sarbat da bhala", "santokh", "waste"],
+  },
 ];
 
 export function matchSourcesForQuestion(question: string): SourceItem[] {

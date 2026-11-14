@@ -6,17 +6,22 @@ const COPYRIGHT_YEAR = 2026;
 
 const GROUPS = [
   {
-    heading: "Explore",
+    heading: "Chapters & Archives",
     links: [
-      { href: "/#baani", label: "Living Gurbani" },
-      { href: "/#matriarchs", label: "Matriarchs of the Panth" },
-      { href: "/sources", label: "Our sources" },
-      { href: "/ask", label: "Ask a question" },
+      { href: "/#baani", label: "੧ · Living Gurbani Treasury" },
+      { href: "/#matriarchs", label: "੨ · Matriarchs of the Panth" },
+      { href: "/#gurmat-veechar", label: "੩ · Gurmat Veechar & Granths" },
+      { href: "/#ecology", label: "੪ · Ecology, Seva & Conscious Living" },
+      { href: "/#archives", label: "੫ · Connected Panthic Archives" },
     ],
   },
   {
-    heading: "Account",
-    links: [{ href: "/login", label: "Sign in" }],
+    heading: "Research & Study",
+    links: [
+      { href: "/ask", label: "Scriptural & Historical Inquiry" },
+      { href: "/sources", label: "Primary Scriptural Sources" },
+      { href: "/login", label: "Scholar Sign In" },
+    ],
   },
 ];
 
@@ -38,8 +43,8 @@ export function Footer() {
           </div>
 
           <p className="mt-4 max-w-md text-sm leading-relaxed text-[#F3ECE0]/85">
-            A study companion for Sikh philosophy, history and Gurbani, built to point you
-            back to the source.
+            A living publication and study companion for Sikh philosophy, history, ecological
+            stewardship, and Gurbani—built to point you directly back to primary sources.
           </p>
 
           <p className="mt-3 max-w-md rounded-xl border border-[#C59B27]/30 bg-[#121C15]/60 px-3.5 py-2.5 text-xs leading-relaxed text-[#F3ECE0]/75">
@@ -74,8 +79,8 @@ export function Footer() {
       <div className="mx-auto mt-12 max-w-6xl border-t border-[#C59B27]/20 pt-6 text-center text-xs text-[#F3ECE0]/70">
         <p>© {COPYRIGHT_YEAR} Learn Sikhi. All rights reserved.</p>
         <p className="mt-1">
-          Learn Sikhi is a study aid and can make mistakes. Please consult the original Gurbani
-          and respected Sikh scholars.
+          Learn Sikhi is a scholarly study aid. Please verify all Ang citations directly in Sri
+          Guru Granth Sahib Ji and consult respected Sikh scholars and primary Granths.
         </p>
       </div>
     </footer>

@@ -1,23 +1,23 @@
 "use client";
 
 import { useId, type FormEvent } from "react";
-import { Icon } from "@/components/icons";
 import { MAX_PROMPT, MIN_PROMPT } from "@/lib/answer";
 
 export const SUGGESTIONS = [
   "What is the meaning of Hukam?",
   "What is the purpose of Langar?",
   "What are Miri and Piri?",
+  "How does Gurbani view Nature (Kudrat)?",
 ];
 
-/** Controlled search field shared by the hero and the Ask workspace. */
+/** Controlled search field shared by the hero and the Scriptural Inquiry workspace. */
 export function SearchBar({
   value,
   onChange,
   onSubmit,
   busy = false,
-  buttonLabel = "Ask",
-  busyLabel = "Searching…",
+  buttonLabel = "Inquire",
+  busyLabel = "Consulting Sources…",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -39,22 +39,26 @@ export function SearchBar({
     <form
       onSubmit={handleSubmit}
       role="search"
-      aria-label="Ask a question about Sikhi"
+      aria-label="Explore Gurmat & Historical Sources"
       className="w-full"
     >
       <label htmlFor={inputId} className="sr-only">
-        Ask a question about Sikh philosophy, history or Gurbani
+        Explore Gurmat and Historical Sources
       </label>
       <div className="flex items-center gap-2 rounded-2xl border border-[#C59B27]/55 bg-[#FAF6EE] p-2 text-[#171917] shadow-parchment transition focus-within:border-[#D97706] focus-within:ring-2 focus-within:ring-[#C59B27]/40">
-        <span className="ml-3 flex h-5 w-5 shrink-0 items-center justify-center text-[#D97706]">
-          <Icon name="search" className="h-5 w-5" />
+        <span
+          lang="pa"
+          aria-hidden="true"
+          className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#C59B27]/40 bg-[#F3ECE0] font-gurmukhi text-sm font-bold text-[#1B2A20]"
+        >
+          ੴ
         </span>
         <input
           id={inputId}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="What is the meaning of Hukam?"
+          placeholder="Inquire into Gurbani, Sikh history, or Gurmat philosophy…"
           autoComplete="off"
           maxLength={MAX_PROMPT}
           className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-base text-[#171917] placeholder:text-[#4A554E]/75 focus:outline-none sm:text-lg"
@@ -83,7 +87,7 @@ export function SuggestionChips({
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       <span className="text-xs font-semibold uppercase tracking-widest text-[#C59B27]">
-        Try
+        Inquiries:
       </span>
       {SUGGESTIONS.map((s) => (
         <button

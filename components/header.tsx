@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useId, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-import { Icon } from "@/components/icons";
 import { useAuth } from "@/components/auth-provider";
 
 const LINKS = [
   { href: "/#baani", label: "Gurbani" },
   { href: "/#matriarchs", label: "Matriarchs" },
+  { href: "/#gurmat-veechar", label: "Granths & Katha" },
+  { href: "/#ecology", label: "Ecology & Seva" },
   { href: "/sources", label: "Sources" },
-  { href: "/#archives", label: "Explore" },
+  { href: "/#archives", label: "Archives" },
 ];
 
 const focusRing =
@@ -50,7 +51,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
           </div>
         </Link>
 
-        <ul className="hidden items-center gap-7 md:flex">
+        <ul className="hidden items-center gap-6 md:flex">
           {LINKS.map((l) => (
             <li key={l.href}>
               <Link
@@ -68,7 +69,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                   href="/ask"
                   className={`rounded-full border border-[#C59B27] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2 text-sm font-semibold text-[#171917] shadow-sm transition hover:brightness-110 ${focusRing}`}
                 >
-                  Ask a question
+                  Scriptural Inquiry
                 </Link>
               </li>
               <li>
@@ -83,26 +84,36 @@ export function Header({ solid = false }: { solid?: boolean }) {
               </li>
             </>
           ) : (
-            <li>
-              <Link
-                href="/login"
-                className={`rounded-full border border-[#C59B27]/80 bg-[#FAF6EE]/10 px-4 py-2 text-sm font-medium text-[#FAF6EE] transition hover:border-[#D97706] hover:bg-[#D97706] hover:text-[#FAF6EE] ${focusRing}`}
-              >
-                Sign in
-              </Link>
-            </li>
+            <>
+              <li>
+                <Link
+                  href="/ask"
+                  className={`rounded-full border border-[#C59B27] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2 text-sm font-semibold text-[#171917] shadow-sm transition hover:brightness-110 ${focusRing}`}
+                >
+                  Scriptural Inquiry
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/login"
+                  className={`rounded-full border border-[#C59B27]/80 bg-[#FAF6EE]/10 px-4 py-2 text-sm font-medium text-[#FAF6EE] transition hover:border-[#D97706] hover:bg-[#D97706] hover:text-[#FAF6EE] ${focusRing}`}
+                >
+                  Sign in
+                </Link>
+              </li>
+            </>
           )}
         </ul>
 
         <button
           type="button"
-          className={`rounded-md p-2 text-[#FAF6EE] hover:text-[#E5C158] md:hidden ${focusRing}`}
+          className={`rounded-md border border-[#C59B27]/40 px-3 py-1.5 text-xs uppercase tracking-[0.2em] font-semibold text-[#E5C158] hover:border-[#D97706] md:hidden ${focusRing}`}
           aria-expanded={open}
           aria-controls={menuId}
           aria-label={open ? "Close menu" : "Open menu"}
           onClick={() => setOpen((v) => !v)}
         >
-          <Icon name={open ? "close" : "menu"} className="h-6 w-6" />
+          {open ? "Close" : "Index"}
         </button>
       </nav>
 
@@ -123,36 +134,34 @@ export function Header({ solid = false }: { solid?: boolean }) {
               </Link>
             </li>
           ))}
+          <li>
+            <Link
+              href="/ask"
+              onClick={() => setOpen(false)}
+              className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#E5C158] hover:bg-[#FAF6EE]/10"
+            >
+              Scriptural &amp; Historical Inquiry
+            </Link>
+          </li>
           {user ? (
-            <>
-              <li>
-                <Link
-                  href="/ask"
-                  onClick={() => setOpen(false)}
-                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#E5C158] hover:bg-[#FAF6EE]/10"
-                >
-                  Ask a question
-                </Link>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    void signOut();
-                  }}
-                  className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-[#F3ECE0]/80 hover:bg-[#FAF6EE]/10 hover:text-[#E5C158]"
-                >
-                  Sign out
-                </button>
-              </li>
-            </>
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  void signOut();
+                }}
+                className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-[#F3ECE0]/80 hover:bg-[#FAF6EE]/10 hover:text-[#E5C158]"
+              >
+                Sign out
+              </button>
+            </li>
           ) : (
             <li>
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#E5C158] hover:bg-[#FAF6EE]/10"
+                className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#F3ECE0]/90 hover:bg-[#FAF6EE]/10"
               >
                 Sign in
               </Link>

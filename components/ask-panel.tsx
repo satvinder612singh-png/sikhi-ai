@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnswerSkeleton, AnswerView } from "@/components/answer-view";
-import { Icon } from "@/components/icons";
 import { SearchBar, SuggestionChips } from "@/components/search-bar";
 import { MIN_PROMPT, type Answer } from "@/lib/answer";
 
@@ -13,7 +12,7 @@ type State =
   | { status: "success"; data: Answer }
   | { status: "error"; question: string; message: string; needsSignIn: boolean };
 
-const GENERIC_ERROR = "Something went wrong. Please try again.";
+const GENERIC_ERROR = "Unable to retrieve synthesis. Please try again.";
 
 export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
@@ -28,7 +27,6 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
     const text = raw.trim();
     if (text.length < MIN_PROMPT) return;
 
-    // Cancel any in-flight request and ignore its result.
     controller.current?.abort();
     const ctrl = new AbortController();
     controller.current = ctrl;
@@ -49,7 +47,7 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
       try {
         body = await res.json();
       } catch {
-        // Non-JSON body (e.g. a proxy error page).
+        // Non-JSON body
       }
       if (id !== requestId.current) return;
 
@@ -69,19 +67,17 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
       }
       setState({ status: "success", data });
     } catch (err) {
-      if (id !== requestId.current) return; // superseded or aborted
+      if (id !== requestId.current) return;
       if (err instanceof DOMException && err.name === "AbortError") return;
       setState({
         status: "error",
         question: text,
-        message: "Could not reach the server. Check your connection and try again.",
+        message: "Could not reach the archive server. Check your connection and try again.",
         needsSignIn: false,
       });
     }
   }
 
-  // Run the question carried over from the landing page once. The ref guard
-  // keeps React Strict Mode's double-invoked effect from sending it twice.
   useEffect(() => {
     if (initialQuery && !autoRan.current) {
       autoRan.current = true;
@@ -90,7 +86,6 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Move focus to the result so keyboard and screen-reader users land on it.
   useEffect(() => {
     if (state.status === "success" || state.status === "error") {
       resultRef.current?.focus({ preventScroll: false });
@@ -101,12 +96,21 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
+      <div className="text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#D97706]">
+          Scriptural &amp; Historical Inquiry
+        </p>
+        <h2 className="mt-1 font-serif text-2xl font-bold text-[#171917] sm:text-3xl">
+          Explore Gurmat &amp; Historical Sources
+        </h2>
+      </div>
+
       <SearchBar
         value={query}
         onChange={setQuery}
         onSubmit={ask}
         busy={busy}
-        busyLabel="Searching…"
+        busyLabel="Consulting Sources…"
       />
       <SuggestionChips onPick={ask} disabled={busy} />
 
@@ -114,16 +118,22 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
         ref={resultRef}
         tabIndex={-1}
         aria-busy={busy}
-        className="min-h-[18rem] rounded-2xl border border-gold/25 bg-midnight-900/80 p-6 focus:outline-none sm:p-8"
+        className="min-h-[18rem] rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 text-[#FAF6EE] shadow-parchment focus:outline-none sm:p-8"
       >
         {state.status === "idle" && (
           <div className="flex min-h-[14rem] flex-col items-center justify-center text-center">
-            <p className="font-serif text-2xl font-semibold text-gold-light">
-              Your answer will appear here
+            <span
+              lang="pa"
+              className="mb-2 font-gurmukhi text-2xl text-[#E5C158]"
+            >
+              ੴ
+            </span>
+            <p className="font-serif text-2xl font-semibold text-[#FAF6EE]">
+              Gurbani &amp; Historical Synthesis
             </p>
-            <p className="mt-2 max-w-sm text-sm text-slate-500">
-              Ask a question above, or pick a suggestion, to read an explanation with its
-              sources.
+            <p className="mt-2 max-w-sm text-sm text-[#F3ECE0]/75">
+              Enter a scriptural or historical inquiry above to read a synthesis with primary
+              Ang and Granth citations.
             </p>
           </div>
         )}
@@ -132,15 +142,15 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
 
         {state.status === "error" && (
           <div role="alert" className="flex min-h-[14rem] flex-col items-center justify-center text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-300">
-              <Icon name="alert" className="h-6 w-6" />
+            <span className="rounded border border-[#D97706]/50 bg-[#121C15] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#D97706]">
+              Archival Notice
             </span>
-            <p className="mt-4 max-w-md text-base text-slate-200">{state.message}</p>
+            <p className="mt-4 max-w-md text-base text-[#FAF6EE]">{state.message}</p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               {state.needsSignIn ? (
                 <Link
                   href="/login?next=/ask"
-                  className="rounded-xl bg-gradient-to-b from-gold-light to-gold-dark px-5 py-2.5 text-sm font-semibold text-midnight-900 hover:brightness-110"
+                  className="rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-5 py-2.5 text-sm font-semibold text-[#171917] hover:brightness-110"
                 >
                   Sign in
                 </Link>
@@ -148,10 +158,9 @@ export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
                 <button
                   type="button"
                   onClick={() => void ask(state.question)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-gold/60 px-5 py-2.5 text-sm font-medium text-gold-light transition hover:bg-gold hover:text-midnight-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#C59B27]/60 px-5 py-2.5 text-sm font-medium text-[#E5C158] transition hover:bg-[#C59B27] hover:text-[#171917] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
                 >
-                  <Icon name="refresh" className="h-4 w-4" />
-                  Try again
+                  Repeat Inquiry
                 </button>
               )}
             </div>

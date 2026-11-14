@@ -82,6 +82,13 @@ export function Hero() {
         </p>
 
         <div className="mt-10 w-full max-w-2xl">
+          <div className="mb-2.5 flex items-center justify-center gap-3">
+            <span className="h-[1px] w-8 bg-[#C59B27]/45" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#E5C158]">
+              Explore Gurmat &amp; Historical Sources
+            </span>
+            <span className="h-[1px] w-8 bg-[#C59B27]/45" />
+          </div>
           <SearchBar value={query} onChange={setQuery} onSubmit={go} />
           <SuggestionChips onPick={go} className="mt-4 justify-center" />
         </div>

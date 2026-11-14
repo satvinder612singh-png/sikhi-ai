@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Search, ExternalLink, Sparkles } from "lucide-react";
 
 interface PreloadedBani {
   id: string;
+  numeral: string;
+  archivalTag: string;
   title: string;
   gurmukhiTitle: string;
   author: string;
@@ -21,22 +22,44 @@ interface PreloadedBani {
   }[];
 }
 
+export interface InlineVerseResult {
+  verseId: number;
+  shabadId: number;
+  pageNo: number;
+  writer: string;
+  raag: string;
+  gurmukhiUnicode: string;
+  transliteration: string;
+  englishTranslation: string;
+}
+
+export interface InlineFullShabad {
+  shabadId: number;
+  pageNo: number;
+  writer: string;
+  raag: string;
+  verses: InlineVerseResult[];
+}
+
 const PRELOADED_BANIS: PreloadedBani[] = [
   {
     id: "japji-mool-mantar",
+    numeral: "੧",
+    archivalTag: "ANG 1 • PROLOGUE • JAPJI SAHIB",
     title: "Japji Sahib — Mool Mantar & Pauri 1",
     gurmukhiTitle: "ਜਪੁਜੀ ਸਾਹਿਬ",
     author: "Guru Nanak Dev Ji",
-    raag: "Unset (Prologue to Sri Guru Granth Sahib Ji)",
+    raag: "Prologue to Sri Guru Granth Sahib Ji",
     ang: 1,
     sttmShabadId: 1,
     historicalContext:
       "Revealed by Guru Nanak Dev Ji following his three-day immersion in the Kali Bein river at Sultanpur Lodhi (c. 1499). It serves as the foundational thesis of Sikhi.",
     philosophicalEssence:
-      "Establishes Ik Onkar—the indivisible, genderless, formless, and fearless Creator—rejecting caste purity, ritual fasting, and idol worship in favor of aligning with Hukam (Cosmic Order).",
+      "Establishes Ik Onkar—the indivisible, genderless, formless, and fearless Creator—rejecting caste purity and ritualism in favor of aligning with Hukam (Cosmic Order).",
     verses: [
       {
-        gurmukhi: "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+        gurmukhi:
+          "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
         transliteration:
           "Ik Oankaar Sat Naam Kartaa Purakh Nirbhau Nirvair Akaal Moorat Ajoonee Saibhan Gur Prasaad ||",
         english:
@@ -52,6 +75,8 @@ const PRELOADED_BANIS: PreloadedBani[] = [
   },
   {
     id: "so-kio-mandaa",
+    numeral: "੨",
+    archivalTag: "ANG 473 • RAAG AASAA • ASA DI VAAR",
     title: "Asa Di Vaar — The Charter of Women's Sovereignty",
     gurmukhiTitle: "ਭੰਡਿ ਜੰਮੀਐ ਭੰਡਿ ਨਿੰਮੀਐ",
     author: "Guru Nanak Dev Ji",
@@ -76,7 +101,8 @@ const PRELOADED_BANIS: PreloadedBani[] = [
           "So why call her inferior or polluted, from whom kings and sovereigns are born?",
       },
       {
-        gurmukhi: "ਭੰਡਹੁ ਹੀ ਭੰਡੁ ਊਪਜੈ ਭੰਡੈ ਬਾਝੁ ਨ ਕੋਇ ॥ ਨਾਨਕ ਭੰਡੈ ਬਾਹਰਾ ਏਕੋ ਸਚਾ ਸੋਇ ॥",
+        gurmukhi:
+          "ਭੰਡਹੁ ਹੀ ਭੰਡੁ ਊਪਜੈ ਭੰਡੈ ਬਾਝੁ ਨ ਕੋਇ ॥ ਨਾਨਕ ਭੰਡੈ ਬਾਹਰਾ ਏਕੋ ਸਚਾ ਸੋਇ ॥",
         transliteration:
           "Bhandahu Hee Bhand Oopajai Bhandai Baajh Na Koe || Nanak Bhandai Baaharaa Eko Sachaa Soe ||",
         english:
@@ -86,6 +112,8 @@ const PRELOADED_BANIS: PreloadedBani[] = [
   },
   {
     id: "mata-khivi-var",
+    numeral: "੩",
+    archivalTag: "ANG 967 • RAAG RAMKALI • RAMKALI KI VAAR",
     title: "Ramkali Ki Vaar — Tribute to Mata Khivi Ji",
     gurmukhiTitle: "ਬਲਵੰਡੁ ਤਥਾ ਸਤਾ",
     author: "Bhatt Balwand & Satta Doom",
@@ -113,6 +141,8 @@ const PRELOADED_BANIS: PreloadedBani[] = [
   },
   {
     id: "anand-sahib",
+    numeral: "੪",
+    archivalTag: "ANG 917 • RAAG RAMKALI • ANAND SAHIB",
     title: "Anand Sahib — The Song of Sovereign Bliss",
     gurmukhiTitle: "ਅਨੰਦੁ ਸਾਹਿਬ",
     author: "Guru Amar Das Ji",
@@ -127,88 +157,183 @@ const PRELOADED_BANIS: PreloadedBani[] = [
       {
         gurmukhi: "ਅਨੰਦੁ ਭਇਆ ਮੇਰੀ ਮਾਏ ਸਤਿਗੁਰੂ ਮੈ ਪਾਇਆ ॥",
         transliteration: "Anand Bhaiaa Meree Maae Satguroo Mai Paaiaa ||",
-        english:
-          "I am in ecstasy, O my mother, for I have found my True Guru.",
+        english: "I am in ecstasy, O my mother, for I have found my True Guru.",
       },
     ],
   },
 ];
 
-export default function BaaniPortal() {
+const QUICK_SEARCH_PRESETS = [
+  { label: "“kings are born”", query: "kings are born" },
+  { label: "“fearless”", query: "fearless" },
+  { label: "“equality”", query: "equality" },
+  { label: "“langar”", query: "langar" },
+  { label: "Initials: stnk", query: "stnk" },
+  { label: "Initials: skma", query: "skma" },
+];
+
+export function BaaniPortal() {
   const [selectedBani, setSelectedBani] = useState<PreloadedBani>(PRELOADED_BANIS[0]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<InlineVerseResult[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
 
-  // Live BaniDB API Search (Powers SikhiToTheMax)
-  const handleGurbaniSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  // Inline Full Shabad Reader State
+  const [activeShabad, setActiveShabad] = useState<InlineFullShabad | null>(null);
+  const [highlightedVerseId, setHighlightedVerseId] = useState<number | null>(null);
+  const [isLoadingShabad, setIsLoadingShabad] = useState(false);
+  const [shabadError, setShabadError] = useState("");
+
+  const executeBaniSearch = async (rawQuery: string) => {
+    const trimmed = rawQuery.trim();
+    if (!trimmed) return;
+
+    setSearchQuery(trimmed);
+    setSubmittedQuery(trimmed);
     setIsSearching(true);
     setSearchError("");
+    setHasSearched(true);
+    setActiveShabad(null);
+    setShabadError("");
 
     try {
-      // searchtype=2 searches English translations/transliterations; searchtype=1 searches first letters
-      const isAcronym = searchQuery.trim().split(" ").length === 1 && searchQuery.length <= 6;
-      const searchType = isAcronym ? 1 : 2;
       const res = await fetch(
-        `https://api.banidb.com/v2/search/${encodeURIComponent(
-          searchQuery.trim()
-        )}?searchtype=${searchType}&results=6`
+        `/api/banidb?q=${encodeURIComponent(trimmed)}`
       );
-      if (!res.ok) throw new Error("Could not reach BaniDB portal.");
       const data = await res.json();
-      setSearchResults(data.verses || []);
-    } catch (err) {
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Could not search BaniDB right now.");
+      }
+
+      setSearchResults(Array.isArray(data.verses) ? data.verses : []);
+    } catch (err: any) {
       setSearchError(
-        "Unable to fetch live verses right now. You can still open SikhiToTheMax directly below."
+        err?.message ||
+          "Unable to fetch verses right now. Please try another keyword or initial."
       );
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
+  const handleGurbaniSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    void executeBaniSearch(searchQuery);
+  };
+
+  const openFullShabadInline = async (shabadId: number, verseId?: number) => {
+    setIsLoadingShabad(true);
+    setShabadError("");
+    setHighlightedVerseId(verseId ?? null);
+
+    try {
+      const res = await fetch(
+        `/api/banidb?shabadId=${encodeURIComponent(String(shabadId))}`
+      );
+      const data = await res.json();
+
+      if (!res.ok || !data?.ok || !data?.shabad) {
+        throw new Error("Could not load the full Shabad.");
+      }
+
+      setActiveShabad(data.shabad);
+    } catch (err: any) {
+      setShabadError(
+        err?.message || "Unable to load full Shabad details right now."
+      );
+    } finally {
+      setIsLoadingShabad(false);
+    }
+  };
+
   return (
     <div className="space-y-12">
-      {/* Part 1: Pre-Generated Foundational Hymns Sanctuary */}
+      {/* ====================================================================
+          PART 1: PRE-CURATED FOUNDATIONAL HYMNS SANCTUARY
+      ==================================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Hymn Selector Cards */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#D4AF37] mb-2">
-            <Sparkles className="w-4 h-4" />
-            <span>Pre-Generated Scriptural Pillars</span>
+          <div className="flex items-center justify-between border-b border-[#C59B27]/35 pb-2.5 mb-2">
+            <span className="text-xs uppercase tracking-[0.22em] text-[#D97706] font-semibold">
+              CURATED SCRIPTURAL FOLIOS
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-[#4A554E]">
+              ፬ CANONICAL HYMNS
+            </span>
           </div>
           {PRELOADED_BANIS.map((bani) => {
             const isActive = selectedBani.id === bani.id;
             return (
               <button
                 key={bani.id}
+                type="button"
                 onClick={() => setSelectedBani(bani)}
                 className={`w-full text-left p-5 rounded-xl border transition-all duration-300 ${
                   isActive
-                    ? "bg-[#121826] border-[#D4AF37] shadow-[0_0_25px_rgba(212,175,55,0.15)]"
-                    : "bg-[#0B0F19]/80 border-slate-800 hover:border-slate-600"
+                    ? "bg-[#1B2A20] text-[#FAF6EE] border-[#C59B27] shadow-[0_10px_28px_rgba(27,42,32,0.22)]"
+                    : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
                 }`}
               >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-lg font-serif text-[#D4AF37]">{bani.gurmukhiTitle}</p>
-                    <h3 className="text-base font-semibold text-white mt-0.5">{bani.title}</h3>
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex items-start gap-3">
+                    <span
+                      lang="pa"
+                      className={`font-gurmukhi text-lg font-bold px-2.5 py-0.5 rounded border shrink-0 ${
+                        isActive
+                          ? "border-[#C59B27]/50 bg-[#121C15] text-[#E5C158]"
+                          : "border-[#C59B27]/40 bg-[#FAF6EE] text-[#1B2A20]"
+                      }`}
+                    >
+                      {bani.numeral}
+                    </span>
+                    <div>
+                      <p
+                        lang="pa"
+                        className={`text-lg font-gurmukhi ${
+                          isActive ? "text-[#E5C158]" : "text-[#D97706]"
+                        }`}
+                      >
+                        {bani.gurmukhiTitle}
+                      </p>
+                      <h3
+                        className={`text-base font-serif font-bold mt-0.5 ${
+                          isActive ? "text-[#FAF6EE]" : "text-[#171917]"
+                        }`}
+                      >
+                        {bani.title}
+                      </h3>
+                    </div>
                   </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                    Ang {bani.ang}
+                  <span
+                    className={`text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded border shrink-0 ${
+                      isActive
+                        ? "bg-[#C59B27]/20 text-[#E5C158] border-[#C59B27]/40"
+                        : "bg-[#1B2A20]/10 text-[#1B2A20] border-[#1B2A20]/20"
+                    }`}
+                  >
+                    ANG {bani.ang}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  {bani.author} • {bani.raag}
-                </p>
+                <div
+                  className={`mt-3 pt-2.5 border-t text-xs flex items-center justify-between ${
+                    isActive
+                      ? "border-[#C59B27]/25 text-[#F3ECE0]/75"
+                      : "border-[#C59B27]/20 text-[#4A554E]"
+                  }`}
+                >
+                  <span>{bani.author}</span>
+                  <span className="uppercase tracking-wider text-[11px]">{bani.raag}</span>
+                </div>
               </button>
             );
           })}
         </div>
 
-        {/* Right Column: Illuminated Manuscript Reader */}
         <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
             <motion.div
@@ -217,63 +342,64 @@ export default function BaaniPortal() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -15 }}
               transition={{ duration: 0.35 }}
-              className="bg-gradient-to-b from-[#111726] to-[#0A0E17] border border-[#D4AF37]/30 rounded-2xl p-6 md:p-8 shadow-2xl"
+              className="bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/45 rounded-2xl p-6 md:p-8 shadow-xl"
             >
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#C59B27]/25 pb-5">
                 <div>
-                  <span className="text-xs uppercase tracking-widest text-[#D4AF37]">
-                    {selectedBani.author} • {selectedBani.raag}
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#E5C158]">
+                    {selectedBani.archivalTag} • {selectedBani.author}
                   </span>
-                  <h3 className="text-2xl md:text-3xl font-serif text-white mt-1">
+                  <h3 className="text-2xl md:text-3xl font-serif text-[#FAF6EE] mt-1">
                     {selectedBani.title}
                   </h3>
                 </div>
-                <a
-                  href={`https://www.sikhitothemax.org/shabad?id=${selectedBani.sttmShabadId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#D4AF37] text-slate-950 font-semibold text-xs hover:bg-amber-400 transition"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Read Full Ang {selectedBani.ang} on SikhiToTheMax
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => void openFullShabadInline(selectedBani.sttmShabadId)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] font-semibold text-xs uppercase tracking-wider hover:brightness-105 transition"
+                  >
+                    Read Full Shabad Inline (Ang {selectedBani.ang}) →
+                  </button>
+                </div>
               </div>
 
-              {/* Historical & Philosophical Commentary */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+                <div className="p-4 rounded-xl bg-[#121C15]/80 border border-[#C59B27]/25">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5C158] mb-1">
                     Historical Context
                   </h4>
-                  <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-xs md:text-sm text-[#F3ECE0]/90 leading-relaxed">
                     {selectedBani.historicalContext}
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+                <div className="p-4 rounded-xl bg-[#121C15]/80 border border-[#C59B27]/25">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5C158] mb-1">
                     Philosophical Essence
                   </h4>
-                  <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-xs md:text-sm text-[#F3ECE0]/90 leading-relaxed">
                     {selectedBani.philosophicalEssence}
                   </p>
                 </div>
               </div>
 
-              {/* Pre-Generated Verses */}
               <div className="space-y-6 mt-6">
                 {selectedBani.verses.map((v, i) => (
                   <div
                     key={i}
-                    className="p-5 rounded-xl bg-[#080B12] border border-slate-800/80 space-y-2"
+                    className="p-5 rounded-xl bg-[#121C15] border border-[#C59B27]/30 space-y-2"
                   >
-                    <p className="text-xl md:text-2xl font-serif text-[#F5E6C8] leading-relaxed">
+                    <p
+                      lang="pa"
+                      className="text-xl md:text-2xl font-gurmukhi text-[#FAF6EE] leading-relaxed"
+                    >
                       {v.gurmukhi}
                     </p>
-                    <p className="text-xs md:text-sm text-amber-200/70 italic">
+                    <p className="text-xs md:text-sm text-[#E5C158]/85 italic">
                       {v.transliteration}
                     </p>
-                    <p className="text-sm md:text-base text-white pt-1 font-medium">
+                    <div className="h-[1px] w-full bg-[#C59B27]/20" />
+                    <p className="text-sm md:text-base text-[#F3ECE0] pt-1 font-medium">
                       “{v.english}”
                     </p>
                   </div>
@@ -284,86 +410,297 @@ export default function BaaniPortal() {
         </div>
       </div>
 
-      {/* Part 2: Live BaniDB / SikhiToTheMax Explorer Portal */}
-      <div className="p-6 md:p-8 rounded-2xl bg-[#0D1322] border border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      {/* ====================================================================
+          PART 2: INLINE BANIDB SHABAD SEARCH & FULL SHABAD READER
+      ==================================================================== */}
+      <div className="p-6 md:p-8 rounded-2xl bg-[#F3ECE0] border border-[#C59B27]/45 shadow-parchment">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#C59B27]/30 pb-5 mb-6">
           <div>
-            <h3 className="text-xl font-serif text-white flex items-center gap-2">
-              <Search className="w-5 h-5 text-[#D4AF37]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#D97706]">
+              CONCORDANCE &amp; SHABAD INDEX • BANIDB ARCHIVE
+            </span>
+            <h3 className="text-xl md:text-2xl font-serif font-bold text-[#171917] mt-1">
               Explore Any Shabad via SikhiToTheMax / BaniDB Portal
             </h3>
-            <p className="text-xs md:text-sm text-slate-400 mt-1">
-              The core hymns are already curated above. Use this portal whenever you want to look up a specific Shabad by English theme (e.g., &ldquo;equality&rdquo;, &ldquo;fearless&rdquo;) or Gurmukhi first-letters (e.g., &ldquo;skma&rdquo;).
+            <p className="text-xs md:text-sm text-[#4A554E] mt-1">
+              Search and read Shabads directly inside this page by English theme (e.g., &ldquo;equality&rdquo;, &ldquo;fearless&rdquo;, &ldquo;kings are born&rdquo;) or Gurmukhi first-letter initials (e.g., &ldquo;stnk&rdquo;, &ldquo;skma&rdquo;). Select any verse below to read the entire Shabad inline.
             </p>
           </div>
           <a
             href="https://www.sikhitothemax.org/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[#D4AF37] hover:underline flex items-center gap-1 shrink-0"
+            className="text-xs font-semibold uppercase tracking-wider text-[#D97706] hover:underline shrink-0"
           >
-            Open SikhiToTheMax Portal <ExternalLink className="w-3.5 h-3.5" />
+            Open SikhiToTheMax Portal ↗
           </a>
         </div>
 
-        <form onSubmit={handleGurbaniSearch} className="flex gap-3">
+        {/* Search Input + Find Baani Submit Button (Supports Enter & Click) */}
+        <form onSubmit={handleGurbaniSearch} className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search English translation (e.g., 'kings are born') or first letters (e.g., 'stnk')..."
-            className="flex-1 bg-[#070A12] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#D4AF37]"
+            placeholder="Search English translation (e.g., 'kings are born', 'fearless') or first letters (e.g., 'stnk', 'skma')..."
+            aria-label="Search Gurbani by English translation or Gurmukhi initials"
+            className="flex-1 bg-[#FAF6EE] border border-[#C59B27]/55 rounded-xl px-4 py-3.5 text-sm md:text-base text-[#171917] placeholder-[#4A554E]/75 focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#C59B27]/35"
           />
           <button
             type="submit"
-            disabled={isSearching}
-            className="px-6 py-3 rounded-xl bg-[#D4AF37] text-slate-950 font-semibold text-sm hover:bg-amber-400 transition disabled:opacity-50"
+            disabled={isSearching || !searchQuery.trim()}
+            className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] font-semibold text-sm hover:brightness-105 transition disabled:opacity-50 shrink-0 shadow-sm"
           >
             {isSearching ? "Searching..." : "Find Baani"}
           </button>
         </form>
 
-        {searchError && <p className="text-xs text-amber-400 mt-3">{searchError}</p>}
+        {/* Quick Search Chips */}
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#4A554E] mr-1">
+            Concordance Presets:
+          </span>
+          {QUICK_SEARCH_PRESETS.map((preset) => (
+            <button
+              key={preset.query}
+              type="button"
+              disabled={isSearching}
+              onClick={() => void executeBaniSearch(preset.query)}
+              className="text-xs px-3 py-1.5 rounded-full bg-[#FAF6EE] hover:bg-[#1B2A20] text-[#171917] hover:text-[#FAF6EE] border border-[#C59B27]/45 transition font-medium"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
 
-        {searchResults.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {searchResults.map((item: any) => (
+        {/* Loading Skeleton for Verse Search */}
+        {isSearching && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6"
+          >
+            {[0, 1, 2, 3].map((idx) => (
               <div
-                key={item.verseId}
-                className="p-4 rounded-xl bg-[#070A12] border border-slate-800 flex flex-col justify-between"
+                key={idx}
+                className="p-5 rounded-xl bg-[#1B2A20] border border-[#C59B27]/35 animate-pulse space-y-3"
               >
-                <div>
-                  <div className="flex justify-between items-center text-xs text-[#D4AF37] mb-2">
-                    <span>
-                      Ang {item.pageNo} • {item.writer?.english || "Gurbani"}
-                    </span>
-                    <span>{item.raag?.english}</span>
-                  </div>
-                  <p className="text-lg font-serif text-[#F5E6C8] mb-1">
-                    {item.verse?.unicode}
-                  </p>
-                  <p className="text-xs text-slate-400 italic mb-2">
-                    {item.transliteration?.english}
-                  </p>
-                  <p className="text-sm text-slate-200">
-                    {item.translation?.en?.bdb || item.translation?.en?.ms}
-                  </p>
+                <div className="flex justify-between">
+                  <div className="h-3 w-28 rounded bg-[#C59B27]/30" />
+                  <div className="h-3 w-20 rounded bg-[#C59B27]/20" />
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-end">
-                  <a
-                    href={`https://www.sikhitothemax.org/shabad?id=${item.shabadId}&highlight=${item.verseId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-[#D4AF37] hover:underline inline-flex items-center gap-1"
-                  >
-                    Read Full Shabad on SikhiToTheMax <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
+                <div className="h-6 w-4/5 rounded bg-[#FAF6EE]/20" />
+                <div className="h-3.5 w-3/4 rounded bg-[#FAF6EE]/10" />
+                <div className="h-4 w-full rounded bg-[#FAF6EE]/15" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Error Banner */}
+        {!isSearching && searchError && (
+          <div
+            role="alert"
+            className="mt-6 p-4 rounded-xl bg-[#1B2A20] border border-[#D97706] text-[#FAF6EE] flex items-center justify-between gap-3 text-xs md:text-sm"
+          >
+            <span>{searchError}</span>
+          </div>
+        )}
+
+        {/* Loading Skeleton for Full Shabad View */}
+        {isLoadingShabad && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-6 p-6 md:p-8 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/50 animate-pulse space-y-4"
+          >
+            <div className="h-4 w-40 rounded bg-[#E5C158]/30" />
+            <div className="h-7 w-2/3 rounded bg-[#FAF6EE]/20" />
+            <div className="space-y-3 pt-4">
+              <div className="h-16 w-full rounded-xl bg-[#121C15]" />
+              <div className="h-16 w-full rounded-xl bg-[#121C15]" />
+              <div className="h-16 w-full rounded-xl bg-[#121C15]" />
+            </div>
+          </div>
+        )}
+
+        {shabadError && !isLoadingShabad && (
+          <div
+            role="alert"
+            className="mt-6 p-4 rounded-xl bg-[#1B2A20] border border-[#D97706] text-[#FAF6EE] flex items-center justify-between gap-3 text-xs md:text-sm"
+          >
+            <span>{shabadError}</span>
+            <button
+              type="button"
+              onClick={() => setShabadError("")}
+              className="text-xs font-semibold text-[#E5C158] underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Inline Full Shabad Reader View */}
+        {!isLoadingShabad && activeShabad && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] p-6 md:p-8 shadow-2xl space-y-6"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#C59B27]/30 pb-5">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E5C158]">
+                  COMPLETE SHABAD FOLIO • ANG {activeShabad.pageNo} • {activeShabad.raag}
+                </span>
+                <h4 className="text-2xl md:text-3xl font-serif text-[#FAF6EE] mt-1">
+                  {activeShabad.writer} — Ang {activeShabad.pageNo}
+                </h4>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveShabad(null)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] font-semibold text-xs hover:brightness-105 transition"
+              >
+                ← Close / Back to results
+              </button>
+            </div>
+
+            <div className="space-y-4 max-h-[540px] overflow-y-auto pr-1">
+              {activeShabad.verses.map((v) => {
+                const isHighlighted =
+                  highlightedVerseId !== null && v.verseId === highlightedVerseId;
+                return (
+                  <div
+                    key={v.verseId}
+                    className={`p-5 rounded-xl border transition ${
+                      isHighlighted
+                        ? "bg-[#263B2D] border-[#E5C158] shadow-[0_0_20px_rgba(197,155,39,0.2)]"
+                        : "bg-[#121C15] border-[#C59B27]/25"
+                    }`}
+                  >
+                    <p
+                      lang="pa"
+                      className="text-xl md:text-2xl font-gurmukhi text-[#FAF6EE] leading-relaxed"
+                    >
+                      {v.gurmukhiUnicode}
+                    </p>
+                    {v.transliteration && (
+                      <p className="text-xs md:text-sm text-[#E5C158]/85 italic mt-1.5">
+                        {v.transliteration}
+                      </p>
+                    )}
+                    {v.englishTranslation && (
+                      <p className="text-sm md:text-base text-[#F3ECE0] mt-2 font-medium">
+                        “{v.englishTranslation}”
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-4 border-t border-[#C59B27]/25 flex flex-wrap items-center justify-between gap-3 text-xs text-[#F3ECE0]/75">
+              <span>
+                Showing all {activeShabad.verses.length} verses of Shabad #{activeShabad.shabadId} (Ang {activeShabad.pageNo})
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveShabad(null)}
+                className="text-[#E5C158] hover:underline font-semibold"
+              >
+                ← Close / Back to results
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Empty State when a search has been performed and returned 0 verses */}
+        {!isSearching &&
+          !activeShabad &&
+          hasSearched &&
+          !searchError &&
+          searchResults.length === 0 && (
+            <div className="mt-6 p-8 rounded-2xl bg-[#FAF6EE] border border-[#C59B27]/40 text-center space-y-2">
+              <p className="font-serif text-xl font-bold text-[#171917]">
+                No matching verses found for “{submittedQuery}”
+              </p>
+              <p className="text-xs md:text-sm text-[#4A554E] max-w-md mx-auto">
+                Try searching with an English keyword (such as &ldquo;kings are born&rdquo;, &ldquo;fearless&rdquo;, &ldquo;equality&rdquo;, &ldquo;hukam&rdquo;) or Gurmukhi first-letter initials (such as &ldquo;stnk&rdquo; or &ldquo;skma&rdquo;).
+              </p>
+            </div>
+          )}
+
+        {/* Matching Verses Grid */}
+        {!isSearching && !activeShabad && searchResults.length > 0 && (
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between text-xs text-[#4A554E] px-1">
+              <span>
+                Found <strong className="text-[#171917]">{searchResults.length}</strong> matching verses for{" "}
+                <strong className="text-[#171917]">“{submittedQuery}”</strong>
+              </span>
+              <span className="text-[#D97706] font-semibold uppercase tracking-wider">
+                Select any verse card to read the full Shabad inline
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {searchResults.map((item) => (
+                <div
+                  key={item.verseId}
+                  onClick={() => void openFullShabadInline(item.shabadId, item.verseId)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      void openFullShabadInline(item.shabadId, item.verseId);
+                    }
+                  }}
+                  className="group cursor-pointer p-5 rounded-xl bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/40 hover:border-[#E5C158] transition-all flex flex-col justify-between shadow-md hover:shadow-xl"
+                >
+                  <div>
+                    <div className="flex justify-between items-center text-[11px] uppercase tracking-wider text-[#E5C158] mb-2">
+                      <span className="font-semibold">
+                        ANG {item.pageNo} • {item.writer}
+                      </span>
+                      <span className="px-2 py-0.5 rounded border border-[#C59B27]/35 bg-[#121C15]">
+                        {item.raag}
+                      </span>
+                    </div>
+                    <p
+                      lang="pa"
+                      className="text-lg md:text-xl font-gurmukhi text-[#FAF6EE] mb-1.5"
+                    >
+                      {item.gurmukhiUnicode}
+                    </p>
+                    {item.transliteration && (
+                      <p className="text-xs text-[#E5C158]/80 italic mb-2">
+                        {item.transliteration}
+                      </p>
+                    )}
+                    {item.englishTranslation && (
+                      <p className="text-sm text-[#F3ECE0] leading-relaxed">
+                        “{item.englishTranslation}”
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-[#C59B27]/25 flex items-center justify-between">
+                    <span className="text-[11px] uppercase tracking-wider text-[#F3ECE0]/65">
+                      SHABAD #{item.shabadId} • ANG {item.pageNo}
+                    </span>
+                    <span className="text-xs font-semibold text-[#E5C158] group-hover:text-[#D97706] transition">
+                      Read Full Shabad Inline →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 }
+
+export default BaaniPortal;
