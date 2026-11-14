@@ -61,8 +61,7 @@ export function SearchBar({
         />
         <button
           type="submit"
-          disabled={busy || value.trim().length < MIN_PROMPT}
-          className="shrink-0 rounded-xl bg-gradient-to-b from-gold-light to-gold-dark px-5 py-3 text-sm font-semibold text-midnight-900 transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-light focus-visible:ring-offset-2 focus-visible:ring-offset-midnight-900 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={busy || (value || "").trim().length < MIN_PROMPT}
         >
           {busy ? busyLabel : buttonLabel}
         </button>
