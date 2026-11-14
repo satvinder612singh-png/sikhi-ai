@@ -1,4 +1,4 @@
-# Sikhi AI
+# Learn Sikhi
 
 Next.js (App Router) + Tailwind + Supabase Auth + Deep seek
 

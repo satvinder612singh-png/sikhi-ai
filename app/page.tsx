@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import { Hero } from "@/components/hero";
 import { AskPanel } from "@/components/ask-panel";
+import { BrandLogo } from "@/components/brand-logo";
+import { Footer } from "@/components/footer";
 
 /* ============================================================================
-   1. CEREMONIAL OPENING CURTAIN (Ik Onkar & Gurmukhi Archway)
+   1. CEREMONIAL OPENING CURTAIN (Ik Onkar, BrandLogo & Gurmukhi Archway)
 ============================================================================ */
 function IntroLoader() {
   const [isVisible, setIsVisible] = useState(true);
@@ -51,15 +53,15 @@ function IntroLoader() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.9, ease: "easeInOut" } }}
           onClick={skipIntro}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070A12] text-[#F5E6C8] cursor-pointer overflow-hidden"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#1B2A20] text-[#FAF6EE] cursor-pointer overflow-hidden"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.16)_0%,transparent_65%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,155,39,0.22)_0%,rgba(217,119,6,0.08)_40%,transparent_70%)]" />
 
           <motion.svg
             initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.35 }}
+            animate={{ scale: 1, opacity: 0.4 }}
             transition={{ duration: 1.4, ease: "easeOut" }}
-            className="absolute w-[340px] h-[460px] md:w-[460px] md:h-[580px] stroke-[#D4AF37]"
+            className="absolute w-[340px] h-[460px] md:w-[460px] md:h-[580px] stroke-[#C59B27]"
             viewBox="0 0 200 260"
             fill="none"
           >
@@ -84,16 +86,23 @@ function IntroLoader() {
             initial={{ y: 20, opacity: 0, scale: 0.9 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ duration: 1.1, delay: 0.2 }}
-            className="relative z-10 text-center px-6"
+            className="relative z-10 flex flex-col items-center text-center px-6"
           >
-            <div className="text-7xl md:text-8xl font-serif text-[#D4AF37] drop-shadow-[0_0_25px_rgba(212,175,55,0.45)] mb-4">
+            <div className="mb-3">
+              <BrandLogo size="xl" animated={true} />
+            </div>
+            <div
+              lang="pa"
+              className="font-gurmukhi text-4xl md:text-5xl text-[#E5C158] drop-shadow-[0_0_20px_rgba(197,155,39,0.45)] mb-2"
+            >
               ੴ
             </div>
             <motion.p
+              lang="pa"
               initial={{ opacity: 0, letterSpacing: "0.05em" }}
-              animate={{ opacity: 1, letterSpacing: "0.22em" }}
+              animate={{ opacity: 1, letterSpacing: "0.18em" }}
               transition={{ duration: 1.4, delay: 0.7 }}
-              className="text-lg md:text-xl text-[#E6C762] font-medium uppercase"
+              className="font-gurmukhi text-lg md:text-xl text-[#E5C158] font-medium"
             >
               ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ
             </motion.p>
@@ -101,31 +110,31 @@ function IntroLoader() {
               initial={{ width: 0 }}
               animate={{ width: "180px" }}
               transition={{ duration: 1.2, delay: 1.0 }}
-              className="h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent mx-auto my-5"
+              className="h-[1px] bg-gradient-to-r from-transparent via-[#C59B27] to-transparent mx-auto my-5"
             />
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 1.3 }}
-              className="text-2xl md:text-3xl font-serif tracking-wide text-white"
+              className="text-2xl md:text-3xl font-serif tracking-wide text-[#FAF6EE]"
             >
-              SIKHI <span className="text-[#D4AF37]">AI</span> ARCHIVE
+              LEARN <span className="text-[#E5C158]">SIKHI</span>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.75 }}
+              animate={{ opacity: 0.85 }}
               transition={{ duration: 1, delay: 1.7 }}
-              className="mt-2 text-xs md:text-sm text-amber-100/70 max-w-md mx-auto italic"
+              className="mt-2 text-xs md:text-sm text-[#F3ECE0]/80 max-w-md mx-auto italic"
             >
-              Scripture, Sovereign History, & the Unsung Matriarchs of the Panth
+              Explore the depths of Sikhi.
             </motion.p>
           </motion.div>
 
           <motion.span
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
+            animate={{ opacity: 0.65 }}
             transition={{ delay: 2.2 }}
-            className="absolute bottom-8 text-xs tracking-widest uppercase text-[#D4AF37]"
+            className="absolute bottom-8 text-xs tracking-widest uppercase text-[#E5C158]"
           >
             Click anywhere to enter
           </motion.span>
@@ -167,18 +176,19 @@ function ChapterSection({
       >
         {gurmukhiWatermark && (
           <span
+            lang="pa"
             aria-hidden="true"
-            className="pointer-events-none select-none absolute left-1/2 -top-10 -translate-x-1/2 text-6xl md:text-8xl font-serif text-[#D4AF37]/[0.07] whitespace-nowrap"
+            className="pointer-events-none select-none absolute left-1/2 -top-10 -translate-x-1/2 text-6xl md:text-8xl font-gurmukhi text-[#C59B27]/[0.14] whitespace-nowrap"
           >
             {gurmukhiWatermark}
           </span>
         )}
         {eyebrow && (
-          <p className="text-xs md:text-sm uppercase tracking-[0.25em] text-[#D4AF37] font-semibold mb-2">
+          <p className="text-xs md:text-sm uppercase tracking-[0.25em] text-[#D97706] font-semibold mb-2">
             {eyebrow}
           </p>
         )}
-        <h2 className="relative text-3xl md:text-5xl font-serif font-bold text-white tracking-tight">
+        <h2 className="relative text-3xl md:text-5xl font-serif font-bold text-[#171917] tracking-tight">
           {title}
         </h2>
         <motion.div
@@ -186,10 +196,10 @@ function ChapterSection({
           whileInView={{ scaleX: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.9, delay: 0.2 }}
-          className="h-[2px] w-36 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent mx-auto my-5"
+          className="h-[2px] w-36 bg-gradient-to-r from-transparent via-[#C59B27] to-transparent mx-auto my-5"
         />
         {subtitle && (
-          <p className="max-w-3xl mx-auto text-sm md:text-base text-slate-300 leading-relaxed">
+          <p className="max-w-3xl mx-auto text-sm md:text-base text-[#4A554E] leading-relaxed">
             {subtitle}
           </p>
         )}
@@ -360,7 +370,7 @@ function BaaniPortal() {
     <div className="space-y-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#D4AF37] mb-2">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#D97706] font-semibold mb-2">
             <Sparkles className="w-4 h-4" />
             <span>Pre-Generated Scriptural Pillars</span>
           </div>
@@ -372,20 +382,43 @@ function BaaniPortal() {
                 onClick={() => setSelectedBani(bani)}
                 className={`w-full text-left p-5 rounded-xl border transition-all duration-300 ${
                   isActive
-                    ? "bg-[#121826] border-[#D4AF37] shadow-[0_0_25px_rgba(212,175,55,0.15)]"
-                    : "bg-[#0B0F19]/80 border-slate-800 hover:border-slate-600"
+                    ? "bg-[#1B2A20] text-[#FAF6EE] border-[#C59B27] shadow-[0_10px_28px_rgba(27,42,32,0.22)]"
+                    : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
                 }`}
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-2">
                   <div>
-                    <p className="text-lg font-serif text-[#D4AF37]">{bani.gurmukhiTitle}</p>
-                    <h3 className="text-base font-semibold text-white mt-0.5">{bani.title}</h3>
+                    <p
+                      lang="pa"
+                      className={`text-lg font-gurmukhi ${
+                        isActive ? "text-[#E5C158]" : "text-[#D97706]"
+                      }`}
+                    >
+                      {bani.gurmukhiTitle}
+                    </p>
+                    <h3
+                      className={`text-base font-semibold mt-0.5 ${
+                        isActive ? "text-[#FAF6EE]" : "text-[#171917]"
+                      }`}
+                    >
+                      {bani.title}
+                    </h3>
                   </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-full border shrink-0 ${
+                      isActive
+                        ? "bg-[#C59B27]/20 text-[#E5C158] border-[#C59B27]/40"
+                        : "bg-[#1B2A20]/10 text-[#1B2A20] border-[#1B2A20]/20 font-medium"
+                    }`}
+                  >
                     Ang {bani.ang}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p
+                  className={`text-xs mt-2 ${
+                    isActive ? "text-[#F3ECE0]/75" : "text-[#4A554E]"
+                  }`}
+                >
                   {bani.author} • {bani.raag}
                 </p>
               </button>
@@ -401,14 +434,14 @@ function BaaniPortal() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -15 }}
               transition={{ duration: 0.35 }}
-              className="bg-gradient-to-b from-[#111726] to-[#0A0E17] border border-[#D4AF37]/30 rounded-2xl p-6 md:p-8 shadow-2xl"
+              className="bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/45 rounded-2xl p-6 md:p-8 shadow-xl"
             >
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#C59B27]/25 pb-5">
                 <div>
-                  <span className="text-xs uppercase tracking-widest text-[#D4AF37]">
+                  <span className="text-xs uppercase tracking-widest text-[#E5C158]">
                     {selectedBani.author} • {selectedBani.raag}
                   </span>
-                  <h3 className="text-2xl md:text-3xl font-serif text-white mt-1">
+                  <h3 className="text-2xl md:text-3xl font-serif text-[#FAF6EE] mt-1">
                     {selectedBani.title}
                   </h3>
                 </div>
@@ -416,7 +449,7 @@ function BaaniPortal() {
                   href={`https://www.sikhitothemax.org/shabad?id=${selectedBani.sttmShabadId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#D4AF37] text-slate-950 font-semibold text-xs hover:bg-amber-400 transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] font-semibold text-xs hover:brightness-105 transition"
                 >
                   <BookOpen className="w-4 h-4" />
                   Read Full Ang {selectedBani.ang} on SikhiToTheMax
@@ -425,19 +458,19 @@ function BaaniPortal() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+                <div className="p-4 rounded-xl bg-[#121C15]/80 border border-[#C59B27]/25">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5C158] mb-1">
                     Historical Context
                   </h4>
-                  <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-xs md:text-sm text-[#F3ECE0]/90 leading-relaxed">
                     {selectedBani.historicalContext}
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+                <div className="p-4 rounded-xl bg-[#121C15]/80 border border-[#C59B27]/25">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5C158] mb-1">
                     Philosophical Essence
                   </h4>
-                  <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+                  <p className="text-xs md:text-sm text-[#F3ECE0]/90 leading-relaxed">
                     {selectedBani.philosophicalEssence}
                   </p>
                 </div>
@@ -447,15 +480,18 @@ function BaaniPortal() {
                 {selectedBani.verses.map((v, i) => (
                   <div
                     key={i}
-                    className="p-5 rounded-xl bg-[#080B12] border border-slate-800/80 space-y-2"
+                    className="p-5 rounded-xl bg-[#121C15] border border-[#C59B27]/30 space-y-2"
                   >
-                    <p className="text-xl md:text-2xl font-serif text-[#F5E6C8] leading-relaxed">
+                    <p
+                      lang="pa"
+                      className="text-xl md:text-2xl font-gurmukhi text-[#FAF6EE] leading-relaxed"
+                    >
                       {v.gurmukhi}
                     </p>
-                    <p className="text-xs md:text-sm text-amber-200/70 italic">
+                    <p className="text-xs md:text-sm text-[#E5C158]/85 italic">
                       {v.transliteration}
                     </p>
-                    <p className="text-sm md:text-base text-white pt-1 font-medium">
+                    <p className="text-sm md:text-base text-[#F3ECE0] pt-1 font-medium">
                       “{v.english}”
                     </p>
                   </div>
@@ -466,14 +502,14 @@ function BaaniPortal() {
         </div>
       </div>
 
-      <div className="p-6 md:p-8 rounded-2xl bg-[#0D1322] border border-slate-800">
+      <div className="p-6 md:p-8 rounded-2xl bg-[#F3ECE0] border border-[#C59B27]/40 shadow-parchment">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-xl font-serif text-white flex items-center gap-2">
-              <Search className="w-5 h-5 text-[#D4AF37]" />
+            <h3 className="text-xl font-serif font-bold text-[#171917] flex items-center gap-2">
+              <Search className="w-5 h-5 text-[#D97706]" />
               Explore Any Shabad via SikhiToTheMax / BaniDB Portal
             </h3>
-            <p className="text-xs md:text-sm text-slate-400 mt-1">
+            <p className="text-xs md:text-sm text-[#4A554E] mt-1">
               The core hymns are pre-curated above. Use this portal whenever you want to search any Shabad by English theme (e.g., &ldquo;equality&rdquo;, &ldquo;fearless&rdquo;) or Gurmukhi initials (e.g., &ldquo;skma&rdquo;).
             </p>
           </div>
@@ -481,7 +517,7 @@ function BaaniPortal() {
             href="https://www.sikhitothemax.org/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-[#D4AF37] hover:underline flex items-center gap-1 shrink-0"
+            className="text-xs font-semibold text-[#D97706] hover:underline flex items-center gap-1 shrink-0"
           >
             Open SikhiToTheMax Portal <ExternalLink className="w-3.5 h-3.5" />
           </a>
@@ -493,49 +529,49 @@ function BaaniPortal() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search English translation (e.g., 'kings are born') or first letters (e.g., 'stnk')..."
-            className="flex-1 bg-[#070A12] border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#D4AF37]"
+            className="flex-1 bg-[#FAF6EE] border border-[#C59B27]/50 rounded-xl px-4 py-3 text-sm text-[#171917] placeholder-[#4A554E]/75 focus:outline-none focus:border-[#D97706]"
           />
           <button
             type="submit"
             disabled={isSearching}
-            className="px-6 py-3 rounded-xl bg-[#D4AF37] text-slate-950 font-semibold text-sm hover:bg-amber-400 transition disabled:opacity-50"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] font-semibold text-sm hover:brightness-105 transition disabled:opacity-50"
           >
             {isSearching ? "Searching..." : "Find Baani"}
           </button>
         </form>
 
-        {searchError && <p className="text-xs text-amber-400 mt-3">{searchError}</p>}
+        {searchError && <p className="text-xs text-[#D97706] mt-3">{searchError}</p>}
 
         {searchResults.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             {searchResults.map((item: any) => (
               <div
                 key={item.verseId}
-                className="p-4 rounded-xl bg-[#070A12] border border-slate-800 flex flex-col justify-between"
+                className="p-4 rounded-xl bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/35 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex justify-between items-center text-xs text-[#D4AF37] mb-2">
+                  <div className="flex justify-between items-center text-xs text-[#E5C158] mb-2">
                     <span>
                       Ang {item.pageNo} • {item.writer?.english || "Gurbani"}
                     </span>
                     <span>{item.raag?.english}</span>
                   </div>
-                  <p className="text-lg font-serif text-[#F5E6C8] mb-1">
+                  <p lang="pa" className="text-lg font-gurmukhi text-[#FAF6EE] mb-1">
                     {item.verse?.unicode}
                   </p>
-                  <p className="text-xs text-slate-400 italic mb-2">
+                  <p className="text-xs text-[#E5C158]/80 italic mb-2">
                     {item.transliteration?.english}
                   </p>
-                  <p className="text-sm text-slate-200">
+                  <p className="text-sm text-[#F3ECE0]">
                     {item.translation?.en?.bdb || item.translation?.en?.ms}
                   </p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex justify-end">
+                <div className="mt-4 pt-3 border-t border-[#C59B27]/25 flex justify-end">
                   <a
                     href={`https://www.sikhitothemax.org/shabad?id=${item.shabadId}&highlight=${item.verseId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-[#D4AF37] hover:underline inline-flex items-center gap-1"
+                    className="text-xs text-[#E5C158] hover:underline inline-flex items-center gap-1"
                   >
                     Read Full Shabad on SikhiToTheMax <ExternalLink className="w-3 h-3" />
                   </a>
@@ -637,23 +673,23 @@ function MatriarchsGallery() {
 
   return (
     <div className="space-y-10">
-      <div className="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-amber-950/30 via-[#121826] to-amber-950/30 border border-[#D4AF37]/40">
+      <div className="p-6 md:p-8 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/45 shadow-parchment">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-3xl">
-            <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-[#D4AF37] font-semibold">
-              <Flame className="w-4 h-4" /> Reclaiming the Forgotten Half of Panthic History
+            <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-[#E5C158] font-semibold">
+              <Flame className="w-4 h-4 text-[#D97706]" /> Reclaiming the Forgotten Half of Panthic History
             </span>
-            <h3 className="text-xl md:text-2xl font-serif text-white">
+            <h3 className="text-xl md:text-2xl font-serif text-[#FAF6EE]">
               Why Do Our Stages Speak So Little of the Women Who Built the Panth?
             </h3>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-sm text-[#F3ECE0]/90 leading-relaxed">
               While Guru Nanak Dev Ji declared women&apos;s absolute equality on Ang 473 over five centuries ago, modern discourse and male-dominated stages often relegate Sikh women to the background. Without <strong>Bebe Nanaki Ji</strong>, there is no first Rabab; without <strong>Mata Khivi Ji</strong>, no institutionalized Langar; without <strong>Mata Sundari Ji</strong>, the 18th-century Khalsa would have fractured. Explore their lives through the oil-canvas gallery below.
             </p>
           </div>
-          <div className="shrink-0 p-4 rounded-xl bg-[#070A12] border border-amber-500/30 text-center">
-            <p className="text-lg font-serif text-[#D4AF37]">ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ</p>
-            <p className="text-xs text-slate-400 mt-1">“Why call her inferior?”</p>
-            <span className="text-[11px] text-amber-400/80 block mt-1">
+          <div className="shrink-0 p-4 rounded-xl bg-[#121C15] border border-[#C59B27]/40 text-center">
+            <p lang="pa" className="text-lg font-gurmukhi text-[#E5C158]">ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ</p>
+            <p className="text-xs text-[#F3ECE0]/85 mt-1">“Why call her inferior?”</p>
+            <span className="text-[11px] text-[#D97706] font-medium block mt-1">
               — Guru Granth Sahib Ji, Ang 473
             </span>
           </div>
@@ -672,13 +708,32 @@ function MatriarchsGallery() {
               }}
               className={`p-4 rounded-xl border text-left transition-all ${
                 selected
-                  ? "bg-[#151C2C] border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.2)]"
-                  : "bg-[#0A0E17] border-slate-800 hover:border-slate-600"
+                  ? "bg-[#1B2A20] text-[#FAF6EE] border-[#C59B27] shadow-[0_8px_24px_rgba(27,42,32,0.2)]"
+                  : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
               }`}
             >
-              <p className="text-sm font-serif text-[#D4AF37]">{m.gurmukhiName}</p>
-              <h4 className="text-base font-bold text-white mt-0.5">{m.name}</h4>
-              <p className="text-xs text-slate-400 mt-1">{m.era}</p>
+              <p
+                lang="pa"
+                className={`text-sm font-gurmukhi ${
+                  selected ? "text-[#E5C158]" : "text-[#D97706]"
+                }`}
+              >
+                {m.gurmukhiName}
+              </p>
+              <h4
+                className={`text-base font-bold mt-0.5 ${
+                  selected ? "text-[#FAF6EE]" : "text-[#171917]"
+                }`}
+              >
+                {m.name}
+              </h4>
+              <p
+                className={`text-xs mt-1 ${
+                  selected ? "text-[#F3ECE0]/75" : "text-[#4A554E]"
+                }`}
+              >
+                {m.era}
+              </p>
             </button>
           );
         })}
@@ -695,12 +750,12 @@ function MatriarchsGallery() {
         >
           <div className="lg:col-span-6 flex flex-col">
             <div
-              className="relative flex-1 min-h-[380px] rounded-2xl p-6 md:p-8 flex flex-col justify-between overflow-hidden border-4 border-[#8A6D2F] shadow-[inset_0_0_60px_rgba(0,0,0,0.85),0_15px_40px_rgba(0,0,0,0.7)]"
+              className="relative flex-1 min-h-[380px] rounded-2xl p-6 md:p-8 flex flex-col justify-between overflow-hidden border-4 border-[#C59B27] shadow-[inset_0_0_60px_rgba(0,0,0,0.85),0_15px_40px_rgba(27,42,32,0.35)]"
               style={{
-                background: `radial-gradient(circle at 50% 35%, ${activeFigure.palette.secondary}, ${activeFigure.palette.primary} 75%, #05070B 100%)`,
+                background: `radial-gradient(circle at 50% 35%, ${activeFigure.palette.secondary}, ${activeFigure.palette.primary} 75%, #121C15 100%)`,
               }}
             >
-              <div className="relative z-10 flex justify-between items-center text-xs uppercase tracking-widest text-[#D4AF37]/80">
+              <div className="relative z-10 flex justify-between items-center text-xs uppercase tracking-widest text-[#E5C158]/90">
                 <span>Sikh Heritage Oil Collection</span>
                 <span>{activeFigure.era}</span>
               </div>
@@ -710,53 +765,56 @@ function MatriarchsGallery() {
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.6 }}
-                  className="w-36 h-36 mx-auto rounded-full border border-[#D4AF37]/50 bg-black/30 backdrop-blur-sm flex items-center justify-center shadow-[0_0_50px_rgba(212,175,55,0.3)]"
+                  className="w-36 h-36 mx-auto rounded-full border border-[#C59B27]/60 bg-black/30 backdrop-blur-sm flex items-center justify-center shadow-[0_0_50px_rgba(197,155,39,0.3)]"
                 >
                   {activeFigure.emblemType === "rabab" && (
-                    <Sparkles className="w-16 h-16 text-[#D4AF37]" />
+                    <Sparkles className="w-16 h-16 text-[#E5C158]" />
                   )}
                   {activeFigure.emblemType === "langar" && (
-                    <Flame className="w-16 h-16 text-[#D4AF37]" />
+                    <Flame className="w-16 h-16 text-[#E5C158]" />
                   )}
                   {activeFigure.emblemType === "mohar" && (
-                    <Scroll className="w-16 h-16 text-[#D4AF37]" />
+                    <Scroll className="w-16 h-16 text-[#E5C158]" />
                   )}
                   {activeFigure.emblemType === "lance" && (
-                    <Shield className="w-16 h-16 text-[#D4AF37]" />
+                    <Shield className="w-16 h-16 text-[#E5C158]" />
                   )}
                 </motion.div>
-                <p className="mt-5 text-2xl md:text-3xl font-serif text-[#F5E6C8] drop-shadow">
+                <p
+                  lang="pa"
+                  className="mt-5 text-2xl md:text-3xl font-gurmukhi text-[#FAF6EE] drop-shadow"
+                >
                   {activeFigure.gurmukhiName}
                 </p>
-                <p className="text-sm font-serif italic text-amber-200/90 mt-1">
+                <p className="text-sm font-serif italic text-[#E5C158] mt-1">
                   {activeFigure.paintingTitle}
                 </p>
               </div>
 
-              <div className="relative z-10 p-4 rounded-xl bg-black/65 border border-[#D4AF37]/40 backdrop-blur-md">
-                <p className="text-xs text-amber-100/90 leading-relaxed italic">
+              <div className="relative z-10 p-4 rounded-xl bg-black/65 border border-[#C59B27]/45 backdrop-blur-md">
+                <p className="text-xs text-[#FAF6EE]/90 leading-relaxed italic">
                   <strong>Scene Study:</strong> {activeFigure.paintingSceneDescription}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-6 bg-[#0D1322] border border-slate-800 rounded-2xl p-6 md:p-8 flex flex-col justify-between">
+          <div className="lg:col-span-6 bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/40 rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl">
             <div>
-              <span className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold">
+              <span className="text-xs uppercase tracking-widest text-[#E5C158] font-semibold">
                 {activeFigure.title}
               </span>
-              <h3 className="text-3xl font-serif text-white mt-1">
+              <h3 className="text-3xl font-serif text-[#FAF6EE] mt-1">
                 {activeFigure.name}
               </h3>
 
-              <div className="flex flex-wrap gap-2 mt-6 border-b border-slate-800 pb-4">
+              <div className="flex flex-wrap gap-2 mt-6 border-b border-[#C59B27]/25 pb-4">
                 <button
                   onClick={() => setActiveTab("story")}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
                     activeTab === "story"
-                      ? "bg-[#D4AF37] text-slate-950"
-                      : "bg-slate-900 text-slate-300 hover:bg-slate-800"
+                      ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917]"
+                      : "bg-[#121C15] text-[#F3ECE0] hover:bg-[#263B2D]"
                   }`}
                 >
                   Her Life & Sovereignty
@@ -765,8 +823,8 @@ function MatriarchsGallery() {
                   onClick={() => setActiveTab("silence")}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
                     activeTab === "silence"
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                      : "bg-slate-900 text-slate-300 hover:bg-slate-800"
+                      ? "bg-[#D97706]/25 text-[#E5C158] border border-[#D97706]/50"
+                      : "bg-[#121C15] text-[#F3ECE0] hover:bg-[#263B2D]"
                   }`}
                 >
                   Why Men Talk Less About Her
@@ -775,8 +833,8 @@ function MatriarchsGallery() {
                   onClick={() => setActiveTab("proof")}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${
                     activeTab === "proof"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                      : "bg-slate-900 text-slate-300 hover:bg-slate-800"
+                      ? "bg-[#C59B27]/25 text-[#E5C158] border border-[#C59B27]/50"
+                      : "bg-[#121C15] text-[#F3ECE0] hover:bg-[#263B2D]"
                   }`}
                 >
                   Primary Historical Record
@@ -785,26 +843,26 @@ function MatriarchsGallery() {
 
               <div className="mt-6 min-h-[180px]">
                 {activeTab === "story" && (
-                  <p className="text-sm md:text-base text-slate-200 leading-relaxed">
+                  <p className="text-sm md:text-base text-[#F3ECE0] leading-relaxed">
                     {activeFigure.lifeStory}
                   </p>
                 )}
                 {activeTab === "silence" && (
-                  <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/30">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-300 mb-2 flex items-center gap-1.5">
+                  <div className="p-4 rounded-xl bg-[#121C15] border border-[#D97706]/45">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#D97706] mb-2 flex items-center gap-1.5">
                       <Eye className="w-4 h-4" /> Confronting the Erasure
                     </h4>
-                    <p className="text-sm md:text-base text-slate-200 leading-relaxed">
+                    <p className="text-sm md:text-base text-[#F3ECE0] leading-relaxed">
                       {activeFigure.whyMenTalkLess}
                     </p>
                   </div>
                 )}
                 {activeTab === "proof" && (
-                  <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300 mb-2">
+                  <div className="p-4 rounded-xl bg-[#121C15] border border-[#C59B27]/45">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#E5C158] mb-2">
                       Archival & Scriptural Evidence
                     </h4>
-                    <p className="text-sm md:text-base text-slate-200 leading-relaxed">
+                    <p className="text-sm md:text-base text-[#F3ECE0] leading-relaxed">
                       {activeFigure.historicalProof}
                     </p>
                   </div>
@@ -812,9 +870,9 @@ function MatriarchsGallery() {
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-6 pt-4 border-t border-[#C59B27]/25 flex items-center justify-between text-xs text-[#F3ECE0]/75">
               <span>Primary Source Citation:</span>
-              <span className="text-[#D4AF37] font-medium">
+              <span className="text-[#E5C158] font-medium">
                 {activeFigure.primaryCitation}
               </span>
             </div>
@@ -878,24 +936,24 @@ function ScholarlyPortals() {
             href={portal.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group p-6 rounded-2xl bg-[#0C111D] border border-slate-800 hover:border-[#D4AF37] transition-all duration-300 flex flex-col justify-between shadow-lg"
+            className="group p-6 rounded-2xl bg-[#F3ECE0] border border-[#C59B27]/40 hover:border-[#D97706] hover:bg-[#1B2A20] transition-all duration-300 flex flex-col justify-between shadow-parchment"
           >
             <div>
               <div className="flex items-center justify-between gap-3 mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#D4AF37] px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#D97706] group-hover:text-[#E5C158] px-3 py-1 rounded-full bg-[#C59B27]/15 border border-[#C59B27]/30">
                   {portal.category}
                 </span>
-                <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-[#D4AF37] transition" />
+                <ExternalLink className="w-4 h-4 text-[#4A554E] group-hover:text-[#E5C158] transition" />
               </div>
-              <h3 className="text-xl font-serif text-white group-hover:text-[#D4AF37] transition flex items-center gap-2">
-                <Icon className="w-5 h-5 text-[#D4AF37]" />
+              <h3 className="text-xl font-serif font-bold text-[#171917] group-hover:text-[#FAF6EE] transition flex items-center gap-2">
+                <Icon className="w-5 h-5 text-[#D97706] group-hover:text-[#E5C158]" />
                 {portal.name}
               </h3>
-              <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+              <p className="text-sm text-[#4A554E] group-hover:text-[#F3ECE0]/90 mt-2 leading-relaxed">
                 {portal.description}
               </p>
             </div>
-            <div className="mt-5 pt-3 border-t border-slate-800/80 text-xs text-amber-200/80 italic">
+            <div className="mt-5 pt-3 border-t border-[#C59B27]/25 text-xs text-[#1B2A20] group-hover:text-[#E5C158] italic font-medium">
               ✦ {portal.highlight}
             </div>
           </a>
@@ -910,7 +968,7 @@ function ScholarlyPortals() {
 ============================================================================ */
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#070A12] text-slate-100">
+    <main className="min-h-screen bg-[#FAF6EE] text-[#171917]">
       <IntroLoader />
       <Hero />
 
@@ -953,6 +1011,8 @@ export default function HomePage() {
       >
         <ScholarlyPortals />
       </ChapterSection>
+
+      <Footer />
     </main>
   );
 }

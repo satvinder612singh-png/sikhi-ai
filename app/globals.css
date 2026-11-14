@@ -2,23 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-ivory: #FAF6EE;
+  --bg-parchment: #F3ECE0;
+  --accent-olive: #1B2A20;
+  --text-charcoal: #171917;
+  --text-muted-olive: #4A554E;
+  --highlight-saffron: #D97706;
+  --border-gold: #C59B27;
+  --border-gold-light: #E5C158;
+}
+
 @layer base {
   html {
-    color-scheme: dark;
     scroll-behavior: smooth;
+    background-color: var(--bg-ivory);
+    color: var(--text-charcoal);
   }
+
   body {
-    @apply bg-midnight-900 font-sans text-slate-200 antialiased;
+    background-color: var(--bg-ivory);
+    color: var(--text-charcoal);
+    @apply font-sans antialiased transition-colors duration-300;
   }
+
+  /* Generous Gurmukhi line-height so Sihari/Bihari/Lavan/Dulavan vowel marks never clip */
+  [lang="pa"],
+  .font-gurmukhi {
+    font-family: var(--font-gurmukhi), "Noto Serif Gurmukhi", "Noto Sans Gurmukhi", serif;
+    line-height: 1.85;
+    letter-spacing: 0.01em;
+  }
+
   ::selection {
-    background: rgba(212, 169, 76, 0.3);
+    background: rgba(217, 119, 6, 0.22);
+    color: #171917;
   }
+
   section[id] {
-    scroll-margin-top: 1rem;
+    scroll-margin-top: 1.5rem;
   }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
     }
+  }
+}
+
+@layer utilities {
+  .border-ornamental-gold {
+    border-color: rgba(197, 155, 39, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(229, 193, 88, 0.18);
+  }
+
+  .surface-ivory {
+    background-color: #FAF6EE;
+    color: #171917;
+  }
+
+  .surface-parchment {
+    background-color: #F3ECE0;
+    color: #171917;
+    border: 1px solid rgba(197, 155, 39, 0.32);
+  }
+
+  .surface-olive {
+    background-color: #1B2A20;
+    color: #FAF6EE;
+    border: 1px solid rgba(197, 155, 39, 0.38);
+  }
+
+  .gold-divider-rule {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(197, 155, 39, 0.25) 20%,
+      #C59B27 50%,
+      rgba(197, 155, 39, 0.25) 80%,
+      transparent 100%
+    );
   }
 }

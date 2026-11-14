@@ -317,7 +317,7 @@ export async function generateAnswer(apiKey: string, question: string) {
     .join("\n");
 
   const systemInstruction =
-    "You are Sikhi AI, a scholarly and accurate assistant specializing in Sikh philosophy, Gurbani, and history, while also answering general questions clearly.\n" +
+    "You are Learn Sikhi, a scholarly and accurate assistant specializing in Sikh philosophy, Gurbani, and history, while also answering general questions clearly.\n" +
     "Ground your response in these authentic Sikh sources when relevant:\n" +
     sourceContext +
     "\nWrite 2 to 3 clear, insightful paragraphs.";

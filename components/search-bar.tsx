@@ -45,8 +45,8 @@ export function SearchBar({
       <label htmlFor={inputId} className="sr-only">
         Ask a question about Sikh philosophy, history or Gurbani
       </label>
-      <div className="flex items-center gap-2 rounded-2xl border border-gold/40 bg-midnight-900/80 p-2 shadow-glow backdrop-blur transition focus-within:border-gold focus-within:shadow-glow-strong">
-        <span className="ml-3 flex h-5 w-5 shrink-0 items-center justify-center text-gold">
+      <div className="flex items-center gap-2 rounded-2xl border border-[#C59B27]/55 bg-[#FAF6EE] p-2 text-[#171917] shadow-parchment transition focus-within:border-[#D97706] focus-within:ring-2 focus-within:ring-[#C59B27]/40">
+        <span className="ml-3 flex h-5 w-5 shrink-0 items-center justify-center text-[#D97706]">
           <Icon name="search" className="h-5 w-5" />
         </span>
         <input
@@ -57,11 +57,12 @@ export function SearchBar({
           placeholder="What is the meaning of Hukam?"
           autoComplete="off"
           maxLength={MAX_PROMPT}
-          className="min-w-0 flex-1 bg-transparent px-2 py-3 text-base text-slate-100 placeholder:text-slate-500 focus:outline-none sm:text-lg"
+          className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-base text-[#171917] placeholder:text-[#4A554E]/75 focus:outline-none sm:text-lg"
         />
         <button
           type="submit"
           disabled={busy || (value || "").trim().length < MIN_PROMPT}
+          className="rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-5 py-2.5 text-sm font-semibold text-[#171917] shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? busyLabel : buttonLabel}
         </button>
@@ -81,14 +82,16 @@ export function SuggestionChips({
 }) {
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <span className="text-xs uppercase tracking-widest text-slate-500">Try</span>
+      <span className="text-xs font-semibold uppercase tracking-widest text-[#C59B27]">
+        Try
+      </span>
       {SUGGESTIONS.map((s) => (
         <button
           key={s}
           type="button"
           disabled={disabled}
           onClick={() => onPick(s)}
-          className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-300 transition hover:border-gold/60 hover:text-gold-light focus:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:opacity-50"
+          className="rounded-full border border-[#C59B27]/45 bg-[#1B2A20]/85 px-3.5 py-1.5 text-xs font-medium text-[#FAF6EE] transition hover:border-[#D97706] hover:bg-[#D97706] hover:text-[#FAF6EE] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] disabled:opacity-50 sm:text-sm"
         >
           {s}
         </button>

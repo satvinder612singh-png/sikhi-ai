@@ -86,7 +86,7 @@ export function LoginForm({
       <p className="mt-2 text-sm leading-relaxed text-slate-400">
         {isSignIn
           ? "Sign in to ask questions and read sourced answers."
-          : "A free account lets you ask Sikhi AI questions."}
+          : "A free account lets you ask Learn Sikhi questions."}
       </p>
 
       {!configured && (
@@ -143,7 +143,7 @@ export function LoginForm({
       </form>
 
       <p className="mt-6 text-center text-sm text-slate-400">
-        {isSignIn ? "New to Sikhi AI?" : "Already have an account?"}{" "}
+        {isSignIn ? "New to Learn Sikhi?" : "Already have an account?"}{" "}
         <button
           type="button"
           onClick={() => {

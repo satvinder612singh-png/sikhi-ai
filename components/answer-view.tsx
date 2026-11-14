@@ -59,7 +59,7 @@ export function AnswerView({ data }: { data: Answer }) {
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-slate-500">
-        Sikhi AI is a study aid and can make mistakes, including in citations. Verify Ang
+        Learn Sikhi is a study aid and can make mistakes, including in citations. Verify Ang
         numbers and quotations in the Guru Granth Sahib, and consult respected Sikh scholars
         or your local gurdwara for guidance.
       </p>

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
+import { Footer } from "@/components/footer";
 
 function AskContent() {
   const searchParams = useSearchParams();
@@ -80,17 +82,20 @@ function AskContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col">
-      <header className="border-b border-slate-800 bg-[#070b14]/90 backdrop-blur sticky top-0 z-30">
+    <div className="min-h-screen bg-[#FAF6EE] text-[#171917] flex flex-col">
+      <header className="border-b border-[#C59B27]/35 bg-[#1B2A20]/95 text-[#FAF6EE] backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="text-xl font-serif text-amber-400">
-            Sikhi AI
+          <Link href="/" className="flex items-center gap-3 text-xl font-serif text-[#FAF6EE] hover:text-[#E5C158] transition">
+            <BrandLogo size="sm" />
+            <span>
+              Learn <span className="text-[#E5C158]">Sikhi</span>
+            </span>
           </Link>
-          <nav className="flex items-center gap-6 text-sm text-slate-300">
-            <Link href="/sources" className="hover:text-amber-400 transition">
+          <nav className="flex items-center gap-6 text-sm text-[#F3ECE0]">
+            <Link href="/sources" className="hover:text-[#E5C158] transition">
               Sources
             </Link>
-            <Link href="/" className="hover:text-amber-400 transition">
+            <Link href="/" className="hover:text-[#E5C158] transition">
               Explore & Logs
             </Link>
             <button
@@ -98,7 +103,7 @@ function AskContent() {
                 fetchLogs();
                 setShowLogs(!showLogs);
               }}
-              className="px-3 py-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-300 text-xs font-medium"
+              className="px-3 py-1.5 rounded-full border border-[#C59B27]/50 bg-[#C59B27]/15 text-[#E5C158] text-xs font-medium hover:bg-[#D97706] hover:text-[#171917] transition"
             >
               Live Logs ({logs.length})
             </button>
@@ -108,37 +113,37 @@ function AskContent() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-12">
         <div className="text-center mb-8">
-          <span className="text-xs uppercase tracking-widest text-amber-400 font-semibold">
-            Ask Sikhi AI
+          <span className="text-xs uppercase tracking-widest text-[#D97706] font-semibold">
+            Ask Learn Sikhi
           </span>
-          <h1 className="text-3xl sm:text-5xl font-serif mt-2 text-white">
+          <h1 className="text-3xl sm:text-5xl font-serif font-bold mt-2 text-[#171917]">
             What would you like to understand?
           </h1>
-          <p className="text-slate-400 mt-3 text-sm">
+          <p className="text-[#4A554E] mt-3 text-sm">
             Answers are grounded in Gurbani and historical texts and list the sources they rely on.
           </p>
         </div>
 
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+        <div className="bg-[#F3ECE0] border border-[#C59B27]/45 rounded-2xl p-5 shadow-parchment">
           <form onSubmit={handleSubmit} className="flex gap-3">
             <input
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Ask about Gurbani, Sikh history, or philosophy..."
-              className="flex-1 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-slate-100 outline-none"
+              className="flex-1 bg-[#FAF6EE] border border-[#C59B27]/50 focus:border-[#D97706] rounded-xl px-4 py-3.5 text-[#171917] placeholder:text-[#4A554E]/75 outline-none"
             />
             <button
               type="submit"
               disabled={loading}
-              className="bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-semibold px-6 py-3.5 rounded-xl transition"
+              className="bg-gradient-to-r from-[#C59B27] to-[#D97706] hover:brightness-105 disabled:opacity-50 text-[#171917] font-semibold px-6 py-3.5 rounded-xl transition"
             >
               {loading ? "Asking..." : "Ask"}
             </button>
           </form>
 
           <div className="flex flex-wrap items-center gap-2 mt-4">
-            <span className="text-xs uppercase text-slate-500 mr-1">Try:</span>
+            <span className="text-xs uppercase font-semibold text-[#4A554E] mr-1">Try:</span>
             {presets.map((p) => (
               <button
                 key={p}
@@ -147,7 +152,7 @@ function AskContent() {
                   router.replace("/ask?q=" + encodeURIComponent(p), { scroll: false });
                   askQuestion(p);
                 }}
-                className="text-xs px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                className="text-xs px-3 py-1.5 rounded-full bg-[#1B2A20] hover:bg-[#D97706] text-[#FAF6EE] border border-[#C59B27]/40 transition"
               >
                 {p}
               </button>
@@ -156,24 +161,24 @@ function AskContent() {
         </div>
 
         {loading && (
-          <div className="mt-8 bg-slate-900/60 border border-slate-800 rounded-2xl p-8 animate-pulse">
-            <div className="text-amber-400 text-xs uppercase tracking-widest mb-4">
+          <div className="mt-8 bg-[#1B2A20] border border-[#C59B27]/40 rounded-2xl p-8 animate-pulse">
+            <div className="text-[#E5C158] text-xs uppercase tracking-widest mb-4">
               Searching Gurbani & Historical Sources...
             </div>
             <div className="space-y-3">
-              <div className="h-4 bg-slate-800 rounded w-11/12" />
-              <div className="h-4 bg-slate-800 rounded w-full" />
-              <div className="h-4 bg-slate-800 rounded w-4/5" />
+              <div className="h-4 bg-[#FAF6EE]/15 rounded w-11/12" />
+              <div className="h-4 bg-[#FAF6EE]/10 rounded w-full" />
+              <div className="h-4 bg-[#FAF6EE]/10 rounded w-4/5" />
             </div>
           </div>
         )}
 
         {!loading && error && (
-          <div className="mt-8 bg-red-950/30 border border-red-500/40 rounded-2xl p-6 text-center">
-            <p className="text-red-300 font-medium mb-4">{error}</p>
+          <div className="mt-8 bg-[#1B2A20] border border-[#D97706] rounded-2xl p-6 text-center text-[#FAF6EE]">
+            <p className="text-[#E5C158] font-medium mb-4">{error}</p>
             <button
               onClick={() => askQuestion(question)}
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] font-semibold text-sm"
             >
               Try again
             </button>
@@ -182,16 +187,16 @@ function AskContent() {
 
         {!loading && result && (
           <div className="mt-8 space-y-6">
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-7 shadow-xl">
-              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-800">
-                <span className="text-xs uppercase tracking-widest text-amber-400 font-semibold">
+            <div className="bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/45 rounded-2xl p-7 shadow-xl">
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#C59B27]/25">
+                <span className="text-xs uppercase tracking-widest text-[#E5C158] font-semibold">
                   Gurbani & Historical Synthesis
                 </span>
-                <span className="text-xs text-slate-400 bg-slate-950 px-3 py-1 rounded-full border border-slate-800">
+                <span className="text-xs text-[#F3ECE0]/80 bg-[#121C15] px-3 py-1 rounded-full border border-[#C59B27]/30">
                   {result.model} • {(result.durationMs / 1000).toFixed(2)}s
                 </span>
               </div>
-              <div className="space-y-4 text-slate-200 leading-relaxed">
+              <div className="space-y-4 text-[#F3ECE0] leading-relaxed">
                 {result.paragraphs.map((para: string, idx: number) => (
                   <p key={idx} className="leading-7">{para}</p>
                 ))}
@@ -201,16 +206,23 @@ function AskContent() {
             {result.sources && result.sources.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {result.sources.map((src: any) => (
-                  <div key={src.id} className="bg-slate-900/60 border border-slate-800 rounded-xl p-5">
+                  <div
+                    key={src.id}
+                    className="bg-[#F3ECE0] text-[#171917] border border-[#C59B27]/45 rounded-xl p-5 shadow-parchment"
+                  >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-400/10 text-amber-300">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1B2A20] text-[#E5C158]">
                         {src.category}
                       </span>
-                      <span className="text-xs text-slate-500">{src.reference}</span>
+                      <span className="text-xs text-[#4A554E]">{src.reference}</span>
                     </div>
-                    <h3 className="font-serif text-lg text-white">{src.title}</h3>
-                    {src.gurmukhi && <p className="text-amber-300 text-sm mt-1">{src.gurmukhi}</p>}
-                    <p className="text-slate-400 text-xs mt-2 leading-relaxed">{src.excerpt}</p>
+                    <h3 className="font-serif font-bold text-lg text-[#171917]">{src.title}</h3>
+                    {src.gurmukhi && (
+                      <p lang="pa" className="font-gurmukhi text-[#D97706] text-sm mt-1">
+                        {src.gurmukhi}
+                      </p>
+                    )}
+                    <p className="text-[#4A554E] text-xs mt-2 leading-relaxed">{src.excerpt}</p>
                   </div>
                 ))}
               </div>
@@ -219,32 +231,52 @@ function AskContent() {
         )}
 
         {showLogs && (
-          <div className="mt-10 bg-slate-950 border border-slate-800 rounded-2xl p-6">
+          <div className="mt-10 bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/40 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold uppercase text-amber-400">Live API Request Logs</h3>
-              <button onClick={() => setShowLogs(false)} className="text-xs text-slate-400">Close</button>
+              <h3 className="text-sm font-semibold uppercase text-[#E5C158]">
+                Live API Request Logs
+              </h3>
+              <button
+                onClick={() => setShowLogs(false)}
+                className="text-xs text-[#F3ECE0]/70 hover:text-[#FAF6EE]"
+              >
+                Close
+              </button>
             </div>
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {logs.map((log: any) => (
-                <div key={log.id} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                <div
+                  key={log.id}
+                  className="p-3.5 rounded-xl bg-[#121C15] border border-[#C59B27]/30 text-xs"
+                >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-slate-200">{log.question}</span>
-                    <span className="text-emerald-400 font-mono">HTTP {log.status} • {log.durationMs}ms</span>
+                    <span className="font-semibold text-[#FAF6EE]">{log.question}</span>
+                    <span className="text-[#E5C158] font-mono">
+                      HTTP {log.status} • {log.durationMs}ms
+                    </span>
                   </div>
-                  <p className="text-slate-400">{log.preview}</p>
+                  <p className="text-[#F3ECE0]/80">{log.preview}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }
 
 export default function AskPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#070b14] text-slate-400 p-12 text-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF6EE] text-[#4A554E] p-12 text-center">
+          Loading...
+        </div>
+      }
+    >
       <AskContent />
     </Suspense>
   );

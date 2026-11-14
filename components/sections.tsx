@@ -92,7 +92,7 @@ export function SourcesSection() {
       className="bg-midnight-900 px-5 py-24 sm:px-8"
     >
       <SectionHeading eyebrow="Grounded in sources" title="Every answer shows its sources" id="sources-title">
-        Sikhi AI is designed to explain, not to pronounce. Answers cite where they come
+        Learn Sikhi is designed to explain, not to pronounce. Answers cite where they come
         from so you can follow the trail to the original.
       </SectionHeading>
 

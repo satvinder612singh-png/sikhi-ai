@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BrandLogo } from "@/components/brand-logo";
 
 export default function IntroLoader() {
   const [isVisible, setIsVisible] = useState(true);
@@ -33,17 +34,17 @@ export default function IntroLoader() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.9, ease: "easeInOut" } }}
           onClick={skipIntro}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070A12] text-[#F5E6C8] cursor-pointer overflow-hidden"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#1B2A20] text-[#FAF6EE] cursor-pointer overflow-hidden"
         >
-          {/* Ambient Gold Radial Glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.16)_0%,transparent_65%)]" />
+          {/* Ambient Gold & Saffron Radial Glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(197,155,39,0.22)_0%,rgba(217,119,6,0.08)_40%,transparent_70%)]" />
 
           {/* Decorative Arch SVG Frame */}
           <motion.svg
             initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.35 }}
+            animate={{ scale: 1, opacity: 0.4 }}
             transition={{ duration: 1.4, ease: "easeOut" }}
-            className="absolute w-[340px] h-[460px] md:w-[460px] md:h-[580px] stroke-[#D4AF37]"
+            className="absolute w-[340px] h-[460px] md:w-[460px] md:h-[580px] stroke-[#C59B27]"
             viewBox="0 0 200 260"
             fill="none"
           >
@@ -64,22 +65,30 @@ export default function IntroLoader() {
             />
           </motion.svg>
 
-          {/* Ik Onkar Central Calligraphic Emblem */}
+          {/* Central Brand Emblem & Gurmukhi Invocation */}
           <motion.div
             initial={{ y: 20, opacity: 0, scale: 0.9 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ duration: 1.1, delay: 0.2 }}
-            className="relative z-10 text-center px-6"
+            className="relative z-10 flex flex-col items-center text-center px-6"
           >
-            <div className="text-7xl md:text-8xl font-serif text-[#D4AF37] drop-shadow-[0_0_25px_rgba(212,175,55,0.45)] mb-4">
+            <div className="mb-3">
+              <BrandLogo size="xl" animated={true} />
+            </div>
+
+            <div
+              lang="pa"
+              className="font-gurmukhi text-4xl md:text-5xl text-[#E5C158] drop-shadow-[0_0_20px_rgba(197,155,39,0.45)] mb-2"
+            >
               ੴ
             </div>
 
             <motion.p
+              lang="pa"
               initial={{ opacity: 0, letterSpacing: "0.05em" }}
-              animate={{ opacity: 1, letterSpacing: "0.22em" }}
+              animate={{ opacity: 1, letterSpacing: "0.18em" }}
               transition={{ duration: 1.4, delay: 0.7 }}
-              className="text-lg md:text-xl text-[#E6C762] font-medium uppercase"
+              className="font-gurmukhi text-lg md:text-xl text-[#E5C158] font-medium"
             >
               ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ
             </motion.p>
@@ -88,33 +97,33 @@ export default function IntroLoader() {
               initial={{ width: 0 }}
               animate={{ width: "180px" }}
               transition={{ duration: 1.2, delay: 1.0 }}
-              className="h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent mx-auto my-5"
+              className="h-[1px] bg-gradient-to-r from-transparent via-[#C59B27] to-transparent mx-auto my-5"
             />
 
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 1.3 }}
-              className="text-2xl md:text-3xl font-serif tracking-wide text-white"
+              className="text-2xl md:text-3xl font-serif tracking-wide text-[#FAF6EE]"
             >
-              SIKHI <span className="text-[#D4AF37]">AI</span> ARCHIVE
+              LEARN <span className="text-[#E5C158]">SIKHI</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.75 }}
+              animate={{ opacity: 0.85 }}
               transition={{ duration: 1, delay: 1.7 }}
-              className="mt-2 text-xs md:text-sm text-amber-100/70 max-w-md mx-auto italic"
+              className="mt-2 text-xs md:text-sm text-[#F3ECE0]/80 max-w-md mx-auto italic"
             >
-              Scripture, Sovereign History, & the Unsung Matriarchs of the Panth
+              Explore the depths of Sikhi.
             </motion.p>
           </motion.div>
 
           <motion.span
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
+            animate={{ opacity: 0.65 }}
             transition={{ delay: 2.2 }}
-            className="absolute bottom-8 text-xs tracking-widest uppercase text-[#D4AF37]"
+            className="absolute bottom-8 text-xs tracking-widest uppercase text-[#E5C158]"
           >
             Click anywhere to enter
           </motion.span>
