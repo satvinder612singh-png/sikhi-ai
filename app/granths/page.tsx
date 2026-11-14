@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -10,10 +10,30 @@ import {
   type KirtanTrack,
 } from "@/components/kirtan-audio-context";
 
+type NativeChapter = {
+  title: string;
+  reference: string;
+  gurmukhi: string;
+  transliteration: string;
+  punjabiTeeka: string;
+  englishTranslation: string;
+  scholarlyNote: string;
+};
+
+type BookReaderEdition = {
+  label: string;
+  embedUrl: string;
+  archiveDetailsUrl: string;
+};
+
 type GranthVolume = {
   id: string;
   numeral: string;
-  category: "Scriptural Teeka" | "Historical Chronicle" | "Canonical Bani" | "Lexicon";
+  category:
+    | "Scriptural Teeka & Manuscript"
+    | "Historical Chronicle"
+    | "Gurmat Musicology & Rehit"
+    | "Canonical Bani & Lexicon";
   title: string;
   gurmukhiTitle: string;
   author: string;
@@ -21,222 +41,424 @@ type GranthVolume = {
   volumesCount: string;
   summary: string;
   significance: string;
+  supportsLiveAngReader?: boolean;
+  defaultAng?: number;
+  editions: BookReaderEdition[];
   gurmatVeecharUrl: string;
-  directPdfUrl: string;
-  archiveEmbedUrl: string;
-  sampleFolio: {
-    heading: string;
-    gurmukhi: string;
-    transliteration: string;
-    translation: string;
-    scholarlyNote: string;
-  };
+  chapters: NativeChapter[];
 };
 
 const HISTORICAL_GRANTHS: GranthVolume[] = [
   {
     id: "sggs-darpan",
     numeral: "੧",
-    category: "Scriptural Teeka",
-    title: "Sri Guru Granth Sahib Darpan (10 Volumes)",
-    gurmukhiTitle: "ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਦਰਪਣ",
+    category: "Scriptural Teeka & Manuscript",
+    title: "Sri Guru Granth Sahib Ji Darpan (Prof. Sahib Singh Teeka)",
+    gurmukhiTitle: "ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਦਰਪਣ (ਪ੍ਰੋ. ਸਾਹਿਬ ਸਿੰਘ)",
     author: "Prof. Sahib Singh Ji (D.Litt.)",
-    period: "1962 – 1964 CE • Amritsar",
-    volumesCount: "Volumes 1–10 (Complete Ang 1 to 1430)",
+    period: "1962 – 1964 CE • Amritsar (10 Volumes)",
+    volumesCount: "Complete Ang 1 to 1430 Exegesis + Live Ang Reader",
     summary:
-      "The gold-standard grammatical exegesis (Teeka) of Sri Guru Granth Sahib Ji, unlocking the morphological rules of Gurbani Viyakaran (vowel endings, case markers, and syntax).",
+      "The foundational grammatical exegesis (Teeka) of Sri Guru Granth Sahib Ji, unlocking the morphological rules of Gurbani Viyakaran (vowel endings, case markers, and syntax).",
     significance:
-      "Demonstrated systematically that Sihari (ਿ) and Aunkar (ੁ) endings in Gurbani are deliberate grammatical cases (prepositions, singular nouns, and imperative verbs).",
+      "Use the Built-In Live Ang Reader (Ang 1–1430) to read any Ang of Sri Guru Granth Sahib Ji with Prof. Sahib Singh's Punjabi Darpan Teeka and English translation, or flip through the 2-Up BookReader.",
+    supportsLiveAngReader: true,
+    defaultAng: 1,
+    editions: [
+      {
+        label: "Darpan BookReader (2-Up Flipbook)",
+        embedUrl: "https://archive.org/embed/GuruGranthDarpanPSS?ui=embed#mode/2up",
+        archiveDetailsUrl: "https://archive.org/details/GuruGranthDarpanPSS",
+      },
+    ],
     gurmatVeecharUrl:
       "https://www.gurmatveechar.com/books/Punjabi_Books/Professor_Sahib_Singh/",
-    directPdfUrl:
-      "https://www.gurmatveechar.com/books/Punjabi_Books/Professor_Sahib_Singh/Sri.Guru.Granth.Sahib.Darpan.Volume.01.by.Prof.Sahib.Singh.(GurmatVeechar.com).pdf",
-    archiveEmbedUrl:
-      "https://archive.org/embed/SriGuruGranthSahibDarpanVol1ByProfSahibSingh",
-    sampleFolio: {
-      heading: "Volume I • Mool Mantar & Japji Sahib Grammatical Analysis (Ang 1)",
-      gurmukhi: "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
-      transliteration:
-        "Ik Oankaar Sat Naamu Kartaa Purakhu Nirbhau Nirvairu Akaal Moorati Ajoonee Saibhang Gur Prasaadi ||",
-      translation:
-        "There is One Universal Creator whose Eternal Name is Truth, All-Pervading Doer, Without Fear, Without Enmity, Timeless Form, Unborn, Self-Illuminated, realized by the Guru's Grace.",
-      scholarlyNote:
-        "Prof. Sahib Singh explains that the Aunkar (ੁ) beneath 'ਨਾਮੁ' (Naamu) and 'ਪੁਰਖੁ' (Purakhu) marks the singular nominative subject, whereas in 'ਗੁਰ ਪ੍ਰਸਾਦਿ' (Gur Prasaadi), the Sihari (ਿ) on 'ਪ੍ਰਸਾਦਿ' denotes the instrumental case ('by means of Grace').",
-    },
+    chapters: [
+      {
+        title: "Mool Mantar Grammatical Analysis (Ang 1)",
+        reference: "Sri Guru Granth Sahib Darpan, Vol. 1 • Ang 1",
+        gurmukhi:
+          "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+        transliteration:
+          "Ik Oankaar Sat Naamu Kartaa Purakhu Nirbhau Nirvairu Akaal Moorati Ajoonee Saibhang Gur Prasaadi ||",
+        punjabiTeeka:
+          "ਅਕਾਲ ਪੁਰਖ ਇੱਕ ਹੈ, ਜਿਸ ਦਾ ਨਾਮ 'ਹੋਂਦ ਵਾਲਾ' ਹੈ ਜੋ ਸ੍ਰਿਸ਼ਟੀ ਦਾ ਰਚਨਹਾਰ ਹੈ, ਜੋ ਸਭ ਵਿਚ ਵਿਆਪਕ ਹੈ, ਭੈ ਤੋਂ ਰਹਿਤ ਹੈ, ਵੈਰ-ਰਹਿਤ ਹੈ, ਜਿਸ ਦਾ ਸਰੂਪ ਕਾਲ ਤੋਂ ਪਰੇ ਹੈ, ਜੋ ਜੂਨਾਂ ਵਿਚ ਨਹੀਂ ਆਉਂਦਾ, ਜਿਸ ਦਾ ਪ੍ਰਕਾਸ਼ ਆਪਣੇ ਆਪ ਤੋਂ ਹੋਇਆ ਹੈ ਅਤੇ ਜੋ ਸਤਿਗੁਰੂ ਦੀ ਕਿਰਪਾ ਨਾਲ ਮਿਲਦਾ ਹੈ।",
+        englishTranslation:
+          "There is One Universal Creator whose Eternal Name is Truth, All-Pervading Doer, Without Fear, Without Enmity, Timeless Form, Unborn, Self-Illuminated, realized through the Guru's Grace.",
+        scholarlyNote:
+          "Prof. Sahib Singh demonstrates that the Aunkar (ੁ) beneath 'ਨਾਮੁ' and 'ਪੁਰਖੁ' marks the singular nominative subject, while the Sihari (ਿ) on 'ਪ੍ਰਸਾਦਿ' marks the instrumental case ('by means of Grace').",
+      },
+      {
+        title: "Sovereign Equality of Women (Ang 473)",
+        reference: "Sri Guru Granth Sahib Darpan, Vol. 3 • Ang 473 (Asa Di Vaar)",
+        gurmukhi:
+          "ਭੰਡਿ ਜੰਮੀਐ ਭੰਡਿ ਨਿੰਮੀਐ ਭੰਡਿ ਮੰਗਣੁ ਵੀਆਹੁ ॥ ... ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ ॥",
+        transliteration:
+          "Bhandi jammeeai bhandi nimmeeai bhandi manganu veeaahu || ... So kiu mandaa aakheeai jitu jammeh raajaan ||",
+        punjabiTeeka:
+          "ਇਸਤ੍ਰੀ ਤੋਂ ਜਨਮ ਲਈਦਾ ਹੈ, ਇਸਤ੍ਰੀ ਦੇ ਪੇਟ ਵਿਚ ਹੀ ਪ੍ਰਾਣੀ ਦਾ ਸਰੀਰ ਬਣਦਾ ਹੈ... ਜਿਸ ਇਸਤ੍ਰੀ ਜਾਤੀ ਤੋਂ ਰਾਜੇ (ਅਤੇ ਮਹਾਂਪੁਰਖ) ਜੰਮਦੇ ਹਨ, ਉਸ ਨੂੰ ਮੰਦਾ ਕਿਉਂ ਆਖਿਆ ਜਾਵੇ?",
+        englishTranslation:
+          "From woman, man is born; within woman, man is conceived... Why call her inferior, from whom sovereigns and great souls are born?",
+        scholarlyNote:
+          "In Gurbani grammar, 'ਭੰਡਿ' (Bhandi) carries a locative/instrumental Sihari ('through/in woman'), while 'ਭੰਡਹੁ' (Bhandahu) carries the ablative suffix ('from woman').",
+      },
+    ],
   },
   {
     id: "panth-prakash",
     numeral: "੨",
     category: "Historical Chronicle",
-    title: "Sri Gur Panth Prakash (Prachin)",
-    gurmukhiTitle: "ਸ੍ਰੀ ਗੁਰ ਪੰਥ ਪ੍ਰਕਾਸ਼",
+    title: "Sri Gur Panth Prakash (Rattan Singh Bhangu)",
+    gurmukhiTitle: "ਸ੍ਰੀ ਗੁਰ ਪੰਥ ਪ੍ਰਕਾਸ਼ (ਭਾਈ ਰਤਨ ਸਿੰਘ ਭੰਗੂ)",
     author: "Shaheed Bhai Rattan Singh Bhangu",
     period: "Completed 1841 CE • Amritsar",
-    volumesCount: "Complete Braj / Punjabi Verse Chronicle",
+    volumesCount: "Original Gurmukhi & English Translation (Episodes 1–81)",
     summary:
-      "Primary 18th-century chronicle of the Khalsa's struggle for sovereignty, written by the grandson of Shaheed Bhai Mehtab Singh Ji (who liberated Sri Harmandir Sahib from Massa Ranghar).",
+      "Primary 18th-century chronicle of the Khalsa's struggle for sovereignty, written by the grandson of Shaheed Bhai Mehtab Singh Ji.",
     significance:
-      "Written directly to counter colonial distortions and record how Guru Nanak Dev Ji and Guru Gobind Singh Ji bestowed sovereign Patshahi (self-rule) upon the Khalsa Panth.",
+      "Records the oral testimonies of surviving 18th-century Khalsa warriors on how the Guru bestowed sovereign Patshahi (self-rule) upon the Panth.",
+    editions: [
+      {
+        label: "Original Gurmukhi BookReader (2-Up)",
+        embedUrl: "https://archive.org/embed/SriGurPanthPrakash?ui=embed#mode/2up",
+        archiveDetailsUrl: "https://archive.org/details/SriGurPanthPrakash",
+      },
+      {
+        label: "Vol. 1 English Translation (Episodes 1–81)",
+        embedUrl:
+          "https://archive.org/embed/SriGurPanthPrakashVolume1episodes1To81?ui=embed#mode/2up",
+        archiveDetailsUrl:
+          "https://archive.org/details/SriGurPanthPrakashVolume1episodes1To81",
+      },
+    ],
     gurmatVeecharUrl:
       "https://www.gurmatveechar.com/literature?q=f&f=%2FEnglish_Books",
-    directPdfUrl:
-      "https://archive.org/download/SriGurPanthPrakashVol1EngTranslationKulwantSingh/Sri%20Gur%20Panth%20Prakash%20Vol%201%20%28Eng%20Translation%20-%20Kulwant%20Singh%29.pdf",
-    archiveEmbedUrl:
-      "https://archive.org/embed/SriGurPanthPrakashVol1EngTranslationKulwantSingh",
-    sampleFolio: {
-      heading: "Sakhi: The Sovereign Testimony of the Khalsa (Dohra)",
-      gurmukhi: "ਸਿੰਘਨ ਕੀ ਪਾਤਸ਼ਾਹੀ ਸਾਚੀ । ਸਤਿਗੁਰਿ ਆਪੁ ਸਿੰਘਨ ਕਉ ਦੀਨੀ ॥",
-      transliteration: "Singhan kee Paatshaahee saachee. Satigur aapu Singhan kau deenee ||",
-      translation:
-        "True and eternal is the sovereignty of the Singhs; the True Guru Himself bestowed this sovereignty upon the Khalsa.",
-      scholarlyNote:
-        "Bhai Rattan Singh Bhangu interviewed surviving 18th-century Akali and Misl veterans, including his own father Rai Singh and maternal grandfather Shyam Singh of the Karorsinghia Misl.",
-    },
+    chapters: [
+      {
+        title: "Episode 15: The Sovereign Patshahi of the Khalsa",
+        reference: "Sri Gur Panth Prakash • Dohra & Chaupai",
+        gurmukhi: "ਸਿੰਘਨ ਕੀ ਪਾਤਸ਼ਾਹੀ ਸਾਚੀ । ਸਤਿਗੁਰਿ ਆਪੁ ਸਿੰਘਨ ਕਉ ਦੀਨੀ ॥",
+        transliteration:
+          "Singhan kee Paatshaahee saachee. Satigur aapu Singhan kau deenee ||",
+        punjabiTeeka:
+          "ਸਿੰਘਾਂ ਦੀ ਪਾਤਸ਼ਾਹੀ ਸੱਚੀ ਅਤੇ ਸਦੀਵੀ ਹੈ, ਕਿਉਂਕਿ ਸਤਿਗੁਰੂ ਜੀ ਨੇ ਆਪ ਇਹ ਪਾਤਸ਼ਾਹੀ ਖ਼ਾਲਸਾ ਪੰਥ ਨੂੰ ਬਖ਼ਸ਼ੀ ਹੈ।",
+        englishTranslation:
+          "True and eternal is the sovereignty of the Singhs; the True Guru Himself bestowed this sovereignty upon the Khalsa.",
+        scholarlyNote:
+          "Written in response to British East India Company Captain Murray's inquiry into by what right the Sikhs claimed sovereignty over Punjab.",
+      },
+      {
+        title: "Episode 78: Bhai Bota Singh & Bhai Garja Singh's Sovereign Toll",
+        reference: "Sri Gur Panth Prakash • Episode 78 (1739 CE)",
+        gurmukhi:
+          "ਚਿੱਠੀ ਲਿਖੀ ਸਿੰਘ ਬੋਤੇ ਹੱਥ । ਭਾਬੀ ਖਾਲਸਾ ਜੀਹਾਂ ਹੈ ਨੱਥ ॥ ਆਨਾ ਲਾਯਾ ਗੱਡੇ ਨੂੰ ਪੈਸਾ ਲਾਯਾ ਖੋਤੇ ॥",
+        transliteration:
+          "Chitthee likhee Singh Bote hatth. Bhaabee Khaalsaa jeehaan hai natth || Aanaa laayaa gadde noo paisaa laayaa khote ||",
+        punjabiTeeka:
+          "ਭਾਈ ਬੋਤਾ ਸਿੰਘ ਨੇ ਸਰਾਏ ਨੂਰਦੀਨ ਵਿਖੇ ਖੜ੍ਹੋ ਕੇ ਲਾਹੌਰ ਦੇ ਸੂਬੇਦਾਰ ਜ਼ਕਰੀਆ ਖ਼ਾਨ ਨੂੰ ਖ਼ਤ ਲਿਖਿਆ ਕਿ ਖ਼ਾਲਸਾ ਕਦੇ ਖ਼ਤਮ ਨਹੀਂ ਹੋਇਆ—ਅਸੀਂ ਸ਼ਾਹੀ ਸੜਕ ਉੱਤੇ ਗੱਡੇ ਉੱਤੇ ਆਨਾ ਅਤੇ ਖੋਤੇ ਉੱਤੇ ਪੈਸਾ ਜਜ਼ੀਆ ਲਾ ਕੇ ਪਾਤਸ਼ਾਹੀ ਪ੍ਰਗਟ ਕੀਤੀ ਹੈ।",
+        englishTranslation:
+          "Bhai Bota Singh wrote directly to the Mughal Governor of Lahore: 'The Khalsa stands sovereign on the Grand Trunk Road, levying one anna per cart and one paisa per donkey.'",
+        scholarlyNote:
+          "When Mughal officials claimed the Khalsa had been wiped out, Bhai Bota Singh and Bhai Garja Singh stood openly on the royal highway at Tarn Taran to proclaim Khalsa sovereignty unto martyrdom.",
+      },
+    ],
   },
   {
     id: "suraj-prakash",
     numeral: "੩",
     category: "Historical Chronicle",
-    title: "Sri Gur Pratap Suraj Granth (Suraj Prakash)",
-    gurmukhiTitle: "ਸ੍ਰੀ ਗੁਰ ਪ੍ਰਤਾਪ ਸੂਰਜ ਗ੍ਰੰਥ",
-    author: "Mahakavi Bhai Santokh Singh Ji (Chudamani)",
-    period: "Completed 1843 CE • Kaithal (14 Volumes annotated by Bhai Vir Singh)",
-    volumesCount: "12 Raas (Lives of Guru Hargobind Ji to Guru Tegh Bahadur Ji) & 6 Rut (Guru Gobind Singh Ji)",
+    title: "Sri Gur Pratap Suraj Granth (Kavi Santokh Singh)",
+    gurmukhiTitle: "ਸ੍ਰੀ ਗੁਰ ਪ੍ਰਤਾਪ ਸੂਰਜ ਗ੍ਰੰਥ (ਮਹਾਂਕਵੀ ਸੰਤੋਖ ਸਿੰਘ)",
+    author: "Mahakavi Bhai Santokh Singh Ji (1787 – 1843 CE)",
+    period: "Completed 1843 CE • Kaithal (14 Volumes)",
+    volumesCount: "Sri Nanak Parkash & 12 Raas / 6 Rut",
     summary:
-      "The monumental 51,829-verse Braj Bhasha historical epic of the Ten Sikh Gurus and Banda Singh Bahadur, read daily in historical Gurdwaras during afternoon Suraj Prakash Katha.",
+      "The monumental 51,829-verse Braj Bhasha historical epic of the Ten Sikh Gurus, recited and expounded daily in historical Gurdwaras during afternoon Katha.",
     significance:
-      "Preserves intricate accounts of the Gurus' courts, travels, philosophical dialogues, and battles, later critically edited across 14 volumes by Bhai Vir Singh Ji.",
+      "Flip through both Raas 01 and Sri Nanak Parkash in the 2-Up BookReader theater or read key chapters in the Native Reader.",
+    editions: [
+      {
+        label: "Suraj Granth — Raas 01 (2-Up Flipbook)",
+        embedUrl:
+          "https://archive.org/embed/SriGurPartapSurajGranth-Raas01?ui=embed#mode/2up",
+        archiveDetailsUrl:
+          "https://archive.org/details/SriGurPartapSurajGranth-Raas01",
+      },
+      {
+        label: "Vol. 1: Sri Nanak Parkash (2-Up Flipbook)",
+        embedUrl:
+          "https://archive.org/embed/SriGuruPartapSurajGranth01SriNanakParkash1?ui=embed#mode/2up",
+        archiveDetailsUrl:
+          "https://archive.org/details/SriGuruPartapSurajGranth01SriNanakParkash1",
+      },
+    ],
     gurmatVeecharUrl:
       "https://www.gurmatveechar.com/books/Punjabi_Books/Bhai_Vir_Singh/",
-    directPdfUrl:
-      "https://archive.org/download/SriGurPratapSurajGranthVol01BhaiVirSingh/Sri.Gur.Pratap.Suraj.Granth.Vol.01.Bhai.Vir.Singh.pdf",
-    archiveEmbedUrl:
-      "https://archive.org/embed/SriGurPratapSurajGranthVol01BhaiVirSingh",
-    sampleFolio: {
-      heading: "Manglacharan • Invocation to the Ten Sovereign Lights",
-      gurmukhi: "ਏਕੰਕਾਰਾ ਸਤਿਗੁਰੂ ਤਿਹ ਪ੍ਰਸਾਦਿ ਸਚੁ ਹੋਇ । ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਹਿ ਵਿਘਨ ਵਿਨਾਸਨ ਸੋਇ ॥",
-      transliteration:
-        "Ekankaaraa Satiguroo tih prasaadi sachu hoi. Vaahiguroo jee kee fatehi vighan vinaasan soi ||",
-      translation:
-        "By the Grace of the One Universal True Guru, Truth is realized; Victory belongs to Waheguru Ji, the Destroyer of all obstacles.",
-      scholarlyNote:
-        "Completed after twenty years of research using earlier sources such as Bhai Gurbakhsh Singh's oral accounts, Gurbilas Patshahi 6 & 10, and Sikhan Di Bhagat Mala.",
-    },
+    chapters: [
+      {
+        title: "Manglacharan • Invocation to the Ten Sovereign Lights",
+        reference: "Sri Gur Pratap Suraj Granth • Manglacharan",
+        gurmukhi:
+          "ਏਕੰਕਾਰਾ ਸਤਿਗੁਰੂ ਤਿਹ ਪ੍ਰਸਾਦਿ ਸਚੁ ਹੋਇ । ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਹਿ ਵਿਘਨ ਵਿਨਾਸਨ ਸੋਇ ॥",
+        transliteration:
+          "Ekankaaraa Satiguroo tih prasaadi sachu hoi. Vaahiguroo jee kee fatehi vighan vinaasan soi ||",
+        punjabiTeeka:
+          "ਇੱਕ ਅਕਾਲ ਪੁਰਖ ਸਤਿਗੁਰੂ ਦੀ ਕਿਰਪਾ ਨਾਲ ਸੱਚ ਦਾ ਪ੍ਰਕਾਸ਼ ਹੁੰਦਾ ਹੈ; ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਹਿ ਸਾਰੇ ਵਿਘਨਾਂ ਦਾ ਨਾਸ਼ ਕਰਨ ਵਾਲੀ ਹੈ।",
+        englishTranslation:
+          "By the Grace of the One Universal True Guru, Truth is realized; Victory belongs to Waheguru Ji, the Destroyer of all obstacles.",
+        scholarlyNote:
+          "Annotated across 14 volumes by Bhai Vir Singh Ji between 1927 and 1935 with extensive historical footnotes.",
+      },
+      {
+        title: "Raas 1 • Installation of the Adi Granth at Sri Harmandir Sahib (1604)",
+        reference: "Sri Gur Pratap Suraj Granth • Raas 1 (Guru Arjan Dev Ji)",
+        gurmukhi:
+          "ਸ੍ਰੀ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜਬ ਭਯੋ ਤਿਆਰ । ਧਰਯੋ ਹਰਿਮੰਦਰ ਮਧਿ ਉਦਾਰ ॥ ਬਾਬਾ ਬੁੱਢਾ ਜੀ ਗ੍ਰੰਥੀ ਥਾਪੇ । ਪ੍ਰਥਮ ਪ੍ਰਕਾਸ਼ ਕੀਨੋ ਗੁਰ ਆਪੇ ॥",
+        transliteration:
+          "Sri Granth Sahib jab bhayo tiaar. Dharyo Harimandar madhi udaar || Baabaa Buddhaa Jee Granthee thaape. Pratham prakaash keeno Gur aape ||",
+        punjabiTeeka:
+          "ਜਦੋਂ ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜੀ ਦੀ ਪਾਵਨ ਬੀੜ ਸੰਪੂਰਨ ਹੋਈ, ਗੁਰੂ ਅਰਜਨ ਦੇਵ ਜੀ ਨੇ ਸ੍ਰੀ ਹਰਿਮੰਦਰ ਸਾਹਿਬ ਵਿਖੇ ਪ੍ਰਕਾਸ਼ ਕੀਤਾ ਅਤੇ ਬਾਬਾ ਬੁੱਢਾ ਜੀ ਨੂੰ ਪਹਿਲੇ ਮੁੱਖ ਗ੍ਰੰਥੀ ਥਾਪਿਆ।",
+        englishTranslation:
+          "When the sacred volume of Sri Guru Granth Sahib Ji was completed, Guru Arjan Dev Ji installed it inside Sri Harmandir Sahib and appointed Baba Buddha Ji as the first Head Granthi.",
+        scholarlyNote:
+          "Guru Arjan Dev Ji slept on the floor below the throne of the Granth to establish forever that the Sabad-Guru is supreme above all human forms.",
+      },
+    ],
   },
   {
-    id: "bhai-gurdas-vaaran",
+    id: "puratan-sggs-manuscript",
     numeral: "੪",
-    category: "Canonical Bani",
-    title: "Vaaran Bhai Gurdas Ji (40 Vaaran & Kabitt Savaiye)",
-    gurmukhiTitle: "ਵਾਰਾਂ ਭਾਈ ਗੁਰਦਾਸ ਜੀ",
-    author: "Bhai Gurdas Ji (First Scribe of the Adi Granth, 1604 CE)",
-    period: "Late 16th – Early 17th Century CE",
-    volumesCount: "40 Canonical Vaaran + 675 Braj Kabitt Savaiye",
+    category: "Scriptural Teeka & Manuscript",
+    title: "Puratan Sri Guru Granth Sahib Ji Manuscript (Larivaar Bir)",
+    gurmukhiTitle: "ਪੁਰਾਤਨ ਹੱਥ-ਲਿਖਤ ਬੀੜ ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜੀ",
+    author: "Puratan Gurmukhi Scribal Tradition",
+    period: "17th – 18th Century CE • Hand-Illuminated Larivaar Folio",
+    volumesCount: "Complete Illuminated Manuscript + Live Larivaar Ang Reader",
     summary:
-      "Blessed by Guru Arjan Dev Ji as the 'Key to Sri Guru Granth Sahib Ji' (Gurbani Di Kunji) and one of the four canonical pillars authorized for Kirtan in every Gurdwara.",
+      "High-resolution preservation of a historical hand-inscribed Larivaar (continuous unbroken script) manuscript of Sri Guru Granth Sahib Ji.",
     significance:
-      "Vaar 1 provides the earliest eyewitness biography of Guru Nanak Dev Ji's Udasis to Baghdad, Mecca, Achal Batala, and Mount Sumeru, while Vaar 11 lists the prominent early Gursikhs.",
+      "Examine original Puratan Gurmukhi calligraphy in the 2-Up BookReader or use the Live Ang Reader in Larivaar mode.",
+    supportsLiveAngReader: true,
+    defaultAng: 1,
+    editions: [
+      {
+        label: "Puratan Manuscript BookReader (2-Up)",
+        embedUrl:
+          "https://archive.org/embed/puratan-sri-guru-granth-sahib-ji?ui=embed#mode/2up",
+        archiveDetailsUrl:
+          "https://archive.org/details/puratan-sri-guru-granth-sahib-ji",
+      },
+    ],
+    gurmatVeecharUrl: "https://www.gurmatveechar.com/literature",
+    chapters: [
+      {
+        title: "Opening Folio (Ang 1) • Larivaar Scribal Tradition",
+        reference: "Puratan Bir • Opening Illuminated Folio (Nishan & Mool Mantar)",
+        gurmukhi:
+          "ੴਸਤਿਨਾਮੁਕਰਤਾਪੁਰਖੁਨਿਰਭਉਨਿਰਵੈਰੁਅਕਾਲਮੂਰਤਿਅਜੂਨੀਸੈਭੰਗੁਰਪ੍ਰਸਾਦਿ॥॥ਜਪੁ॥ਆਦਿਸਚੁਜੁਗਾਦਿਸਚੁ॥ਹੈਭੀਸਚੁਨਾਨਕਹੋਸੀਭੀਸਚੁ॥੧॥",
+        transliteration:
+          "IkOankaarSatNaamuKartaaPurakhuNirbhauNirvairuAkaalMooratiAjooneeSaibhangGurPrasaadi || ||Japu|| AadiSachuJugaadiSachu || HaiBheeSachuNanakHoseeBheeSachu ||1||",
+        punjabiTeeka:
+          "ਪੁਰਾਤਨ ਹੱਥ-ਲਿਖਤ ਬੀੜਾਂ ਵਿੱਚ ਸਾਰੀ ਬਾਣੀ ਲੜੀਵਾਰ (ਬਿਨਾਂ ਪਦ-ਛੇਦ ਦੇ) ਲਿਖੀ ਜਾਂਦੀ ਸੀ ਤਾਂ ਜੋ ਬਾਣੀ ਦੀ ਅਖੰਡਤਾ ਅਤੇ ਵਿਆਕਰਣਕ ਸ਼ੁੱਧਤਾ ਕਾਇਮ ਰਹੇ।",
+        englishTranslation:
+          "In historical Sikh manuscripts, the entire scripture was inscribed in unbroken Larivaar calligraphy, requiring Santhiya (oral grammatical training) to recite accurately.",
+        scholarlyNote:
+          "Use the Live Ang Reader below and toggle 'Larivaar Script' to inspect any Ang (1–1430) in unbroken Puratan format.",
+      },
+    ],
+  },
+  {
+    id: "pracheen-reet-ratnavli",
+    numeral: "੫",
+    category: "Gurmat Musicology & Rehit",
+    title: "Gurbani Sangeet Pracheen Reet Ratnavli (Bhai Avtar Singh Ji)",
+    gurmukhiTitle: "ਗੁਰਬਾਣੀ ਸੰਗੀਤ ਪ੍ਰਾਚੀਨ ਰੀਤ ਰਤਨਾਵਲੀ",
+    author: "Bhai Avtar Singh Ji & Bhai Gurcharan Singh Ji Ragi",
+    period: "Published 1979 CE • Punjabi University, Patiala",
+    volumesCount: "Part I & II • Complete Swar-Lipi Notation of Puratan Shabad Reets",
+    summary:
+      "The monumental musicological compendium preserving the exact Swar-lipi (musical notation), Raag forms, and Taals of nearly 500 centuries-old Puratan Gurbani compositions.",
+    significance:
+      "Pairs directly with the audio recordings of Bhai Avtar Singh Ji in Tab A (Puratan Kirtan & Raag Darbar).",
+    editions: [
+      {
+        label: "Pracheen Reet Ratnavli Pt. 1 (2-Up Flipbook)",
+        embedUrl:
+          "https://archive.org/embed/gurbani-sangeet-pracheen-reet-ratnavli-pt-1?ui=embed#mode/2up",
+        archiveDetailsUrl:
+          "https://archive.org/details/gurbani-sangeet-pracheen-reet-ratnavli-pt-1",
+      },
+    ],
+    gurmatVeecharUrl:
+      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FBhai_Avtar_Singh_%28Delhi_Wale%29",
+    chapters: [
+      {
+        title: "Raag Sri Raag & Raag Asa — Puratan Guldasta Notation",
+        reference: "Gurbani Sangeet Pracheen Reet Ratnavli • Part 1",
+        gurmukhi:
+          "ਰਾਗੁ ਸਿਰੀਰਾਗੁ ਮਹਲਾ ੧ ਘਰੁ ੧ ॥ ਮੋਤੀ ਤ ਮੰਦਰ ਊਸਰਹਿ ਰਤਨੀ ਤ ਹੋਹਿ ਜੜਾਉ ॥",
+        transliteration:
+          "Raagu Sireeraagu Mahalaa 1 Gharu 1 || Motee ta mandar oosarahi ratanee ta hohi jarhaau ||",
+        punjabiTeeka:
+          "ਇਸ ਗ੍ਰੰਥ ਵਿੱਚ ਹਰੇਕ ਸ਼ਬਦ ਦੇ ਘਰੁ, ਤਾਲ (ਪੜਤਾਲ, ਚਾਰਤਾਲ, ਧਮਾਰ) ਅਤੇ ਸੁਰ-ਲਿਪੀ ਨੂੰ ਗੁਰੂ-ਘਰ ਦੀ ਪੁਰਾਤਨ ਰਬਾਬੀ ਅਤੇ ਕੀਰਤਨੀ ਪਰੰਪਰਾ ਅਨੁਸਾਰ ਦਰਜ ਕੀਤਾ ਗਿਆ ਹੈ।",
+        englishTranslation:
+          "Even if palaces were built of pearls and inlaid with jewels—yet let me never forget You, O Beloved, nor let Your Name depart from my mind.",
+        scholarlyNote:
+          "Passed down from Baba Jwala Singh Ji and Bhai Desa Singh Ji across eleven generations of court Ragis.",
+      },
+    ],
+  },
+  {
+    id: "khalsa-dharam-shastar",
+    numeral: "੬",
+    category: "Gurmat Musicology & Rehit",
+    title: "Khalsa Dharam Shastar (Sikh Sanskar & Rehit Maryada)",
+    gurmukhiTitle: "ਖ਼ਾਲਸਾ ਧਰਮ ਸ਼ਾਸਤ੍ਰ",
+    author: "Bhai Avtar Singh Vahiria",
+    period: "Published 1914 CE • Lahore",
+    volumesCount: "Complete Treatise on Khalsa Sanskars & Code of Conduct",
+    summary:
+      "Comprehensive pre-SGPC compilation of traditional Khalsa ceremonies (Sanskars), Amrit Sanchar injunctions, and historical Rehitnamas.",
+    significance:
+      "Documents late-19th and early-20th century Panthic liturgical practices and classical Rehitnama traditions.",
+    editions: [
+      {
+        label: "Khalsa Dharam Shastar BookReader (2-Up)",
+        embedUrl:
+          "https://archive.org/embed/khalsa_dharam_shastar?ui=embed#mode/2up",
+        archiveDetailsUrl: "https://archive.org/details/khalsa_dharam_shastar",
+      },
+    ],
     gurmatVeecharUrl:
       "https://www.gurmatveechar.com/literature?q=f&f=%2FPunjabi_Books",
-    directPdfUrl:
-      "https://archive.org/download/VaranBhaiGurdasJiSteekByGianiHazaraSinghPandit/Varan.Bhai.Gurdas.Ji.Steek.by.Giani.Hazara.Singh.Pandit.pdf",
-    archiveEmbedUrl:
-      "https://archive.org/embed/VaranBhaiGurdasJiSteekByGianiHazaraSinghPandit",
-    sampleFolio: {
-      heading: "Vaar 1, Pauri 27 • The Dawn of Guru Nanak Dev Ji",
-      gurmukhi: "ਸਤਿਗੁਰ ਨਾਨਕ ਪ੍ਰਗਟਿਆ ਮਿਟੀ ਧੁੰਧੁ ਜਗਿ ਚਾਨਣੁ ਹੋਆ ॥ ਜਿਉ ਕਰਿ ਸੂਰਜੁ ਨਿਕਲਿਆ ਤਾਰੇ ਛਪਿ ਅੰਧੇਰੁ ਪਲੋਆ ॥",
-      transliteration:
-        "Satigur Naanak pragatiaa mitee dhundhu jagi chaananu hoaa || Jiu kari sooraju nikaliaa taare chhapi andheru paloaa ||",
-      translation:
-        "With the emergence of the True Guru Nanak, the mist of ignorance cleared and divine light illuminated the world—just as when the sun rises, the stars vanish and darkness flees.",
-      scholarlyNote:
-        "Bhai Gurdas Ji was the nephew of Guru Amar Das Ji, maternal uncle of Guru Arjan Dev Ji, and inscribed the original 1604 Kartarpur Bir at Ramsar Sarovar.",
-    },
-  },
-  {
-    id: "bhai-nand-lal-ghazals",
-    numeral: "੫",
-    category: "Canonical Bani",
-    title: "Kalam-e-Goya: Bhai Nand Lal Ji Ghazals & Zindaginama",
-    gurmukhiTitle: "ਕਲਾਮ ਭਾਈ ਨੰਦ ਲਾਲ ਜੀ ਗੋਯਾ",
-    author: "Bhai Nand Lal Ji 'Goya' (1633 – 1713 CE)",
-    period: "Anandpur Sahib Court • Late 17th Century CE",
-    volumesCount: "Diwan-e-Goya, Zindaginama, Ganjnama, Jot Bigas & Tankahnama",
-    summary:
-      "Mystical Persian and Punjabi poetry composed by the poet laureate of Guru Gobind Singh Ji's Darbar at Sri Anandpur Sahib, authorized for Gurdwara Kirtan.",
-    significance:
-      "Captures the intoxicating spiritual love (Ishq Haqiqi) of the Khalsa and preserves early Rehit maryada guidelines from 1695–1699 CE.",
-    gurmatVeecharUrl:
-      "https://www.gurmatveechar.com/literature?q=f&f=%2FEnglish_Books",
-    directPdfUrl:
-      "https://archive.org/download/DiwanEGoyaBhaiNandLalJi/Diwan-e-Goya-Bhai-Nand-Lal-Ji.pdf",
-    archiveEmbedUrl:
-      "https://archive.org/embed/DiwanEGoyaBhaiNandLalJi",
-    sampleFolio: {
-      heading: "Diwan-e-Goya • Ghazal 1: Din-o-Duniya Dar Kamand-e-Aan Pari Rukhsaar-e-Maa",
-      gurmukhi: "ਦੀਨੋ ਦੁਨੀਆ ਦਰ ਕਮੰਦੇ ਆਂ ਪਰੀ ਰੁਖ਼ਸਾਰੇ ਮਾ ॥ ਹਰ ਦੋ ਆਲਮ ਕੀਮਤੇ ਯਕ ਤਾਰ ਮੂਏ ਯਾਰੇ ਮਾ ॥",
-      transliteration:
-        "Deen-o-duniyaa dar kamande aan paree rukhsaare maa || Har do aalam keemate yak taar mooe yaare maa ||",
-      translation:
-        "Both faith and the world are bound in the lasso of our Beloved's radiant countenance; the price of both worlds does not equal a single strand of our Beloved Guru's hair.",
-      scholarlyNote:
-        "Born in Ghazni and raised in Multan, Bhai Nand Lal Ji was titled 'Goya' (The Eloquent Speaker) and his Zindaginama ('Book of Eternal Life') was blessed directly by Guru Gobind Singh Ji.",
-    },
-  },
-  {
-    id: "mahan-kosh",
-    numeral: "੬",
-    category: "Lexicon",
-    title: "Gurshabad Ratnakar Mahan Kosh (Encyclopaedia of Sikh Literature)",
-    gurmukhiTitle: "ਗੁਰਸ਼ਬਦ ਰਤਨਾਕਰ ਮਹਾਨ ਕੋਸ਼",
-    author: "Panth Rattan Bhai Kahn Singh Nabha (1861 – 1938 CE)",
-    period: "Published 1930 CE • Patiala / Amritsar",
-    volumesCount: "81,426 Alphabetical Gurmukhi Entries",
-    summary:
-      "The comprehensive encyclopedic dictionary of Gurbani vocabulary, Braj/Persian/Sanskrit etymology, Raag musicology, flora, fauna, and Sikh historical biographies.",
-    significance:
-      "Compiled over 14 years of tireless scholarship, providing exact scriptural citations, meter prosody (Chhand), and geographical coordinates of historical Gurdwaras.",
-    gurmatVeecharUrl:
-      "https://www.gurmatveechar.com/books/Punjabi_Books/Bhai_Kahn_Singh_Nabha/",
-    directPdfUrl:
-      "https://www.gurmatveechar.com/books/Punjabi_Books/Bhai_Kahn_Singh_Nabha/Bhai.Kahn.Singh.Nabha.-.Gurshabad.Ratnakar.Mahan.Kosh.(GurmatVeechar.com).pdf",
-    archiveEmbedUrl:
-      "https://archive.org/embed/GurshabadRatnakarMahanKoshByBhaiKahnSinghNabha",
-    sampleFolio: {
-      heading: "Lexicon Entry: ਗੁਰਮਤਿ (Gurmat) & ਸਿੱਖ (Sikh)",
-      gurmukhi: "ਸਿੱਖ — ਸਤਿਗੁਰੂ ਨਾਨਕ ਦੇਵ ਜੀ ਦਾ ਅਨੁਯਾਈ, ਜੋ ਸ੍ਰੀ ਗੁਰੂ ਗ੍ਰੰਥ ਸਾਹਿਬ ਜੀ ਦੀ ਬਾਣੀ ਨੂੰ ਗੁਰੂ ਮੰਨਦਾ ਹੈ।",
-      transliteration:
-        "Sikh — Satiguru Naanak Dev Jee daa anuyaayee, jo Sri Guru Granth Sahib Jee dee Baanee noo Guru manndaa hai.",
-      translation:
-        "Sikh — A disciple of True Guru Nanak Dev Ji who reveres the revealed Word of Sri Guru Granth Sahib Ji as the Eternal Guru.",
-      scholarlyNote:
-        "Bhai Kahn Singh Nabha also authored 'Hum Hindu Nahin' (1898) and 'Gurmat Martand', laying the philological foundation for modern Sikh studies.",
-    },
+    chapters: [
+      {
+        title: "Chapter I: Praises of Akal Purakh & Khalsa Rehit",
+        reference: "Khalsa Dharam Shastar • Opening Invocation & Rehit",
+        gurmukhi:
+          "ਰਹਿਣੀ ਰਹੈ ਸੋਈ ਸਿਖ ਮੇਰਾ । ਉਹ ਸਾਹਿਬ ਮੈਂ ਉਸ ਕਾ ਚੇਰਾ ॥ ਰਹਿਤ ਬਿਨਾ ਨਹਿ ਸਿਖ ਕਹਾਵੈ । ਰਹਿਤ ਬਿਨਾ ਦਰ ਚੋਟਾਂ ਖਾਵੈ ॥",
+        transliteration:
+          "Rahinee rahai soee Sikh meraa. Uh Saahib main us kaa cheraa || Rahit binaa nahi Sikh kahaavai ||",
+        punjabiTeeka:
+          "ਗੁਰੂ ਗੋਬਿੰਦ ਸਿੰਘ ਜੀ ਦਾ ਬਚਨ ਹੈ ਕਿ ਜੋ ਸਿੱਖ ਗੁਰਮਤਿ ਰਹਿਣੀ ਵਿੱਚ ਰਹਿੰਦਾ ਹੈ, ਉਹੀ ਮੇਰਾ ਸਾਹਿਬ ਹੈ ਅਤੇ ਮੈਂ ਉਸ ਦਾ ਸੇਵਕ ਹਾਂ।",
+        englishTranslation:
+          "One who lives by the Guru's discipline (Rehit) is truly my Sikh; he is my Master, and I am his disciple.",
+        scholarlyNote:
+          "Synthesizes injunctions from Bhai Nand Lal Ji's Tankahnama, Bhai Prahlad Singh Ji, and Bhai Chaupa Singh Ji's Rehitnamas.",
+      },
+    ],
   },
 ];
 
+type LiveAngVerse = {
+  verseId: number;
+  pageNo: number;
+  writer: string;
+  raag: string;
+  gurmukhiUnicode: string;
+  larivaarUnicode: string;
+  transliteration: string;
+  punjabiViakhia: string;
+  englishTranslation: string;
+};
+
 export default function GranthsAndKirtanPage() {
   const [activeTab, setActiveTab] = useState<"kirtan" | "granths">("kirtan");
+  const [kirtanCollectionFilter, setKirtanCollectionFilter] = useState<string>("All");
+  const [kirtanQuery, setKirtanQuery] = useState("");
+  const [showAdminQueue, setShowAdminQueue] = useState(true);
   const [granthQuery, setGranthQuery] = useState("");
   const [granthCategory, setGranthCategory] = useState<string>("All");
   const [selectedGranth, setSelectedGranth] = useState<GranthVolume | null>(null);
-  const [modalMode, setModalMode] = useState<"folio" | "pdf">("folio");
+  const [modalMode, setModalMode] = useState<"bookreader" | "native">(
+    "bookreader"
+  );
+  const [selectedEditionIdx, setSelectedEditionIdx] = useState(0);
+  const [selectedChapterIdx, setSelectedChapterIdx] = useState(0);
+  const [isFullscreenModal, setIsFullscreenModal] = useState(false);
+
+  // Live Ang-by-Ang Reader State (for SGGS Darpan & Puratan Manuscript)
+  const [angInput, setAngInput] = useState("1");
+  const [activeAng, setActiveAng] = useState(1);
+  const [angVerses, setAngVerses] = useState<LiveAngVerse[]>([]);
+  const [loadingAng, setLoadingAng] = useState(false);
+  const [larivaarMode, setLarivaarMode] = useState(false);
 
   const {
     tracks,
+    liveStreams,
     currentTrack,
     isPlaying,
+    isLoadingAudio,
     currentTime,
     duration,
     volume,
-    usingTantiSynth,
+    isReadingVolumePreset,
+    playerMode,
     playTrack,
     togglePlayPause,
     seekTo,
     setVolume,
+    toggleReadingVolumePreset,
+    startReadingInstrumental,
+    setPlayerMode,
     nextTrack,
     prevTrack,
+    setIsCustomModalOpen,
+    submissions,
+    pendingSubmissionsCount,
+    approveSubmission,
+    rejectSubmission,
   } = useKirtanAudio();
+
+  const filteredKirtanTracks = useMemo(() => {
+    const sourceList =
+      kirtanCollectionFilter === "Live 24/7 Gurdwara Broadcasts"
+        ? liveStreams
+        : kirtanCollectionFilter === "All"
+        ? tracks
+        : tracks.filter((t) => t.category === kirtanCollectionFilter);
+
+    const q = kirtanQuery.trim().toLowerCase();
+    if (!q) return sourceList;
+    return sourceList.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        t.ragi.toLowerCase().includes(q) ||
+        t.raag.toLowerCase().includes(q) ||
+        t.tantiSaaj.toLowerCase().includes(q) ||
+        t.gurmukhiTitle.includes(q)
+    );
+  }, [kirtanCollectionFilter, kirtanQuery, liveStreams, tracks]);
+
+  const fetchLiveAng = useCallback(async (angNumber: number) => {
+    const clamped = Math.max(1, Math.min(1430, angNumber));
+    setActiveAng(clamped);
+    setAngInput(String(clamped));
+    setLoadingAng(true);
+    try {
+      const res = await fetch(`/api/banidb?ang=${clamped}`);
+      const data = await res.json();
+      if (data?.ok && Array.isArray(data.verses)) {
+        setAngVerses(data.verses);
+      }
+    } catch {
+      // Keep existing verses if offline
+    } finally {
+      setLoadingAng(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedGranth?.supportsLiveAngReader) {
+      void fetchLiveAng(selectedGranth.defaultAng || 1);
+      if (selectedGranth.id === "puratan-sggs-manuscript") {
+        setLarivaarMode(true);
+      } else {
+        setLarivaarMode(false);
+      }
+    }
+  }, [fetchLiveAng, selectedGranth]);
 
   const filteredGranths = useMemo(() => {
     return HISTORICAL_GRANTHS.filter((g) => {
@@ -262,6 +484,16 @@ export default function GranthsAndKirtanPage() {
     }
   };
 
+  const openGranthModal = (
+    granth: GranthVolume,
+    initialMode: "bookreader" | "native"
+  ) => {
+    setSelectedGranth(granth);
+    setSelectedEditionIdx(0);
+    setSelectedChapterIdx(0);
+    setModalMode(initialMode);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6EE] text-[#171917]">
       <Header solid />
@@ -273,28 +505,28 @@ export default function GranthsAndKirtanPage() {
             <div className="space-y-3 max-w-3xl">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
-                  SANCTUARY ARCHIVE • PURATAN KIRTAN &amp; GRANTHS
+                  SANCTUARY ARCHIVE • PURATAN KIRTAN &amp; GRANTH BOOKREADER
                 </span>
                 <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
                   ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ
                 </span>
               </div>
               <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight">
-                Puratan Raag Darbar &amp; Historical Granths
+                Puratan Raag Darbar &amp; Interactive Granths
               </h1>
               <p className="text-sm sm:text-base text-[#4A554E] leading-relaxed">
-                Immerse in authentic Puratan Gurbani Kirtan across traditional Raags and Tanti
-                Saaj instruments—with a persistent bottom mini-player that stays with you as you
-                explore—or study primary Sikh Granths, Teekas, and encyclopedic lexicons inline.
+                Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi
+                (proxied directly from Archive.org with an Embedded Playlist toggle) or open our
+                Dual-Mode Interactive BookReader &amp; Live Ang 1–1430 Darpan Viewer.
               </p>
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] shrink-0">
+            <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("kirtan")}
-                className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
+                className={`px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
                   activeTab === "kirtan"
                     ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
                     : "text-[#4A554E] hover:text-[#171917]"
@@ -305,14 +537,21 @@ export default function GranthsAndKirtanPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("granths")}
-                className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
+                className={`px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
                   activeTab === "granths"
                     ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
                     : "text-[#4A554E] hover:text-[#171917]"
                 }`}
               >
-                ੨ · Historical Granths &amp; PDF Library
+                ੨ · Interactive Granth BookReader
               </button>
+              <Link
+                href="/live-kirtan"
+                className="px-4 py-3 rounded-xl text-xs sm:text-sm font-bold border border-[#C59B27]/45 text-[#C59B27] hover:border-[#C59B27] transition flex items-center gap-1.5"
+              >
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                Live 24/7 Darbar Sahib
+              </Link>
             </div>
           </div>
         </section>
@@ -326,11 +565,32 @@ export default function GranthsAndKirtanPage() {
             <div className="lg:col-span-5 rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-6 sm:p-8 shadow-md space-y-6 sticky top-24">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27] px-3 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/40">
-                  NOW IN RAAG DARBAR
+                  VERIFIED ARCHIVE.ORG KIRTAN
                 </span>
-                <span className="text-xs font-semibold text-[#D97706]">
-                  {currentTrack.angCitation}
-                </span>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPlayerMode("native")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      playerMode === "native"
+                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
+                        : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E]"
+                    }`}
+                  >
+                    Native MP3
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayerMode("embed")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      playerMode === "embed"
+                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
+                        : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E]"
+                    }`}
+                  >
+                    Archive.org Player
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -348,68 +608,113 @@ export default function GranthsAndKirtanPage() {
                 </p>
               </div>
 
-              {/* Audio Scrubber & Transport */}
-              <div className="p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/35 space-y-4">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="tabular-nums">{formatAudioTime(currentTime)}</span>
-                  <span className="uppercase tracking-widest text-[10px] text-[#C59B27]">
-                    {isPlaying
-                      ? usingTantiSynth
-                        ? "Playing Tanti Saaj Raag Harmonics"
-                        : "Streaming Puratan Recital"
-                      : "Ready to Play"}
-                  </span>
-                  <span className="tabular-nums">{formatAudioTime(duration)}</span>
-                </div>
+              {/* Dual-Mode Audio Player: Native Stream vs Embedded Archive.org Playlist */}
+              {playerMode === "native" ? (
+                <div className="p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/35 space-y-4">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="tabular-nums">{formatAudioTime(currentTime)}</span>
+                    <span className="uppercase tracking-widest text-[10px] text-[#C59B27]">
+                      {isLoadingAudio
+                        ? "Buffering Archive.org MP3 Stream..."
+                        : isPlaying
+                        ? "Streaming Authentic Puratan Shabad"
+                        : "Ready to Stream"}
+                    </span>
+                    <span className="tabular-nums">{formatAudioTime(duration)}</span>
+                  </div>
 
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 300}
-                  value={currentTime}
-                  onChange={(e) => seekTo(Number(e.target.value))}
-                  aria-label="Seek Kirtan audio"
-                  className="w-full accent-[#C59B27] cursor-pointer h-2 rounded-lg"
-                />
-
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={prevTrack}
-                    className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
-                  >
-                    ⏮ Prev
-                  </button>
-                  <button
-                    type="button"
-                    onClick={togglePlayPause}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs sm:text-sm font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
-                  >
-                    {isPlaying ? "⏸ Pause Recital" : "▶ Play Puratan Recital"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={nextTrack}
-                    className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
-                  >
-                    Next ⏭
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#C59B27]/20 text-xs">
-                  <span className="font-semibold text-[#4A554E]">Volume Control</span>
                   <input
                     type="range"
                     min={0}
-                    max={1}
-                    step={0.05}
-                    value={volume}
-                    onChange={(e) => setVolume(Number(e.target.value))}
-                    aria-label="Volume control"
-                    className="w-36 accent-[#C59B27] cursor-pointer"
+                    max={duration || 1800}
+                    value={currentTime}
+                    onChange={(e) => seekTo(Number(e.target.value))}
+                    aria-label="Seek Kirtan audio"
+                    className="w-full accent-[#C59B27] cursor-pointer h-2 rounded-lg"
                   />
+
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={prevTrack}
+                      className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
+                    >
+                      ⏮ Prev
+                    </button>
+                    <button
+                      type="button"
+                      onClick={togglePlayPause}
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs sm:text-sm font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                    >
+                      {isLoadingAudio
+                        ? "Buffering..."
+                        : isPlaying
+                        ? "⏸ Pause Recital"
+                        : "▶ Play Puratan Shabad"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={nextTrack}
+                      className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
+                    >
+                      Next ⏭
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#C59B27]/20 text-xs">
+                    <span className="font-semibold text-[#4A554E]">Volume</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={volume}
+                      onChange={(e) => setVolume(Number(e.target.value))}
+                      aria-label="Volume control"
+                      className="w-28 accent-[#C59B27] cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleReadingVolumePreset}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
+                        isReadingVolumePreset
+                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
+                          : "border-[#C59B27]/40 text-[#C59B27]"
+                      }`}
+                    >
+                      🎻 25% Reading Vol
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/40 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold uppercase tracking-wider text-[#C59B27]">
+                      Embedded Internet Archive Playlist Player
+                    </span>
+                    <a
+                      href={currentTrack.directArchiveMp3Url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#C59B27] underline font-semibold"
+                    >
+                      Direct MP3 ↗
+                    </a>
+                  </div>
+                  <div className="w-full h-[220px] rounded-xl overflow-hidden border border-[#C59B27]/40 bg-black">
+                    <iframe
+                      key={currentTrack.archiveEmbedUrl || "default-playlist"}
+                      src={
+                        currentTrack.archiveEmbedUrl ||
+                        "https://archive.org/embed/a-volume-1?playlist=1"
+                      }
+                      title="Puratan Kirtan & Bani Archive Playlist"
+                      className="w-full h-full border-0"
+                      allow="autoplay; fullscreen"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Raag Musicology & Tanti Saaj Metadata */}
               <div className="space-y-3 text-xs sm:text-sm">
@@ -436,37 +741,102 @@ export default function GranthsAndKirtanPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs text-[#4A554E]">
-                    Continues playing in bottom bar while you browse
-                  </span>
                   <a
-                    href={currentTrack.externalArchiveUrl}
+                    href={currentTrack.directArchiveMp3Url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-bold text-[#C59B27] hover:underline"
                   >
-                    Full Ragi Archive ↗
+                    Download Original MP3 ↗
+                  </a>
+                  <a
+                    href={currentTrack.externalArchiveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-[#4A554E] hover:underline"
+                  >
+                    View on Archive.org ↗
                   </a>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Curated Puratan Kirtan Repertoire */}
-            <div className="lg:col-span-7 space-y-4">
-              <div className="flex items-center justify-between">
+            {/* Right Column: Curated Puratan Kirtan, Nitnem, Katha & Instrumental Repertoire */}
+            <div className="lg:col-span-7 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-serif font-bold">
-                    Curated Puratan Raag Repertoire
+                    Complete Puratan Kirtan, Nitnem, Katha &amp; Tanti Saaj Library
                   </h2>
                   <p className="text-xs sm:text-sm text-[#4A554E]">
-                    Select any Shabad to launch the HTML5 player and persistent bottom
-                    mini-player.
+                    {filteredKirtanTracks.length} verified tracks across Puratan Ragis, Nitnem,
+                    Katha, Background Reading Instrumentals (Sitar, Veena, Dilruba, Taus, Rabab),
+                    and Live Gurdwara Streams.
                   </p>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => startReadingInstrumental()}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold shadow-sm hover:brightness-105 transition"
+                  >
+                    🎻 Start 25% Reading Mode
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomModalOpen(true)}
+                    className="px-3.5 py-2 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#C59B27] hover:border-[#C59B27] transition"
+                  >
+                    + Suggest a Kirtan / Bani for Review
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminQueue((v) => !v)}
+                    className="px-3.5 py-2 rounded-xl border border-[#C59B27] bg-[#121C15] text-xs font-bold text-[#C59B27] hover:brightness-105 transition"
+                  >
+                    {showAdminQueue ? "Hide" : "Open"} Admin Review Queue ({pendingSubmissionsCount} Pending)
+                  </button>
                 </div>
               </div>
 
+              {/* Collection Filter Tabs + Track Search */}
+              <div className="p-4 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/40 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: "All", label: "All Tracks" },
+                    { id: "Puratan Kirtan Masters", label: "੧ · Puratan Kirtan Masters" },
+                    { id: "Background Raag Instrumentals", label: "੨ · Sitar, Veena, Dilruba & Taus (Reading Mode)" },
+                    { id: "Complete Nitnem & Sacred Bani", label: "੩ · Complete Nitnem & Bani" },
+                    { id: "Puratan Katha & Vichaar", label: "੪ · Puratan Katha & Vichaar" },
+                    { id: "Live 24/7 Gurdwara Broadcasts", label: "🔴 Live 24/7 Gurdwara Streams" },
+                  ].map((col) => (
+                    <button
+                      key={col.id}
+                      type="button"
+                      onClick={() => setKirtanCollectionFilter(col.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                        kirtanCollectionFilter === col.id
+                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
+                          : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E] hover:border-[#C59B27]"
+                      }`}
+                    >
+                      {col.label}
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="search"
+                  value={kirtanQuery}
+                  onChange={(e) => setKirtanQuery(e.target.value)}
+                  placeholder="Search Shabad, Ragi (Bhai Avtar Singh, Sant Singh Maskeen), Raag, or Instrument (Sitar, Veena, Dilruba, Taus)..."
+                  aria-label="Search Kirtan, Nitnem, Katha, or Instrumental tracks"
+                  className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+
               <div className="space-y-4">
-                {tracks.map((track) => {
+                {filteredKirtanTracks.map((track) => {
                   const active = currentTrack.id === track.id;
                   return (
                     <div
@@ -530,7 +900,7 @@ export default function GranthsAndKirtanPage() {
                               : "bg-[#121C15] border border-[#C59B27]/50 text-[#C59B27] hover:border-[#C59B27]"
                           }`}
                         >
-                          {active && isPlaying ? "⏸ Playing" : "▶ Listen"}
+                          {active && isPlaying ? "⏸ Playing" : "▶ Play Shabad"}
                         </button>
                       </div>
 
@@ -540,18 +910,158 @@ export default function GranthsAndKirtanPage() {
 
                       <div className="pt-3 border-t border-[#C59B27]/20 flex flex-wrap items-center justify-between gap-2 text-xs text-[#4A554E]">
                         <span>Instruments: {track.tantiSaaj}</span>
-                        <span>{track.angCitation}</span>
+                        <a
+                          href={track.directArchiveMp3Url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-bold text-[#C59B27] hover:underline"
+                        >
+                          Direct Stream / Source Link ↗
+                        </a>
                       </div>
                     </div>
                   );
                 })}
+
+                {filteredKirtanTracks.length === 0 && (
+                  <div className="p-8 rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] text-center space-y-3">
+                    <p className="text-sm font-serif font-bold">
+                      No verified tracks in this category yet.
+                    </p>
+                    <p className="text-xs text-[#4A554E] max-w-md mx-auto leading-relaxed">
+                      We only list verified working streams and local MP3 files in{" "}
+                      <code>public/audio/</code>. Submit a track for review or approve a
+                      pending track in the Admin Review Queue below.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomModalOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
+                    >
+                      + Suggest a Kirtan / Bani for Review
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ============================================================
+                  COLLAPSIBLE ADMIN REVIEW QUEUE (VERIFY & PROMOTE TRACKS)
+              ============================================================ */}
+              <div className="rounded-2xl border-2 border-[#C59B27]/60 bg-[#1B2A20] p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
+                      MANUAL AUDIO VERIFICATION • PUBLIC.KIRTAN_SUBMISSIONS
+                    </span>
+                    <h3 className="text-lg sm:text-xl font-serif font-bold mt-0.5">
+                      Admin Review Queue ({pendingSubmissionsCount} Pending Verification)
+                    </h3>
+                    <p className="text-xs text-[#4A554E]">
+                      Inspect submitted tracks, verify that the audio matches the Kirtaniye
+                      and Shabad, and click Approve to promote to the live player.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomModalOpen(true)}
+                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
+                    >
+                      + Submit New Track
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminQueue((v) => !v)}
+                      className="px-3 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold"
+                    >
+                      {showAdminQueue ? "Collapse ↑" : "Expand Queue ↓"}
+                    </button>
+                  </div>
+                </div>
+
+                {showAdminQueue && (
+                  <div className="space-y-3 pt-2 border-t border-[#C59B27]/25">
+                    {submissions.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="p-4 rounded-xl bg-[#121C15] border border-[#C59B27]/35 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                sub.status === "approved"
+                                  ? "bg-emerald-600/20 text-emerald-700 border border-emerald-600/40"
+                                  : sub.status === "rejected"
+                                  ? "bg-red-600/20 text-red-700 border border-red-600/40"
+                                  : "bg-amber-500/20 text-[#C59B27] border border-[#C59B27]/50"
+                              }`}
+                            >
+                              {sub.status}
+                            </span>
+                            <span className="text-[11px] font-bold text-[#C59B27]">
+                              {sub.category} • {sub.raag}
+                            </span>
+                            <span className="text-[11px] text-[#4A554E]">
+                              by {sub.submittedBy}
+                            </span>
+                          </div>
+                          {sub.gurmukhiTitle && (
+                            <p
+                              lang="pa"
+                              className="font-gurmukhi text-sm font-medium text-[#D97706]"
+                            >
+                              {sub.gurmukhiTitle}
+                            </p>
+                          )}
+                          <h4 className="text-base font-serif font-bold">
+                            {sub.title} — <span className="font-sans font-normal text-xs">{sub.ragi}</span>
+                          </h4>
+                          <p className="text-xs text-[#4A554E] leading-relaxed">
+                            {sub.authenticityNotes}
+                          </p>
+                          <a
+                            href={sub.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-xs font-bold text-[#C59B27] hover:underline break-all"
+                          >
+                            Verify Source Audio Link: {sub.sourceUrl} ↗
+                          </a>
+                        </div>
+
+                        <div className="flex sm:flex-col gap-2 shrink-0">
+                          {sub.status !== "approved" && (
+                            <button
+                              type="button"
+                              onClick={() => approveSubmission(sub.id)}
+                              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                            >
+                              ✓ Approve
+                            </button>
+                          )}
+                          {sub.status !== "rejected" && (
+                            <button
+                              type="button"
+                              onClick={() => rejectSubmission(sub.id)}
+                              className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-bold text-[#4A554E] hover:border-red-500 hover:text-red-600 transition"
+                            >
+                              ✕ Reject
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
         {/* ================================================================
-            TAB B: HISTORICAL GRANTHS & GURMAT VEECHAR PDF LIBRARY
+            TAB B: INTERACTIVE GRANTH BOOKREADER & CHAPTER VIEWER
         ================================================================ */}
         {activeTab === "granths" && (
           <div className="space-y-8">
@@ -560,10 +1070,9 @@ export default function GranthsAndKirtanPage() {
               <div className="flex flex-wrap gap-2">
                 {[
                   "All",
-                  "Scriptural Teeka",
+                  "Scriptural Teeka & Manuscript",
                   "Historical Chronicle",
-                  "Canonical Bani",
-                  "Lexicon",
+                  "Gurmat Musicology & Rehit",
                 ].map((cat) => (
                   <button
                     key={cat}
@@ -592,7 +1101,7 @@ export default function GranthsAndKirtanPage() {
               </div>
             </div>
 
-            {/* Granth Cards Grid (Max 3 per row on large screens) */}
+            {/* Granth Cards Grid (Max 3 per row) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredGranths.map((granth) => (
                 <article
@@ -607,7 +1116,7 @@ export default function GranthsAndKirtanPage() {
                       >
                         {granth.numeral}
                       </span>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30">
                         {granth.category}
                       </span>
                     </div>
@@ -633,7 +1142,7 @@ export default function GranthsAndKirtanPage() {
 
                     <div className="p-3.5 rounded-xl bg-[#121C15] border border-[#C59B27]/25 text-xs text-[#4A554E] leading-relaxed">
                       <strong className="text-[#C59B27] block mb-0.5">
-                        Scholarly Significance:
+                        Built-In Reader Features:
                       </strong>
                       {granth.significance}
                     </div>
@@ -642,33 +1151,20 @@ export default function GranthsAndKirtanPage() {
                   <div className="space-y-2.5 pt-3 border-t border-[#C59B27]/25">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedGranth(granth);
-                        setModalMode("folio");
-                      }}
+                      onClick={() => openGranthModal(granth, "bookreader")}
                       className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
                     >
-                      Open Inline Granth &amp; PDF Reader
+                      Open 2-Up BookReader Theater →
                     </button>
-
-                    <div className="flex items-center justify-between gap-2 text-xs font-semibold">
-                      <a
-                        href={granth.directPdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#C59B27] hover:underline"
-                      >
-                        Direct PDF Download ↗
-                      </a>
-                      <a
-                        href={granth.gurmatVeecharUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#4A554E] hover:underline"
-                      >
-                        GurmatVeechar Folder ↗
-                      </a>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openGranthModal(granth, "native")}
+                      className="w-full py-2 px-4 rounded-xl border border-[#C59B27]/45 bg-[#121C15] text-xs font-bold uppercase tracking-wider hover:border-[#C59B27] transition"
+                    >
+                      {granth.supportsLiveAngReader
+                        ? "Open Instant Native Ang 1–1430 Reader"
+                        : "Open Instant Native Chapter Reader"}
+                    </button>
                   </div>
                 </article>
               ))}
@@ -676,115 +1172,342 @@ export default function GranthsAndKirtanPage() {
           </div>
         )}
 
-        {/* Inline Granth & PDF Document Reader Modal */}
+        {/* ================================================================
+            DUAL-MODE BUILT-IN GRANTH READER EXTENSION MODAL
+        ================================================================ */}
         {selectedGranth && (
           <div
             role="dialog"
             aria-modal="true"
             aria-label={selectedGranth.title}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto"
           >
-            <div className="relative w-full max-w-4xl rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-6 sm:p-8 shadow-2xl space-y-6 my-8">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#C59B27]/30 pb-4">
+            <div
+              className={`relative w-full ${
+                isFullscreenModal ? "max-w-[98vw] min-h-[94vh]" : "max-w-6xl"
+              } rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-5 sm:p-7 shadow-2xl space-y-5 my-4`}
+            >
+              {/* Modal Top Bar */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#C59B27]/30 pb-4">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
                     {selectedGranth.category} • {selectedGranth.volumesCount}
                   </span>
-                  <h2 className="text-2xl font-serif font-bold mt-0.5">
+                  <h2 className="text-xl sm:text-2xl font-serif font-bold mt-0.5">
                     {selectedGranth.title}
                   </h2>
                   <p className="text-xs text-[#4A554E]">{selectedGranth.author}</p>
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-center">
+                {/* Mode Switcher + Reading Music + Fullscreen + Close */}
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setModalMode("folio")}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                      modalMode === "folio"
-                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                        : "bg-[#121C15] border border-[#C59B27]/40 text-[#4A554E]"
+                    onClick={() => startReadingInstrumental()}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
+                      currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
+                        : "bg-[#121C15] border-[#C59B27]/45 text-[#C59B27] hover:border-[#C59B27]"
                     }`}
+                    title="Play gentle Sitar, Veena, Dilruba & Taus instrumental at 25% volume while reading"
                   >
-                    Folio &amp; Exegesis View
+                    🎻 {currentTrack.category === "Background Raag Instrumentals" && isPlaying ? "25% Reading Music On" : "25% Reading Music"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setModalMode("pdf")}
+                    onClick={() => setModalMode("bookreader")}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                      modalMode === "pdf"
+                      modalMode === "bookreader"
                         ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
                         : "bg-[#121C15] border border-[#C59B27]/40 text-[#4A554E]"
                     }`}
                   >
-                    Embedded Document / PDF
+                    ੧ · Interactive BookReader (2-Up Flipbook)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalMode("native")}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                      modalMode === "native"
+                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
+                        : "bg-[#121C15] border border-[#C59B27]/40 text-[#4A554E]"
+                    }`}
+                  >
+                    ੨ · Native On-Page Chapter &amp; Ang Reader
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreenModal((v) => !v)}
+                    className="px-3 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-semibold hover:border-[#C59B27]"
+                  >
+                    {isFullscreenModal ? "Standard Size" : "⤢ Expand View"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedGranth(null)}
                     aria-label="Close reader modal"
-                    className="px-3 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold hover:border-[#C59B27]"
+                    className="px-3.5 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold hover:border-[#C59B27]"
                   >
                     ✕ Close
                   </button>
                 </div>
               </div>
 
-              {modalMode === "folio" ? (
-                <div className="space-y-5">
-                  <div className="p-6 rounded-2xl bg-[#121C15] border border-[#C59B27]/40 space-y-4">
-                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
-                      {selectedGranth.sampleFolio.heading}
-                    </span>
-                    <p
-                      lang="pa"
-                      className="font-gurmukhi text-2xl sm:text-3xl leading-relaxed text-[#C59B27]"
+              {/* ============================================================
+                  MODE 1: INTERACTIVE ARCHIVE.ORG BOOKREADER THEATER (?ui=embed#mode/2up)
+              ============================================================ */}
+              {modalMode === "bookreader" && (
+                <div className="space-y-4">
+                  {/* Edition / Volume Switcher if multiple editions exist */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedGranth.editions.map((ed, idx) => (
+                        <button
+                          key={ed.label}
+                          type="button"
+                          onClick={() => setSelectedEditionIdx(idx)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                            selectedEditionIdx === idx
+                              ? "bg-[#121C15] border-2 border-[#C59B27] text-[#C59B27]"
+                              : "bg-[#121C15]/60 border border-[#C59B27]/30 text-[#4A554E]"
+                          }`}
+                        >
+                          {ed.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <a
+                      href={
+                        selectedGranth.editions[selectedEditionIdx]
+                          ?.archiveDetailsUrl ||
+                        selectedGranth.editions[0].archiveDetailsUrl
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold text-[#C59B27] hover:underline"
                     >
-                      {selectedGranth.sampleFolio.gurmukhi}
-                    </p>
-                    <p className="text-sm italic text-[#4A554E]">
-                      {selectedGranth.sampleFolio.transliteration}
-                    </p>
-                    <p className="text-base font-medium leading-relaxed pt-2 border-t border-[#C59B27]/20">
-                      {selectedGranth.sampleFolio.translation}
-                    </p>
+                      Open Full Archive.org BookReader in New Tab ↗
+                    </a>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-1.5">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
-                      Scholarly &amp; Grammatical Commentary
-                    </h3>
-                    <p className="text-sm text-[#4A554E] leading-relaxed">
-                      {selectedGranth.sampleFolio.scholarlyNote}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="w-full h-[460px] rounded-2xl overflow-hidden border border-[#C59B27]/45 bg-[#121C15]">
+                  {/* Full-Height 75vh Interactive BookReader Container */}
+                  <div className="w-full h-[75vh] rounded-2xl overflow-hidden border-2 border-[#C59B27]/60 bg-[#0F172A] shadow-inner">
                     <iframe
-                      src={selectedGranth.archiveEmbedUrl}
-                      title={`${selectedGranth.title} Document Reader`}
+                      key={
+                        selectedGranth.editions[selectedEditionIdx]?.embedUrl ||
+                        selectedGranth.editions[0].embedUrl
+                      }
+                      src={
+                        selectedGranth.editions[selectedEditionIdx]?.embedUrl ||
+                        selectedGranth.editions[0].embedUrl
+                      }
+                      title={`${selectedGranth.title} Interactive BookReader`}
                       className="w-full h-full border-0"
                       allowFullScreen
                     />
                   </div>
-                  <p className="text-xs text-[#4A554E]">
-                    If your browser blocks third-party embedded PDF frames, use the direct
-                    PDF download or GurmatVeechar repository links below.
-                  </p>
                 </div>
               )}
 
+              {/* ============================================================
+                  MODE 2: NATIVE ON-PAGE CHAPTER & LIVE ANG 1-1430 READER
+              ============================================================ */}
+              {modalMode === "native" && (
+                <div className="space-y-6">
+                  {/* Live BaniDB Ang-by-Ang Reader for SGGS Darpan & Puratan Manuscript */}
+                  {selectedGranth.supportsLiveAngReader && (
+                    <div className="p-5 rounded-2xl bg-[#121C15] border-2 border-[#C59B27]/50 space-y-5">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#C59B27]/25 pb-4">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
+                            LIVE NATIVE ANG-BY-ANG READER (ANG 1 TO 1430)
+                          </span>
+                          <h3 className="text-lg font-serif font-bold">
+                            Ang {activeAng} • Gurmukhi + Prof. Sahib Singh Darpan Teeka + English
+                          </h3>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={activeAng <= 1 || loadingAng}
+                            onClick={() => void fetchLiveAng(activeAng - 1)}
+                            className="px-3 py-1.5 rounded-xl border border-[#C59B27]/40 text-xs font-bold disabled:opacity-40"
+                          >
+                            ← Prev Ang
+                          </button>
+
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              void fetchLiveAng(Number(angInput) || 1);
+                            }}
+                            className="flex items-center gap-1.5"
+                          >
+                            <label htmlFor="ang-jump-input" className="text-xs font-semibold">
+                              Ang:
+                            </label>
+                            <input
+                              id="ang-jump-input"
+                              type="number"
+                              min={1}
+                              max={1430}
+                              value={angInput}
+                              onChange={(e) => setAngInput(e.target.value)}
+                              className="w-20 rounded-xl border border-[#C59B27]/50 bg-[#1B2A20] px-2.5 py-1.5 text-xs font-bold text-center"
+                            />
+                            <button
+                              type="submit"
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
+                            >
+                              Go
+                            </button>
+                          </form>
+
+                          <button
+                            type="button"
+                            disabled={activeAng >= 1430 || loadingAng}
+                            onClick={() => void fetchLiveAng(activeAng + 1)}
+                            className="px-3 py-1.5 rounded-xl border border-[#C59B27]/40 text-xs font-bold disabled:opacity-40"
+                          >
+                            Next Ang →
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setLarivaarMode((v) => !v)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                              larivaarMode
+                                ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
+                                : "border-[#C59B27]/40"
+                            }`}
+                          >
+                            {larivaarMode ? "Larivaar (Unbroken)" : "Padchhed (Spaced)"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {loadingAng ? (
+                        <div className="py-12 text-center text-sm text-[#4A554E]">
+                          Loading Ang {activeAng} and Prof. Sahib Singh Darpan Teeka...
+                        </div>
+                      ) : (
+                        <div className="max-h-[55vh] overflow-y-auto space-y-4 pr-2">
+                          {angVerses.map((v) => (
+                            <div
+                              key={v.verseId}
+                              className="p-4 rounded-xl bg-[#1B2A20] border border-[#C59B27]/30 space-y-2"
+                            >
+                              <p
+                                lang="pa"
+                                className="font-gurmukhi text-xl sm:text-2xl leading-relaxed text-[#C59B27]"
+                              >
+                                {larivaarMode ? v.larivaarUnicode : v.gurmukhiUnicode}
+                              </p>
+                              {v.transliteration && (
+                                <p className="text-xs italic text-[#4A554E]">
+                                  {v.transliteration}
+                                </p>
+                              )}
+                              {v.punjabiViakhia && (
+                                <p
+                                  lang="pa"
+                                  className="font-gurmukhi text-sm sm:text-base text-[#D97706] leading-relaxed pt-1 border-t border-[#C59B27]/15"
+                                >
+                                  <strong>ਪ੍ਰੋ. ਸਾਹਿਬ ਸਿੰਘ ਦਰਪਣ ਟੀਕਾ:</strong>{" "}
+                                  {v.punjabiViakhia}
+                                </p>
+                              )}
+                              {v.englishTranslation && (
+                                <p className="text-xs sm:text-sm leading-relaxed">
+                                  {v.englishTranslation}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Curated Native Chapters & Exegesis Viewer */}
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedGranth.chapters.map((ch, idx) => (
+                        <button
+                          key={ch.title}
+                          type="button"
+                          onClick={() => setSelectedChapterIdx(idx)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                            selectedChapterIdx === idx
+                              ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
+                              : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E]"
+                          }`}
+                        >
+                          {ch.title}
+                        </button>
+                      ))}
+                    </div>
+
+                    {selectedGranth.chapters[selectedChapterIdx] && (
+                      <div className="p-6 rounded-2xl bg-[#121C15] border border-[#C59B27]/40 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                          {selectedGranth.chapters[selectedChapterIdx].reference}
+                        </span>
+                        <p
+                          lang="pa"
+                          className="font-gurmukhi text-2xl sm:text-3xl leading-relaxed text-[#C59B27]"
+                        >
+                          {selectedGranth.chapters[selectedChapterIdx].gurmukhi}
+                        </p>
+                        <p className="text-sm italic text-[#4A554E]">
+                          {
+                            selectedGranth.chapters[selectedChapterIdx]
+                              .transliteration
+                          }
+                        </p>
+                        <p
+                          lang="pa"
+                          className="font-gurmukhi text-base text-[#D97706] leading-relaxed pt-2 border-t border-[#C59B27]/20"
+                        >
+                          {selectedGranth.chapters[selectedChapterIdx].punjabiTeeka}
+                        </p>
+                        <p className="text-base font-medium leading-relaxed">
+                          {
+                            selectedGranth.chapters[selectedChapterIdx]
+                              .englishTranslation
+                          }
+                        </p>
+                        <div className="p-4 rounded-xl bg-[#1B2A20] border border-[#C59B27]/25 text-xs sm:text-sm text-[#4A554E] leading-relaxed">
+                          <strong className="text-[#C59B27] block mb-1">
+                            Scholarly &amp; Historical Commentary:
+                          </strong>
+                          {
+                            selectedGranth.chapters[selectedChapterIdx]
+                              .scholarlyNote
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[#C59B27]/30">
                 <div className="flex flex-wrap gap-3">
                   <a
-                    href={selectedGranth.directPdfUrl}
+                    href={
+                      selectedGranth.editions[selectedEditionIdx]
+                        ?.archiveDetailsUrl ||
+                      selectedGranth.editions[0].archiveDetailsUrl
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
                   >
-                    Download Full PDF ↗
+                    View Complete Volume on Archive.org ↗
                   </a>
                   <a
                     href={selectedGranth.gurmatVeecharUrl}
@@ -792,7 +1515,7 @@ export default function GranthsAndKirtanPage() {
                     rel="noopener noreferrer"
                     className="px-4 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-semibold hover:border-[#C59B27]"
                   >
-                    Browse All Volumes on GurmatVeechar ↗
+                    Browse GurmatVeechar Repository ↗
                   </a>
                 </div>
                 <Link

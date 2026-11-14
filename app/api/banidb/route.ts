@@ -742,10 +742,65 @@ async function fetchBaniDbJson(url: string, timeoutMs = 6500): Promise<any | nul
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const mode = searchParams.get("mode");
+  const angParam = searchParams.get("ang");
   const baniIdParam = searchParams.get("baniId");
   const shabadIdParam = searchParams.get("shabadId");
   const rawQuery = (searchParams.get("q") || "").trim();
   const explicitType = searchParams.get("searchtype");
+
+  // 0. Live Ang-by-Ang Lookup (1–1430) with Prof. Sahib Singh Darpan Teeka: GET /api/banidb?ang=...
+  if (angParam) {
+    const angNum = Math.max(1, Math.min(1430, Number(angParam) || 1));
+    const data = await fetchBaniDbJson(
+      `https://api.banidb.com/v2/angs/${angNum}`,
+      7500
+    );
+
+    const rawPageVerses = Array.isArray(data?.page)
+      ? data.page
+      : Array.isArray(data?.verses)
+      ? data.verses
+      : [];
+
+    if (rawPageVerses.length > 0) {
+      const verses: NormalizedVerse[] = rawPageVerses
+        .map((v: any) =>
+          normalizeBaniDbVerse(v, {
+            pageNo: angNum,
+            raag: v?.raag,
+            writer: v?.writer,
+          })
+        )
+        .filter((v: NormalizedVerse) => Boolean(v.gurmukhiUnicode));
+
+      if (verses.length > 0) {
+        return Response.json({
+          ok: true,
+          source: "banidb-live",
+          ang: angNum,
+          count: verses.length,
+          raag: verses[0]?.raag || "Sri Guru Granth Sahib Ji",
+          writer: verses[0]?.writer || "Sikh Gurus & Bhagats",
+          verses,
+        });
+      }
+    }
+
+    // Fallback to matching curated Ang or Ang 1
+    const matchingCurated =
+      Object.values(CURATED_SHABADS).find((s) => s.pageNo === angNum) ||
+      CURATED_SHABADS[1];
+
+    return Response.json({
+      ok: true,
+      source: "curated-archive",
+      ang: angNum,
+      count: matchingCurated.verses.length,
+      raag: matchingCurated.raag,
+      writer: matchingCurated.writer,
+      verses: matchingCurated.verses,
+    });
+  }
 
   // 1. Daily Sri Darbar Sahib Hukamnama: GET /api/banidb?mode=hukamnama
   if (mode === "hukamnama") {

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
+import { useKirtanAudio } from "@/components/kirtan-audio-context";
 
 type BaniCategory = "morning" | "evening" | "extended";
 
@@ -331,6 +332,14 @@ const BANI_CATALOG: BaniCatalogItem[] = [
 function NitnemReaderContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const {
+    currentTrack,
+    isPlaying,
+    isReadingVolumePreset,
+    startReadingInstrumental,
+    toggleReadingVolumePreset,
+    togglePlayPause,
+  } = useKirtanAudio();
 
   const initialBaniSlug = searchParams.get("bani") || "japji-sahib";
   const [selectedBaniId, setSelectedBaniId] = useState<string>(
@@ -455,6 +464,25 @@ function NitnemReaderContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentTrack.category === "Background Raag Instrumentals" && isPlaying) {
+                    togglePlayPause();
+                  } else {
+                    startReadingInstrumental();
+                  }
+                }}
+                className={`px-4 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition ${
+                  currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] border-[#E5C158] shadow-sm"
+                    : "border-[#C59B27] bg-[#121C15] text-[#E5C158] hover:border-[#D97706]"
+                }`}
+              >
+                {currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                  ? "⏸ Pause Background Reading Music (25%)"
+                  : "🎻 Play Background Reading Music (Dilruba / Sitar / Veena)"}
+              </button>
               <button
                 type="button"
                 onClick={() => setShowMoolMantarDeepDive((v) => !v)}
@@ -651,6 +679,29 @@ function NitnemReaderContent() {
                 }`}
               >
                 {continuousView ? "Showing All Pages" : "Paginated Mode"}
+              </button>
+              <button
+                type="button"
+                onClick={() => startReadingInstrumental()}
+                className={`px-3 py-1.5 rounded-lg font-bold border transition ${
+                  currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                    ? "bg-[#E5C158] text-[#171917] border-[#E5C158]"
+                    : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/45 hover:border-[#E5C158]"
+                }`}
+              >
+                🎻 {isReadingVolumePreset ? "25% Reading Music On" : "25% Reading Instrumental"}
+              </button>
+              <button
+                type="button"
+                onClick={toggleReadingVolumePreset}
+                className={`px-2.5 py-1.5 rounded-lg font-semibold border transition ${
+                  isReadingVolumePreset
+                    ? "bg-[#121C15] text-[#E5C158] border-[#E5C158]"
+                    : "bg-[#121C15] text-[#F3ECE0]/75 border-[#C59B27]/30"
+                }`}
+                title="Toggle 25% soft volume preset for contemplative reading"
+              >
+                🔉 25% Vol
               </button>
             </div>
 

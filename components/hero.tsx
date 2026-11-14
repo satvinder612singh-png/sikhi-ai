@@ -109,6 +109,17 @@ export function Hero() {
             ੨ · Nitnem &amp; Sukhmani Sahib Reader →
           </Link>
           <Link
+            href="/live-kirtan"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+            }}
+            className="rounded-full border px-4 py-2 shadow-sm transition hover:border-[#C59B27] inline-flex items-center gap-1.5"
+          >
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+            ੩ · Live 24/7 Darbar Sahib Kirtan →
+          </Link>
+          <Link
             href="/granths"
             style={{
               backgroundColor: "var(--bg-surface)",
@@ -116,7 +127,7 @@ export function Hero() {
             }}
             className="rounded-full border px-4 py-2 shadow-sm transition hover:border-[#C59B27]"
           >
-            ੩ · Listen to Puratan Kirtan →
+            ੪ · Granths &amp; Puratan Raag →
           </Link>
         </div>
       </div>

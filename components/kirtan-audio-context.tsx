@@ -7,12 +7,23 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+export type KirtanCollectionCategory =
+  | "Live 24/7 Gurdwara Broadcasts"
+  | "Verified Local & Approved Audio"
+  | "Puratan Kirtan Masters"
+  | "Complete Nitnem & Sacred Bani"
+  | "Puratan Katha & Vichaar"
+  | "Background Raag Instrumentals";
 
 export type KirtanTrack = {
   id: string;
   numeral: string;
+  category: KirtanCollectionCategory;
   title: string;
   gurmukhiTitle: string;
   ragi: string;
@@ -23,579 +34,1232 @@ export type KirtanTrack = {
   durationLabel: string;
   durationSec: number;
   audioUrl: string;
-  fallbackAudioUrl: string;
+  directArchiveMp3Url: string;
+  archiveEmbedUrl: string;
   externalArchiveUrl: string;
   raagNotes: string;
   historicalContext: string;
-  /** Frequencies (Hz) for the Raag's Swara scale if offline/stream fallback is needed */
-  swaraScaleHz: number[];
+  isLiveStream?: boolean;
+  isCustomOrLocal?: boolean;
+  locationLabel?: string;
 };
 
-export const PURATAN_KIRTAN_TRACKS: KirtanTrack[] = [
+export type KirtanSubmissionStatus = "pending_review" | "approved" | "rejected";
+
+export type KirtanSubmission = {
+  id: string;
+  title: string;
+  gurmukhiTitle: string;
+  ragi: string;
+  raag: string;
+  category: KirtanCollectionCategory;
+  sourceUrl: string;
+  authenticityNotes: string;
+  submittedBy: string;
+  status: KirtanSubmissionStatus;
+  createdAt: string;
+};
+
+/**
+ * Strictly verified working streams:
+ * Only the official SGPC 24/7 Sri Harmandir Sahib (Darbar Sahib), Amritsar stream
+ * is included by default alongside any local files in `public/audio/` and
+ * tracks explicitly verified and approved in the Admin Review Queue.
+ */
+export const LIVE_GURDWARA_STREAMS: KirtanTrack[] = [
   {
-    id: "raag-asa-avtar-singh",
+    id: "live-harmandir-sahib-amritsar",
     numeral: "੧",
-    title: "Inniiki Haal Mureedan Da — Puratan Guldasta",
-    gurmukhiTitle: "ਮਿਤ੍ਰ ਪਿਆਰੇ ਨੂੰ ਹਾਲੁ ਮੁਰੀਦਾਂ ਦਾ ਕਹਿਣਾ",
-    ragi: "Bhai Avtar Singh Ji & Bhai Gurcharan Singh Ji",
-    raag: "Raag Asa & Tilang (Puratan Tradition)",
-    angCitation: "11th Generation Custodians • Puratan Reet",
-    tantiSaaj: "Taus (Mayuri Veena) & Jori-Pakhawaj",
-    timeOfDay: "Amrit Vela (Pre-Dawn — 3:00 AM to 6:00 AM)",
-    durationLabel: "08:42",
-    durationSec: 522,
-    audioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/4/45/Tanpura_drone_C.ogg",
-    fallbackAudioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/c/c8/Sitar_improvisation.ogg",
-    externalArchiveUrl:
-      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FBhai_Avtar_Singh_%28Delhi_Wale%29",
+    category: "Live 24/7 Gurdwara Broadcasts",
+    title: "Sri Harmandir Sahib (Darbar Sahib), Amritsar — Official SGPC Live 24/7 Stream",
+    gurmukhiTitle: "ਸੱਚਖੰਡ ਸ੍ਰੀ ਹਰਿਮੰਦਰ ਸਾਹਿਬ, ਸ੍ਰੀ ਅੰਮ੍ਰਿਤਸਰ (ਲਾਈਵ ਕੀਰਤਨ)",
+    ragi: "Hazoori Ragi Jathas • Official SGPC Live Broadcast",
+    raag: "Live 24/7 Kirtan & Mukhwaak from Sri Darbar Sahib",
+    angCitation: "VERIFIED LIVE STREAM • SGPC AMRITSAR",
+    tantiSaaj: "Harmonium, Dilruba, Taus, Rabab & Tabla",
+    timeOfDay: "24/7 Continuous Broadcast (IST — Amritsar)",
+    durationLabel: "LIVE 24/7",
+    durationSec: 0,
+    audioUrl: "https://live.sgpc.net:8443/;nocache=1",
+    directArchiveMp3Url: "https://live.sgpc.net:8443/;nocache=1",
+    archiveEmbedUrl: "https://www.sgpc.net/live-kirtan-darbar-sahib/",
+    externalArchiveUrl: "https://www.sgpc.net",
     raagNotes:
-      "Raag Asa evokes fearless spiritual yearning (Bairaag) combined with heroic resolve (Bir Ras). It is the 4th Raag in Sri Guru Granth Sahib Ji (Ang 347–488).",
+      "Official 24/7 live Shoutcast audio broadcast direct from Sachkhand Sri Harmandir Sahib (Golden Temple), Amritsar.",
     historicalContext:
-      "Bhai Avtar Singh Ji and Bhai Gurcharan Singh Ji preserved the unbroken 11-generation oral lineage of Gurbani Kirtan dating back to the court of Guru Arjan Dev Ji and Guru Gobind Singh Ji, performing on the bowed Taus.",
-    swaraScaleHz: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88],
-  },
-  {
-    id: "raag-bilaaval-gurmej-singh",
-    numeral: "੨",
-    title: "Tati Vao Na Lagai Parbrahm Sarnai",
-    gurmukhiTitle: "ਤਾਤੀ ਵਾਉ ਨ ਲਗਈ ਪਾਰਬ੍ਰਹਮ ਸਰਣਾਈ",
-    ragi: "Bhai Gurmej Singh Ji (Hazoori Ragi, Sri Darbar Sahib)",
-    raag: "Raag Bilaaval",
-    angCitation: "Sri Guru Granth Sahib Ji • Ang 819",
-    tantiSaaj: "Dilruba, Surmandal & Tabla",
-    timeOfDay: "First Quarter of Morning (6:00 AM to 9:00 AM)",
-    durationLabel: "07:15",
-    durationSec: 435,
-    audioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/c/c8/Sitar_improvisation.ogg",
-    fallbackAudioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/4/45/Tanpura_drone_C.ogg",
-    externalArchiveUrl:
-      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FBhai_Gurmej_Singh_%28Sri_Amritsar_Wale%29",
-    raagNotes:
-      "Raag Bilaaval expresses radiant spiritual joy, gratitude, and protective shelter in Akal Purakh. All shabads in Bilaaval use Shuddh (natural) swaras.",
-    historicalContext:
-      "Panth Rattan Bhai Gurmej Singh Ji served as Hazoori Ragi at Sri Harmandir Sahib and famously transcribed the entire Sri Guru Granth Sahib Ji into Braille for visually impaired Sikhs.",
-    swaraScaleHz: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
-  },
-  {
-    id: "raag-tukhari-sujan-singh",
-    numeral: "੩",
-    title: "Tu Mera Pita Tu Hai Mera Mata — Simran & Katha",
-    gurmukhiTitle: "ਤੂੰ ਮੇਰਾ ਪਿਤਾ ਤੂੰਹੈ ਮੇਰਾ ਮਾਤਾ",
-    ragi: "Sant Sujan Singh Ji",
-    raag: "Raag Tukhari & Maajh",
-    angCitation: "Sri Guru Granth Sahib Ji • Ang 103 & Ang 1107",
-    tantiSaaj: "Classical Harmonium, Chimta & Sangati Simran",
-    timeOfDay: "Late Morning / Early Afternoon",
-    durationLabel: "11:20",
-    durationSec: 680,
-    audioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/4/45/Tanpura_drone_C.ogg",
-    fallbackAudioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/c/c8/Sitar_improvisation.ogg",
-    externalArchiveUrl:
-      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FSant_Sujan_Singh",
-    raagNotes:
-      "Raag Tukhari is the seasonal Raag in which Guru Nanak Dev Ji composed his first Barah Maha (Song of the Twelve Months), depicting the soul's longing for union with the Beloved across changing seasons.",
-    historicalContext:
-      "Sant Sujan Singh Ji, a beloved disciple of Sant Baba Nand Singh Ji (Nanaksar), was renowned across Punjab and Delhi for immersive rain-sabhais uniting Kirtan with deep Gurbani Viakhia.",
-    swaraScaleHz: [261.63, 277.18, 329.63, 370.0, 392.0, 415.3, 493.88],
-  },
-  {
-    id: "raag-kalyan-tanti-saaj",
-    numeral: "੪",
-    title: "Mere Laalan Ki Sobha — Evening Raag Kalyan Darbar",
-    gurmukhiTitle: "ਮੇਰੇ ਲਾਲਨ ਕੀ ਸੋਭਾ",
-    ragi: "Puratan Tanti Saaj Ensemble (Rabab & Saranda)",
-    raag: "Raag Kalyan (Yaman Kalyan)",
-    angCitation: "Sri Guru Granth Sahib Ji • Ang 1319",
-    tantiSaaj: "Firandia Rabab, Saranda (Guru Arjan Dev Ji's design) & Jori",
-    timeOfDay: "Sandhya (Evening Dusk — 6:00 PM to 9:00 PM)",
-    durationLabel: "06:48",
-    durationSec: 408,
-    audioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/c/c8/Sitar_improvisation.ogg",
-    fallbackAudioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/4/45/Tanpura_drone_C.ogg",
-    externalArchiveUrl:
-      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan",
-    raagNotes:
-      "Raag Kalyan (performed in the first quarter of the night after Rehras Sahib) uses Tivra Ma (sharpened fourth) to evoke serene awe, majesty, and evening contemplation.",
-    historicalContext:
-      "Guru Nanak Dev Ji initiated Gurmat Kirtan with Bhai Mardana Ji's 6-stringed Rabab, while Guru Arjan Dev Ji designed the resonant Saranda and Guru Hargobind Sahib Ji introduced the peacock-shaped Taus.",
-    swaraScaleHz: [261.63, 293.66, 329.63, 370.0, 392.0, 440.0, 493.88, 523.25],
-  },
-  {
-    id: "raag-ramkali-balbir-singh",
-    numeral: "੫",
-    title: "Anand Bhaya Meri Maye — Raag Ramkali Partaal",
-    gurmukhiTitle: "ਅਨੰਦੁ ਭਇਆ ਮੇਰੀ ਮਾਏ ਸਤਿਗੁਰੂ ਮੈ ਪਾਇਆ",
-    ragi: "Shiromani Ragi Bhai Balbir Singh Ji",
-    raag: "Raag Ramkali",
-    angCitation: "Sri Guru Granth Sahib Ji • Ang 917",
-    tantiSaaj: "Dilruba, Surmandal & Pakhawaj (Partaal Taal Changes)",
-    timeOfDay: "Sunrise / First Watch of Day",
-    durationLabel: "09:10",
-    durationSec: 550,
-    audioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/4/45/Tanpura_drone_C.ogg",
-    fallbackAudioUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/c/c8/Sitar_improvisation.ogg",
-    externalArchiveUrl:
-      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FBhai_Balbir_Singh",
-    raagNotes:
-      "Raag Ramkali is the Raag of spiritual awakening, equipoise (Sahaj), and dialogue with the Yogis (Siddh Gosht and Anand Sahib are composed in Raag Ramkali).",
-    historicalContext:
-      "Bhai Balbir Singh Ji mastered the complex Partaal style of Gurmat Sangeet, where a single Shabad shifts rhythm (Taal) dynamically to match the emotional cadence of each verse.",
-    swaraScaleHz: [261.63, 277.18, 329.63, 349.23, 392.0, 415.3, 493.88],
+      "Continuous Gurbani Kirtan from Amrit Vela Asa Di Vaar (~2:15 AM IST) and the Daily Mukhwaak through evening Rehras Sahib, Aarti, and Kirtan Sohila.",
+    isLiveStream: true,
+    locationLabel: "Amritsar, Punjab (Official SGPC Stream)",
   },
 ];
 
+export const PURATAN_KIRTAN_TRACKS: KirtanTrack[] = LIVE_GURDWARA_STREAMS;
+
+const INITIAL_SUBMISSIONS_SEED: KirtanSubmission[] = [
+  {
+    id: "sub-avtar-singh-sri-raag",
+    title: "Moti Ta Mandar Oosreh (Puratan Guldasta Reet)",
+    gurmukhiTitle: "ਮੋਤੀ ਤ ਮੰਦਰ ਊਸਰਹਿ ਰਤਨੀ ਤ ਹੋਹਿ ਜੜਾਉ ॥",
+    ragi: "Bhai Avtar Singh Ji & Bhai Gurcharan Singh Ji Ragi",
+    raag: "Raag Sri Raag • Ang 14",
+    category: "Puratan Kirtan Masters",
+    sourceUrl:
+      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FBhai_Avtar_Singh_%28Delhi_Wale%29",
+    authenticityNotes:
+      "11th-generation court Rababi/Ragi lineage documented in Gurbani Sangeet Pracheen Reet Ratnavli. Please verify exact direct MP3 file before promoting to player.",
+    submittedBy: "Panthic Musicology Archive",
+    status: "pending_review",
+    createdAt: "2026-11-14T10:00:00Z",
+  },
+  {
+    id: "sub-jawaddi-taksal-dilruba",
+    title: "Puratan Dilruba & Taus Raag Alaap (Tanti Saaj)",
+    gurmukhiTitle: "ਪੁਰਾਤਨ ਦਿਲਰੁਬਾ ਅਤੇ ਤਾਊਸ ਰਾਗ ਅਲਾਪ",
+    ragi: "Gurmat Sangeet Tanti Saaj Ensemble",
+    raag: "Raag Asa & Raag Tukhari",
+    category: "Background Raag Instrumentals",
+    sourceUrl: "https://www.gurmatveechar.com/audio",
+    authenticityNotes:
+      "Submitted for Background Reading Mode (25% volume). Needs admin verification of direct MP3 link before enabling in live player.",
+    submittedBy: "Sangat Researcher",
+    status: "pending_review",
+    createdAt: "2026-11-14T14:30:00Z",
+  },
+];
+
+const SUBMISSIONS_STORAGE_KEY = "learnsikhi_kirtan_submissions_v1";
+
+export function formatAudioTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+function buildProxiedAudioUrl(sourceUrl: string): string {
+  const trimmed = sourceUrl.trim();
+  if (trimmed.startsWith("/")) return trimmed;
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "gurmatveechar.com" ||
+      host.endsWith(".gurmatveechar.com") ||
+      host === "archive.org" ||
+      host.endsWith(".archive.org") ||
+      host === "live.sgpc.net" ||
+      host.endsWith(".sgpc.net")
+    ) {
+      return `/api/audio-proxy?url=${encodeURIComponent(trimmed)}`;
+    }
+  } catch {
+    // Fallback to raw URL
+  }
+  return trimmed;
+}
+
+function submissionToTrack(sub: KirtanSubmission, index: number): KirtanTrack {
+  const gurmukhiDigits = ["੦", "੧", "੨", "੩", "੪", "੫", "੬", "੭", "੮", "੯"];
+  const numeral =
+    String(index + 2)
+      .split("")
+      .map((d) => gurmukhiDigits[Number(d)] || d)
+      .join("") || "੨";
+
+  const proxiedUrl = buildProxiedAudioUrl(sub.sourceUrl);
+
+  return {
+    id: `approved-${sub.id}`,
+    numeral,
+    category: sub.category || "Verified Local & Approved Audio",
+    title: sub.title,
+    gurmukhiTitle: sub.gurmukhiTitle || "ਪ੍ਰਮਾਣਿਤ ਗੁਰਮਤਿ ਸੰਗੀਤ",
+    ragi: sub.ragi,
+    raag: sub.raag || "Admin-Verified Recording",
+    angCitation: "ADMIN VERIFIED • SANGAT SUBMISSION",
+    tantiSaaj: "Verified Kirtan / Bani Recording",
+    timeOfDay: "All Pehars",
+    durationLabel: "Verified Audio",
+    durationSec: 0,
+    audioUrl: proxiedUrl,
+    directArchiveMp3Url: sub.sourceUrl,
+    archiveEmbedUrl: sub.sourceUrl,
+    externalArchiveUrl: sub.sourceUrl,
+    raagNotes: sub.authenticityNotes,
+    historicalContext: `Submitted by ${sub.submittedBy} and verified by Learn Sikhi Admin Review Queue.`,
+    isCustomOrLocal: true,
+  };
+}
+
 type KirtanAudioContextValue = {
   tracks: KirtanTrack[];
+  liveStreams: KirtanTrack[];
+  instrumentalTracks: KirtanTrack[];
+  localAudioTracks: KirtanTrack[];
+  submissions: KirtanSubmission[];
+  pendingSubmissionsCount: number;
   currentTrack: KirtanTrack;
   isPlaying: boolean;
+  isLoadingAudio: boolean;
+  audioError: string | null;
   currentTime: number;
   duration: number;
   volume: number;
+  isReadingVolumePreset: boolean;
+  playerMode: "native" | "embed";
+  isMinimized: boolean;
   isMiniPlayerVisible: boolean;
-  usingTantiSynth: boolean;
+  isCustomModalOpen: boolean;
   playTrack: (track: KirtanTrack) => void;
   togglePlayPause: () => void;
   seekTo: (seconds: number) => void;
-  setVolume: (val: number) => void;
+  setVolume: (vol: number) => void;
+  toggleReadingVolumePreset: () => void;
+  startReadingInstrumental: (trackId?: string) => void;
+  setPlayerMode: (mode: "native" | "embed") => void;
+  setIsMinimized: (val: boolean) => void;
+  setIsCustomModalOpen: (val: boolean) => void;
+  submitTrackForReview: (input: {
+    title: string;
+    gurmukhiTitle?: string;
+    ragi: string;
+    raag: string;
+    category?: KirtanCollectionCategory;
+    sourceUrl: string;
+    authenticityNotes: string;
+    submittedBy?: string;
+  }) => Promise<void>;
+  approveSubmission: (id: string) => void;
+  rejectSubmission: (id: string) => void;
   nextTrack: () => void;
   prevTrack: () => void;
-  closeMiniPlayer: () => void;
 };
 
 const KirtanAudioContext = createContext<KirtanAudioContextValue | null>(null);
 
-export function useKirtanAudio() {
-  const ctx = useContext(KirtanAudioContext);
-  if (!ctx) {
-    throw new Error("useKirtanAudio must be used within KirtanAudioProvider");
-  }
-  return ctx;
-}
+export function KirtanAudioProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [localAudioTracks, setLocalAudioTracks] = useState<KirtanTrack[]>([]);
+  const [submissions, setSubmissions] = useState<KirtanSubmission[]>(
+    INITIAL_SUBMISSIONS_SEED
+  );
 
-export function formatAudioTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-}
-
-export function KirtanAudioProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<KirtanTrack>(
-    PURATAN_KIRTAN_TRACKS[0]
+    LIVE_GURDWARA_STREAMS[0]
   );
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(PURATAN_KIRTAN_TRACKS[0].durationSec);
+  const [duration, setDuration] = useState<number>(0);
   const [volume, setVolumeState] = useState(0.8);
-  const [isMiniPlayerVisible, setIsMiniPlayerVisible] = useState(false);
-  const [usingTantiSynth, setUsingTantiSynth] = useState(false);
+  const [isReadingVolumePreset, setIsReadingVolumePreset] = useState(false);
+  const [playerMode, setPlayerMode] = useState<"native" | "embed">("native");
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const synthGainRef = useRef<GainNode | null>(null);
-  const synthIntervalRef = useRef<number | null>(null);
-  const synthTimerRef = useRef<number | null>(null);
 
-  const stopSynth = useCallback(() => {
-    if (synthIntervalRef.current) {
-      window.clearInterval(synthIntervalRef.current);
-      synthIntervalRef.current = null;
+  // 1. Auto-discover verified local MP3 files dropped into public/audio/
+  useEffect(() => {
+    let active = true;
+    fetch("/api/local-audio")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active || !Array.isArray(data?.tracks)) return;
+        const mapped: KirtanTrack[] = data.tracks.map(
+          (item: {
+            id: string;
+            numeral: string;
+            category: KirtanCollectionCategory;
+            title: string;
+            gurmukhiTitle: string;
+            ragi: string;
+            raag: string;
+            angCitation: string;
+            tantiSaaj: string;
+            timeOfDay: string;
+            durationLabel: string;
+            durationSec: number;
+            audioUrl: string;
+            directArchiveMp3Url: string;
+            archiveEmbedUrl: string;
+            externalArchiveUrl: string;
+            raagNotes: string;
+            historicalContext: string;
+          }) => ({
+            ...item,
+            isCustomOrLocal: true,
+          })
+        );
+        setLocalAudioTracks(mapped);
+      })
+      .catch(() => {
+        // Ignore if no local audio directory
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // 2. Load Kirtan Submissions from localStorage + Supabase
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SUBMISSIONS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSubmissions(parsed);
+        }
+      }
+    } catch {
+      // Ignore storage errors
     }
-    if (synthTimerRef.current) {
-      window.clearInterval(synthTimerRef.current);
-      synthTimerRef.current = null;
-    }
-    if (audioCtxRef.current && audioCtxRef.current.state === "running") {
-      void audioCtxRef.current.suspend();
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      supabase
+        .from("kirtan_submissions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50)
+        .then(({ data }) => {
+          if (Array.isArray(data) && data.length > 0) {
+            const remoteMapped: KirtanSubmission[] = data.map(
+              (row: Record<string, unknown>) => ({
+                id: String(row.id),
+                title: String(row.title || ""),
+                gurmukhiTitle: String(row.gurmukhi_title || ""),
+                ragi: String(row.ragi || ""),
+                raag: String(row.raag || ""),
+                category:
+                  (row.category as KirtanCollectionCategory) ||
+                  "Puratan Kirtan Masters",
+                sourceUrl: String(row.source_url || ""),
+                authenticityNotes: String(row.authenticity_notes || ""),
+                submittedBy: String(row.submitted_by || "Sangat Member"),
+                status:
+                  (row.status as KirtanSubmissionStatus) || "pending_review",
+                createdAt: String(
+                  row.created_at || new Date().toISOString()
+                ),
+              })
+            );
+            setSubmissions((prev) => {
+              const existingIds = new Set(remoteMapped.map((r) => r.id));
+              return [
+                ...remoteMapped,
+                ...prev.filter((p) => !existingIds.has(p.id)),
+              ];
+            });
+          }
+        });
     }
   }, []);
 
-  const startSynthForTrack = useCallback(
-    (track: KirtanTrack, vol: number) => {
-      try {
-        const AudioContextClass =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext;
-        if (!audioCtxRef.current) {
-          audioCtxRef.current = new AudioContextClass();
-        }
-        const ctx = audioCtxRef.current;
-        if (ctx.state === "suspended") {
-          void ctx.resume();
-        }
+  const persistSubmissions = useCallback((nextList: KirtanSubmission[]) => {
+    setSubmissions(nextList);
+    try {
+      window.localStorage.setItem(
+        SUBMISSIONS_STORAGE_KEY,
+        JSON.stringify(nextList)
+      );
+    } catch {
+      // Ignore quota errors
+    }
+  }, []);
 
-        if (!synthGainRef.current) {
-          const master = ctx.createGain();
-          master.connect(ctx.destination);
-          synthGainRef.current = master;
-        }
-        synthGainRef.current.gain.setValueAtTime(vol * 0.22, ctx.currentTime);
-
-        if (synthIntervalRef.current) {
-          window.clearInterval(synthIntervalRef.current);
-        }
-
-        const scale = track.swaraScaleHz;
-        let step = 0;
-
-        const playPluck = () => {
-          if (!audioCtxRef.current || !synthGainRef.current) return;
-          const now = audioCtxRef.current.currentTime;
-          // Play root Sa + Pa Tanpura drone + melodic Raag note
-          const droneOsc = audioCtxRef.current.createOscillator();
-          const droneGain = audioCtxRef.current.createGain();
-          droneOsc.type = "triangle";
-          droneOsc.frequency.setValueAtTime(scale[0] / 2, now);
-          droneGain.gain.setValueAtTime(0.001, now);
-          droneGain.gain.linearRampToValueAtTime(0.18, now + 0.15);
-          droneGain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
-          droneOsc.connect(droneGain);
-          droneGain.connect(synthGainRef.current);
-          droneOsc.start(now);
-          droneOsc.stop(now + 2.45);
-
-          // Melodic Tanti Saaj note from the Raag scale
-          const noteFreq = scale[step % scale.length];
-          step += 1;
-          const melOsc = audioCtxRef.current.createOscillator();
-          const melGain = audioCtxRef.current.createGain();
-          melOsc.type = "sine";
-          melOsc.frequency.setValueAtTime(noteFreq, now);
-          melGain.gain.setValueAtTime(0.001, now);
-          melGain.gain.linearRampToValueAtTime(0.28, now + 0.08);
-          melGain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
-          melOsc.connect(melGain);
-          melGain.connect(synthGainRef.current);
-          melOsc.start(now);
-          melOsc.stop(now + 1.65);
-        };
-
-        playPluck();
-        synthIntervalRef.current = window.setInterval(playPluck, 1500);
-
-        if (synthTimerRef.current) {
-          window.clearInterval(synthTimerRef.current);
-        }
-        synthTimerRef.current = window.setInterval(() => {
-          setCurrentTime((prev) => {
-            if (prev + 1 >= track.durationSec) {
-              return 0;
-            }
-            return prev + 1;
-          });
-        }, 1000);
-      } catch {
-        // Ignore Web Audio errors
-      }
-    },
-    []
+  const approvedTracks = useMemo(
+    () =>
+      submissions
+        .filter((s) => s.status === "approved")
+        .map((s, idx) => submissionToTrack(s, idx)),
+    [submissions]
   );
 
+  const allTracks = useMemo(
+    () => [...LIVE_GURDWARA_STREAMS, ...localAudioTracks, ...approvedTracks],
+    [localAudioTracks, approvedTracks]
+  );
+
+  const instrumentalTracks = useMemo(
+    () =>
+      allTracks.filter((t) => t.category === "Background Raag Instrumentals"),
+    [allTracks]
+  );
+
+  const pendingSubmissionsCount = useMemo(
+    () => submissions.filter((s) => s.status === "pending_review").length,
+    [submissions]
+  );
+
+  // Initialize HTML5 <audio> element (strictly real streams/files, zero oscillator tone)
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const audio = new Audio();
-    audio.preload = "metadata";
-    audio.volume = 0.8;
+    audio.preload = "none";
+    audio.volume = volume;
     audioRef.current = audio;
 
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-    const handleLoadedMetadata = () => {
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onLoadedMetadata = () => {
       if (audio.duration && Number.isFinite(audio.duration)) {
         setDuration(audio.duration);
       }
+      setIsLoadingAudio(false);
+      setAudioError(null);
     };
-    const handleEnded = () => {
+    const onWaiting = () => setIsLoadingAudio(true);
+    const onPlaying = () => {
+      setIsLoadingAudio(false);
+      setIsPlaying(true);
+      setAudioError(null);
+    };
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => setIsPlaying(false);
+    const onError = () => {
+      setIsLoadingAudio(false);
       setIsPlaying(false);
-      setCurrentTime(0);
+      setAudioError(
+        "Direct stream could not be reached. Use the SGPC Live Theater view or verify the audio URL."
+      );
     };
 
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("waiting", onWaiting);
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.pause();
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("ended", handleEnded);
-      stopSynth();
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("waiting", onWaiting);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
     };
-  }, [stopSynth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadAndPlayTrack = useCallback((track: KirtanTrack) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    setAudioError(null);
+    setIsLoadingAudio(true);
+    audio.pause();
+    audio.src = track.audioUrl;
+    audio.load();
+
+    audio
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+        setIsLoadingAudio(false);
+      })
+      .catch(() => {
+        if (
+          track.directArchiveMp3Url &&
+          audio.src !== track.directArchiveMp3Url
+        ) {
+          audio.src = track.directArchiveMp3Url;
+          audio.load();
+          audio
+            .play()
+            .then(() => {
+              setIsPlaying(true);
+              setIsLoadingAudio(false);
+            })
+            .catch(() => {
+              setIsPlaying(false);
+              setIsLoadingAudio(false);
+              setAudioError(
+                "Stream blocked by browser or unreachable. Try opening the official SGPC stream link."
+              );
+            });
+        } else {
+          setIsPlaying(false);
+          setIsLoadingAudio(false);
+          setAudioError(
+            "Stream blocked by browser or unreachable. Try opening the official SGPC stream link."
+          );
+        }
+      });
+  }, []);
 
   const playTrack = useCallback(
     (track: KirtanTrack) => {
       setCurrentTrack(track);
-      setDuration(track.durationSec);
       setCurrentTime(0);
-      setIsMiniPlayerVisible(true);
-      setIsPlaying(true);
-
-      stopSynth();
-      const audio = audioRef.current;
-      if (!audio) return;
-
-      audio.src = track.audioUrl;
-      audio.currentTime = 0;
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setUsingTantiSynth(false);
-          })
-          .catch(() => {
-            // Automatic fallback to live Web Audio Tanti Saaj Raag synthesizer
-            setUsingTantiSynth(true);
-            startSynthForTrack(track, volume);
-          });
-      }
+      setDuration(track.durationSec || 0);
+      loadAndPlayTrack(track);
     },
-    [startSynthForTrack, stopSynth, volume]
+    [loadAndPlayTrack]
   );
 
   const togglePlayPause = useCallback(() => {
-    setIsMiniPlayerVisible(true);
     const audio = audioRef.current;
+    if (!audio) return;
+
     if (isPlaying) {
+      audio.pause();
       setIsPlaying(false);
-      if (audio) audio.pause();
-      stopSynth();
     } else {
-      setIsPlaying(true);
-      if (usingTantiSynth) {
-        startSynthForTrack(currentTrack, volume);
-      } else if (audio) {
-        if (!audio.src) {
-          audio.src = currentTrack.audioUrl;
-        }
-        audio.play().catch(() => {
-          setUsingTantiSynth(true);
-          startSynthForTrack(currentTrack, volume);
-        });
+      if (!audio.src) {
+        loadAndPlayTrack(currentTrack);
+      } else {
+        setIsLoadingAudio(true);
+        audio
+          .play()
+          .then(() => {
+            setIsPlaying(true);
+            setIsLoadingAudio(false);
+          })
+          .catch(() => {
+            loadAndPlayTrack(currentTrack);
+          });
       }
     }
-  }, [currentTrack, isPlaying, startSynthForTrack, stopSynth, usingTantiSynth, volume]);
+  }, [currentTrack, isPlaying, loadAndPlayTrack]);
 
-  const seekTo = useCallback(
-    (seconds: number) => {
-      const clamped = Math.max(0, Math.min(seconds, duration || 300));
-      setCurrentTime(clamped);
-      if (!usingTantiSynth && audioRef.current) {
-        try {
-          audioRef.current.currentTime = clamped;
-        } catch {
-          // Ignore seek errors on unbuffered streams
-        }
-      }
-    },
-    [duration, usingTantiSynth]
-  );
-
-  const setVolume = useCallback((val: number) => {
-    const clamped = Math.max(0, Math.min(1, val));
-    setVolumeState(clamped);
-    if (audioRef.current) {
-      audioRef.current.volume = clamped;
-    }
-    if (synthGainRef.current && audioCtxRef.current) {
-      synthGainRef.current.gain.setValueAtTime(
-        clamped * 0.22,
-        audioCtxRef.current.currentTime
-      );
+  const seekTo = useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(seconds)) return;
+    try {
+      audio.currentTime = seconds;
+      setCurrentTime(seconds);
+    } catch {
+      // Live streams do not support seeking
     }
   }, []);
 
+  const setVolume = useCallback((vol: number) => {
+    const clamped = Math.max(0, Math.min(1, vol));
+    setVolumeState(clamped);
+    setIsReadingVolumePreset(Math.abs(clamped - 0.25) < 0.02);
+    if (audioRef.current) {
+      audioRef.current.volume = clamped;
+    }
+  }, []);
+
+  const toggleReadingVolumePreset = useCallback(() => {
+    if (isReadingVolumePreset) {
+      setVolume(0.8);
+      setIsReadingVolumePreset(false);
+    } else {
+      setVolume(0.25);
+      setIsReadingVolumePreset(true);
+    }
+  }, [isReadingVolumePreset, setVolume]);
+
+  const startReadingInstrumental = useCallback(
+    (trackId?: string) => {
+      setVolume(0.25);
+      setIsReadingVolumePreset(true);
+      const target =
+        (trackId ? allTracks.find((t) => t.id === trackId) : undefined) ||
+        instrumentalTracks[0] ||
+        LIVE_GURDWARA_STREAMS[0];
+      playTrack(target);
+    },
+    [allTracks, instrumentalTracks, playTrack, setVolume]
+  );
+
+  const submitTrackForReview = useCallback(
+    async (input: {
+      title: string;
+      gurmukhiTitle?: string;
+      ragi: string;
+      raag: string;
+      category?: KirtanCollectionCategory;
+      sourceUrl: string;
+      authenticityNotes: string;
+      submittedBy?: string;
+    }) => {
+      const newSub: KirtanSubmission = {
+        id: `sub-${Date.now()}`,
+        title: input.title.trim(),
+        gurmukhiTitle:
+          input.gurmukhiTitle?.trim() || "ਸੰਗਤ ਵੱਲੋਂ ਭੇਜੀ ਗਈ ਬਾਣੀ / ਕੀਰਤਨ",
+        ragi: input.ragi.trim() || "Sangat Submission",
+        raag: input.raag.trim() || "Gurmat Kirtan / Bani",
+        category: input.category || "Puratan Kirtan Masters",
+        sourceUrl: input.sourceUrl.trim(),
+        authenticityNotes:
+          input.authenticityNotes.trim() ||
+          "Submitted for admin audio verification.",
+        submittedBy: input.submittedBy?.trim() || "Sangat Member",
+        status: "pending_review",
+        createdAt: new Date().toISOString(),
+      };
+
+      persistSubmissions([newSub, ...submissions]);
+
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        try {
+          await supabase.from("kirtan_submissions").insert({
+            title: newSub.title,
+            gurmukhi_title: newSub.gurmukhiTitle,
+            ragi: newSub.ragi,
+            raag: newSub.raag,
+            category: newSub.category,
+            source_url: newSub.sourceUrl,
+            authenticity_notes: newSub.authenticityNotes,
+            submitted_by: newSub.submittedBy,
+            status: "pending_review",
+          });
+        } catch {
+          // LocalStorage fallback already saved
+        }
+      }
+    },
+    [persistSubmissions, submissions]
+  );
+
+  const approveSubmission = useCallback(
+    (id: string) => {
+      const updated = submissions.map((s) =>
+        s.id === id ? { ...s, status: "approved" as const } : s
+      );
+      persistSubmissions(updated);
+
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        void supabase
+          .from("kirtan_submissions")
+          .update({ status: "approved" })
+          .eq("id", id);
+      }
+    },
+    [persistSubmissions, submissions]
+  );
+
+  const rejectSubmission = useCallback(
+    (id: string) => {
+      const updated = submissions.map((s) =>
+        s.id === id ? { ...s, status: "rejected" as const } : s
+      );
+      persistSubmissions(updated);
+
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        void supabase
+          .from("kirtan_submissions")
+          .update({ status: "rejected" })
+          .eq("id", id);
+      }
+    },
+    [persistSubmissions, submissions]
+  );
+
   const nextTrack = useCallback(() => {
-    const idx = PURATAN_KIRTAN_TRACKS.findIndex((t) => t.id === currentTrack.id);
-    const next =
-      PURATAN_KIRTAN_TRACKS[(idx + 1) % PURATAN_KIRTAN_TRACKS.length];
+    if (allTracks.length === 0) return;
+    const idx = allTracks.findIndex((t) => t.id === currentTrack.id);
+    const next = allTracks[(idx + 1) % allTracks.length];
     playTrack(next);
-  }, [currentTrack.id, playTrack]);
+  }, [allTracks, currentTrack.id, playTrack]);
 
   const prevTrack = useCallback(() => {
-    const idx = PURATAN_KIRTAN_TRACKS.findIndex((t) => t.id === currentTrack.id);
-    const prev =
-      PURATAN_KIRTAN_TRACKS[
-        (idx - 1 + PURATAN_KIRTAN_TRACKS.length) % PURATAN_KIRTAN_TRACKS.length
-      ];
+    if (allTracks.length === 0) return;
+    const idx = allTracks.findIndex((t) => t.id === currentTrack.id);
+    const prev = allTracks[(idx - 1 + allTracks.length) % allTracks.length];
     playTrack(prev);
-  }, [currentTrack.id, playTrack]);
+  }, [allTracks, currentTrack.id, playTrack]);
 
-  const closeMiniPlayer = useCallback(() => {
-    if (audioRef.current) audioRef.current.pause();
-    stopSynth();
-    setIsPlaying(false);
-    setIsMiniPlayerVisible(false);
-  }, [stopSynth]);
+  const value = useMemo(
+    () => ({
+      tracks: allTracks,
+      liveStreams: LIVE_GURDWARA_STREAMS,
+      instrumentalTracks,
+      localAudioTracks,
+      submissions,
+      pendingSubmissionsCount,
+      currentTrack,
+      isPlaying,
+      isLoadingAudio,
+      audioError,
+      currentTime,
+      duration,
+      volume,
+      isReadingVolumePreset,
+      playerMode,
+      isMinimized,
+      isMiniPlayerVisible: !isMinimized,
+      isCustomModalOpen,
+      playTrack,
+      togglePlayPause,
+      seekTo,
+      setVolume,
+      toggleReadingVolumePreset,
+      startReadingInstrumental,
+      setPlayerMode,
+      setIsMinimized,
+      setIsCustomModalOpen,
+      submitTrackForReview,
+      approveSubmission,
+      rejectSubmission,
+      nextTrack,
+      prevTrack,
+    }),
+    [
+      allTracks,
+      instrumentalTracks,
+      localAudioTracks,
+      submissions,
+      pendingSubmissionsCount,
+      currentTrack,
+      isPlaying,
+      isLoadingAudio,
+      audioError,
+      currentTime,
+      duration,
+      volume,
+      isReadingVolumePreset,
+      playerMode,
+      isMinimized,
+      isCustomModalOpen,
+      playTrack,
+      togglePlayPause,
+      seekTo,
+      setVolume,
+      toggleReadingVolumePreset,
+      startReadingInstrumental,
+      submitTrackForReview,
+      approveSubmission,
+      rejectSubmission,
+      nextTrack,
+      prevTrack,
+    ]
+  );
 
   return (
-    <KirtanAudioContext.Provider
-      value={{
-        tracks: PURATAN_KIRTAN_TRACKS,
-        currentTrack,
-        isPlaying,
-        currentTime,
-        duration,
-        volume,
-        isMiniPlayerVisible,
-        usingTantiSynth,
-        playTrack,
-        togglePlayPause,
-        seekTo,
-        setVolume,
-        nextTrack,
-        prevTrack,
-        closeMiniPlayer,
-      }}
-    >
+    <KirtanAudioContext.Provider value={value}>
       {children}
+      <SuggestKirtanModal />
+    </KirtanAudioContext.Provider>
+  );
+}
 
-      {/* Persistent Bottom Floating Mini-Player Bar */}
-      {isMiniPlayerVisible && (
-        <div
-          role="region"
-          aria-label="Puratan Kirtan Mini-Player"
+export function useKirtanAudio() {
+  const ctx = useContext(KirtanAudioContext);
+  if (!ctx) {
+    throw new Error("useKirtanAudio must be used within a KirtanAudioProvider");
+  }
+  return ctx;
+}
+
+/**
+ * Modal allowing users to submit a Kirtan or Bani track for Admin Review
+ * before it goes live on the site.
+ */
+function SuggestKirtanModal() {
+  const {
+    isCustomModalOpen,
+    setIsCustomModalOpen,
+    submitTrackForReview,
+    pendingSubmissionsCount,
+  } = useKirtanAudio();
+
+  const [title, setTitle] = useState("");
+  const [gurmukhiTitle, setGurmukhiTitle] = useState("");
+  const [ragi, setRagi] = useState("");
+  const [raag, setRaag] = useState("");
+  const [category, setCategory] = useState<KirtanCollectionCategory>(
+    "Puratan Kirtan Masters"
+  );
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [authenticityNotes, setAuthenticityNotes] = useState("");
+  const [submittedBy, setSubmittedBy] = useState("");
+  const [submittedSuccess, setSubmittedSuccess] = useState(false);
+
+  if (!isCustomModalOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !ragi.trim() || !sourceUrl.trim()) return;
+    await submitTrackForReview({
+      title,
+      gurmukhiTitle,
+      ragi,
+      raag,
+      category,
+      sourceUrl,
+      authenticityNotes,
+      submittedBy,
+    });
+    setTitle("");
+    setGurmukhiTitle("");
+    setRagi("");
+    setRaag("");
+    setSourceUrl("");
+    setAuthenticityNotes("");
+    setSubmittedSuccess(true);
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Suggest a Kirtan or Bani Track for Admin Review"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm overflow-y-auto"
+    >
+      <div
+        style={{
+          backgroundColor: "var(--bg-surface)",
+          borderColor: "var(--accent-primary)",
+          color: "var(--text-primary)",
+        }}
+        className="w-full max-w-xl rounded-3xl border-2 p-6 sm:p-8 shadow-2xl space-y-5 my-6"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#C59B27]/25 pb-4">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
+              VERIFIED AUDIO INTEGRITY • ADMIN REVIEW QUEUE ({pendingSubmissionsCount}{" "}
+              PENDING)
+            </span>
+            <h3 className="text-xl sm:text-2xl font-serif font-bold mt-1">
+              Suggest a Kirtan or Bani Track for Learn Sikhi
+            </h3>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-xs sm:text-sm mt-1 leading-relaxed"
+            >
+              To ensure every Shabad and Raag matches its true Kirtaniye, all submitted
+              tracks enter our{" "}
+              <strong className="text-[#C59B27]">pending_review</strong> queue for
+              manual verification before appearing in the player.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSubmittedSuccess(false);
+              setIsCustomModalOpen(false);
+            }}
+            className="px-3 py-1.5 rounded-xl border border-[#C59B27]/40 text-xs font-bold hover:border-[#C59B27]"
+          >
+            ✕ Close
+          </button>
+        </div>
+
+        {submittedSuccess ? (
+          <div className="p-6 rounded-2xl border border-[#C59B27] bg-[#C59B27]/10 space-y-4 text-center">
+            <p className="font-gurmukhi text-xl font-bold text-[#C59B27]">
+              ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖ਼ਾਲਸਾ, ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫ਼ਤਿਹ ॥
+            </p>
+            <h4 className="text-lg font-serif font-bold">
+              Submitted to Admin Review Queue (`pending_review`)
+            </h4>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-xs sm:text-sm leading-relaxed"
+            >
+              Thank you for contributing to the Learn Sikhi sanctuary. The site
+              administrator can now inspect your submission in the{" "}
+              <strong>Admin Review Queue</strong> on <code>/granths</code> and promote it
+              to the live player once verified.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSubmittedSuccess(false)}
+                className="px-4 py-2 rounded-xl border border-[#C59B27]/50 text-xs font-bold text-[#C59B27]"
+              >
+                Submit Another Track
+              </button>
+              <Link
+                href="/granths"
+                onClick={() => {
+                  setSubmittedSuccess(false);
+                  setIsCustomModalOpen(false);
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
+              >
+                Open Admin Review Queue on /granths →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold mb-1">
+                  Shabad / Bani Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Deh Shiva Bar Mohe Ehai"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">
+                  Gurmukhi Pangti (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={gurmukhiTitle}
+                  onChange={(e) => setGurmukhiTitle(e.target.value)}
+                  placeholder="e.g., ਦੇਹ ਸ਼ਿਵਾ ਬਰੁ ਮੋਹਿ ਇਹੈ"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm font-gurmukhi focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold mb-1">
+                  Raagi / Kirtaniye Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ragi}
+                  onChange={(e) => setRagi(e.target.value)}
+                  placeholder="e.g., Bhai Avtar Singh Ji Ragi"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">
+                  Raag &amp; Ang Reference *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={raag}
+                  onChange={(e) => setRaag(e.target.value)}
+                  placeholder="e.g., Raag Tilang • Ang 721"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold mb-1">
+                  Collection Category
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) =>
+                    setCategory(e.target.value as KirtanCollectionCategory)
+                  }
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                >
+                  <option value="Puratan Kirtan Masters">
+                    Puratan Kirtan Masters
+                  </option>
+                  <option value="Complete Nitnem & Sacred Bani">
+                    Complete Nitnem &amp; Sacred Bani
+                  </option>
+                  <option value="Puratan Katha & Vichaar">
+                    Puratan Katha &amp; Vichaar
+                  </option>
+                  <option value="Background Raag Instrumentals">
+                    Background Raag Instrumentals (Reading Mode)
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">
+                  Your Name / Handle (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={submittedBy}
+                  onChange={(e) => setSubmittedBy(e.target.value)}
+                  placeholder="e.g., @khalsa_archivist"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold mb-1">
+                Source Link (GurmatVeechar / Archive.org / YouTube / Direct MP3) *
+              </label>
+              <input
+                type="url"
+                required
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                placeholder="https://www.gurmatveechar.com/audios/Kirtan/..."
+                style={{
+                  backgroundColor: "var(--bg-primary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold mb-1">
+                Notes on Authenticity &amp; Recording Details *
+              </label>
+              <textarea
+                rows={2}
+                required
+                value={authenticityNotes}
+                onChange={(e) => setAuthenticityNotes(e.target.value)}
+                placeholder="Describe the recording year, Gurdwara, Tanti Saaj instruments, or why this track is authentic..."
+                style={{
+                  backgroundColor: "var(--bg-primary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+            >
+              Submit Track to Admin Review Queue →
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Persistent Bottom Mini-Player so users can listen to the verified SGPC live
+ * Darbar Sahib stream (or admin-approved/local tracks) while browsing any route.
+ */
+export function GlobalKirtanMiniPlayer() {
+  const {
+    currentTrack,
+    isPlaying,
+    isLoadingAudio,
+    audioError,
+    currentTime,
+    duration,
+    volume,
+    isReadingVolumePreset,
+    isMinimized,
+    setIsMinimized,
+    togglePlayPause,
+    seekTo,
+    setVolume,
+    toggleReadingVolumePreset,
+    setIsCustomModalOpen,
+    nextTrack,
+    prevTrack,
+  } = useKirtanAudio();
+
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-4 left-4 z-40">
+        <button
+          type="button"
+          onClick={() => setIsMinimized(false)}
           style={{
             backgroundColor: "var(--bg-surface)",
             borderColor: "var(--accent-primary)",
             color: "var(--text-primary)",
           }}
-          className="fixed bottom-0 left-0 right-0 z-40 border-t-2 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md px-4 py-3 sm:px-6"
+          className="flex items-center gap-2.5 rounded-full border-2 px-4 py-2.5 shadow-xl transition hover:scale-[1.02]"
         >
-          <div className="mx-auto max-w-7xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Track Identity */}
-            <div className="flex items-center gap-3 min-w-0">
-              <span
-                lang="pa"
-                style={{
-                  backgroundColor: "var(--accent-primary)",
-                  color: "#FFFFFF",
-                }}
-                className="h-10 w-10 rounded-xl font-gurmukhi text-base font-bold flex items-center justify-center shrink-0 shadow-sm"
-              >
-                {currentTrack.numeral}
+          <span
+            className={`inline-block h-2.5 w-2.5 rounded-full ${
+              isPlaying ? "bg-red-500 animate-ping" : "bg-[#C59B27]"
+            }`}
+          />
+          <span className="text-xs font-serif font-bold">
+            {isPlaying ? `Playing: ${currentTrack.title}` : "Darbar Sahib Live Audio"}
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <aside
+      aria-label="Persistent Gurbani Kirtan & Live Broadcast Audio Player"
+      style={{
+        backgroundColor: "var(--bg-surface)",
+        borderColor: "var(--border-subtle)",
+        color: "var(--text-primary)",
+      }}
+      className="fixed bottom-0 inset-x-0 z-30 border-t shadow-2xl backdrop-blur-md"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* Track Info */}
+        <div className="flex items-center gap-3 min-w-0 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={togglePlayPause}
+            aria-label={isPlaying ? "Pause Kirtan" : "Play Kirtan"}
+            className="h-10 w-10 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm hover:brightness-105 transition"
+          >
+            {isLoadingAudio ? "•••" : isPlaying ? "⏸" : "▶"}
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              {currentTrack.isLiveStream && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold uppercase tracking-wider">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                  LIVE 24/7
+                </span>
+              )}
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27] truncate">
+                {currentTrack.raag}
               </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-[0.18em] truncate"
-                    style={{ color: "var(--accent-primary)" }}
-                  >
-                    {currentTrack.raag}
-                  </span>
-                  {usingTantiSynth && (
-                    <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-[#C59B27]/40">
-                      Tanti Saaj Drone
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm font-serif font-bold truncate">
-                  {currentTrack.title}
-                </p>
-                <p
-                  className="text-xs truncate"
-                  style={{ color: "var(--theme-text-muted)" }}
-                >
-                  {currentTrack.ragi}
-                </p>
-              </div>
             </div>
-
-            {/* Playback & Seek Controls */}
-            <div className="flex flex-1 max-w-xl flex-col gap-1.5">
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={prevTrack}
-                  aria-label="Previous Kirtan track"
-                  className="px-2.5 py-1 rounded-lg border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
-                >
-                  ⏮ Prev
-                </button>
-                <button
-                  type="button"
-                  onClick={togglePlayPause}
-                  style={{
-                    backgroundColor: "var(--accent-primary)",
-                    color: "#FFFFFF",
-                  }}
-                  className="px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-110 transition"
-                >
-                  {isPlaying ? "⏸ Pause" : "▶ Play Kirtan"}
-                </button>
-                <button
-                  type="button"
-                  onClick={nextTrack}
-                  aria-label="Next Kirtan track"
-                  className="px-2.5 py-1 rounded-lg border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
-                >
-                  Next ⏭
-                </button>
-              </div>
-              <div className="flex items-center gap-2.5 text-[11px]">
-                <span className="tabular-nums w-10 text-right">
-                  {formatAudioTime(currentTime)}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 300}
-                  value={currentTime}
-                  onChange={(e) => seekTo(Number(e.target.value))}
-                  aria-label="Seek audio position"
-                  className="flex-1 accent-[#C59B27] cursor-pointer h-1.5 rounded-lg"
-                />
-                <span className="tabular-nums w-10">
-                  {formatAudioTime(duration)}
-                </span>
-              </div>
-            </div>
-
-            {/* Volume, Full Darbar Link & Close */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-              <div className="hidden md:flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold">Vol</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  aria-label="Audio volume"
-                  className="w-20 accent-[#C59B27] cursor-pointer h-1.5"
-                />
-              </div>
-              <Link
-                href="/granths"
-                className="text-xs font-semibold underline hover:opacity-80"
-                style={{ color: "var(--accent-primary)" }}
-              >
-                Raag Darbar →
-              </Link>
-              <button
-                type="button"
-                onClick={closeMiniPlayer}
-                aria-label="Close mini-player"
-                className="px-2 py-1 rounded-lg border border-[#C59B27]/35 text-xs hover:border-[#C59B27]"
-              >
-                ✕
-              </button>
-            </div>
+            <p className="text-xs sm:text-sm font-serif font-bold truncate">
+              {currentTrack.title}
+            </p>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-[11px] truncate"
+            >
+              {audioError ? (
+                <span className="text-amber-600 font-semibold">{audioError}</span>
+              ) : (
+                `${currentTrack.ragi} • ${currentTrack.tantiSaaj}`
+              )}
+            </p>
           </div>
         </div>
-      )}
-    </KirtanAudioContext.Provider>
+
+        {/* Transport & Progress Bar */}
+        <div className="flex items-center gap-2.5 w-full md:max-w-md">
+          <button
+            type="button"
+            onClick={prevTrack}
+            aria-label="Previous Track"
+            className="px-2 py-1 rounded-lg border border-[#C59B27]/35 text-xs font-semibold hover:border-[#C59B27] transition"
+          >
+            ⏮
+          </button>
+
+          {currentTrack.isLiveStream ? (
+            <div className="flex-1 text-center py-1 px-3 rounded-lg bg-[#C59B27]/10 border border-[#C59B27]/30 text-[11px] font-bold text-[#C59B27]">
+              Official SGPC Live Broadcast • Sri Harmandir Sahib, Amritsar
+            </div>
+          ) : (
+            <>
+              <span className="text-[11px] font-mono tabular-nums shrink-0">
+                {formatAudioTime(currentTime)}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={duration || 1800}
+                value={currentTime}
+                onChange={(e) => seekTo(Number(e.target.value))}
+                aria-label="Seek audio position"
+                className="w-full accent-[#C59B27] cursor-pointer h-1.5"
+              />
+              <span className="text-[11px] font-mono tabular-nums shrink-0">
+                {formatAudioTime(duration)}
+              </span>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={nextTrack}
+            aria-label="Next Track"
+            className="px-2 py-1 rounded-lg border border-[#C59B27]/35 text-xs font-semibold hover:border-[#C59B27] transition"
+          >
+            ⏭
+          </button>
+        </div>
+
+        {/* Quick Actions: 25% Reading Vol, Suggest Track, Minimize */}
+        <div className="hidden lg:flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleReadingVolumePreset}
+            title="Set volume to 25% for peaceful background listening while reading"
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+              isReadingVolumePreset
+                ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
+                : "border-[#C59B27]/40 text-[#C59B27] hover:border-[#C59B27]"
+            }`}
+          >
+            🔉 25% Vol
+          </button>
+
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            aria-label="Audio volume"
+            className="w-16 accent-[#C59B27] cursor-pointer h-1.5"
+          />
+
+          <button
+            type="button"
+            onClick={() => setIsCustomModalOpen(true)}
+            className="px-2.5 py-1 rounded-lg border border-[#C59B27]/45 text-[11px] font-bold text-[#C59B27] hover:border-[#C59B27]"
+          >
+            + Suggest Kirtan
+          </button>
+
+          <Link
+            href="/live-kirtan"
+            className="text-[11px] font-bold uppercase tracking-wider text-[#C59B27] hover:underline px-1"
+          >
+            Live Hub
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setIsMinimized(true)}
+            aria-label="Minimize audio player"
+            className="text-xs px-2 py-1 rounded-lg border border-[#C59B27]/35 hover:border-[#C59B27]"
+          >
+            Minimize
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }

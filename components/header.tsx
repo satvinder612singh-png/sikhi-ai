@@ -8,13 +8,15 @@ import { useAuth } from "@/components/auth-provider";
 
 const LINKS = [
   { href: "/nitnem", label: "Gurbani" },
-  { href: "/granths", label: "Granths & Kirtan" },
+  { href: "/live-kirtan", label: "Live Kirtan" },
+  { href: "/granths", label: "Granths & Raag" },
   { href: "/matriarchs", label: "Matriarchs" },
   { href: "/games", label: "Abhiyaas" },
-  { href: "/#sangat", label: "Sangat" },
+  { href: "/sangat", label: "Sangat" },
 ];
 
 const MOBILE_EXTRA_LINKS = [
+  { href: "/sangat?studio=1", label: "Profile Studio" },
   { href: "/hukamnama", label: "Daily Hukamnama" },
   { href: "/ask", label: "Scriptural Inquiry" },
   { href: "/sources", label: "Primary Sources" },
@@ -63,7 +65,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
           </span>
         </Link>
 
-        <ul className="hidden items-center gap-4 xl:gap-6 lg:flex">
+        <ul className="hidden items-center gap-3 xl:gap-5 lg:flex">
           {LINKS.map((l) => (
             <li key={l.href} className="shrink-0">
               <Link
@@ -81,7 +83,18 @@ export function Header({ solid = false }: { solid?: boolean }) {
           </li>
 
           {user ? (
-            <li className="shrink-0">
+            <li className="shrink-0 flex items-center gap-2">
+              <Link
+                href="/sangat?studio=1"
+                style={{
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--accent-primary)",
+                }}
+                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition hover:border-[#C59B27] ${focusRing}`}
+                title="Open Researcher Profile Studio"
+              >
+                Profile
+              </Link>
               <button
                 type="button"
                 onClick={() => void signOut()}
@@ -89,7 +102,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                   borderColor: "var(--border-subtle)",
                   color: "var(--text-primary)",
                 }}
-                className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs xl:text-sm font-semibold transition hover:opacity-80 ${focusRing}`}
+                className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs xl:text-sm font-semibold transition hover:opacity-80 ${focusRing}`}
                 title={user.email ?? undefined}
               >
                 Sign out

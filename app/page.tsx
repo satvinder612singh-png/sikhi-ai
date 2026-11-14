@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Hero } from "@/components/hero";
 import { DailyHukamnama } from "@/components/daily-hukamnama";
+import { ManglacharanSpotlight } from "@/components/manglacharan-spotlight";
 import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
 import { SevaPathFinderInline } from "@/components/seva-concierge";
 import { Footer } from "@/components/footer";
@@ -40,17 +41,17 @@ const PILLAR_GATEWAYS: PillarGateway[] = [
   {
     id: "granths-kirtan",
     numeral: "੨",
-    eyebrow: "PILLAR II • RAAG DARBAR & CLASSICAL EXEGESIS",
+    eyebrow: "PILLAR II • RAAG DARBAR & INTERACTIVE BOOKREADER",
     title: "Granths & Puratan Kirtan",
     gurmukhi: "ਪੁਰਾਤਨ ਕੀਰਤਨ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ",
     href: "/granths",
     ctaLabel: "Enter Raag Darbar & Granth Library →",
     description:
-      "Listen to authentic Puratan Kirtan across Raag Asa, Bilaaval, Tukhari, and Kalyan with our persistent bottom mini-player, and study primary Granth PDFs and Teekas inline.",
+      "Stream authentic Puratan Kirtan by Bhai Avtar Singh Ji with our persistent bottom mini-player, and explore our Dual-Mode 2-Up BookReader & Live Ang 1–1430 Darpan Viewer.",
     highlights: [
-      "Bhai Avtar Singh Ji, Bhai Gurmej Singh Ji & Sant Sujan Singh Ji",
-      "Prof. Sahib Singh's 10-Vol Darpan, Panth Prakash & Suraj Prakash",
-      "Bhai Gurdas Ji Vaaran, Bhai Nand Lal Ghazals & Mahan Kosh",
+      "Verified Archive.org Puratan Kirtan MP3s & Playlist Player",
+      "Prof. Sahib Singh Darpan (Ang 1–1430), Panth Prakash & Suraj Prakash",
+      "Puratan SGGS Manuscript, Pracheen Reet Ratnavli & Khalsa Dharam Shastar",
     ],
   },
   {
@@ -87,32 +88,74 @@ const PILLAR_GATEWAYS: PillarGateway[] = [
   },
 ];
 
-const CONNECTED_ARCHIVES = [
+type DeepDiveResource = {
+  numeral: string;
+  tag: string;
+  name: string;
+  gurmukhi: string;
+  description: string;
+  links: { label: string; url: string }[];
+};
+
+const DEEP_DIVE_RESOURCES: DeepDiveResource[] = [
   {
     numeral: "੧",
-    tag: "CLASSICAL GRANTHS",
-    name: "Manglacharan Archive",
-    url: "https://www.manglacharan.com/",
+    tag: "CLASSICAL GRANTHS & EXEGESIS",
+    name: "Manglacharan",
+    gurmukhi: "ਮੰਗਲਾਚਰਨ",
     description:
-      "Translations and literary analysis of Sri Gur Pratap Suraj Granth, Panth Prakash, and pre-colonial Khalsa chronicles.",
+      "Translations and scholarly commentary on classical Braj and Gurmukhi Sikh texts (such as Suraj Prakash, Panth Prakash, and Sarbloh Granth).",
+    links: [
+      { label: "Explore Manglacharan.com ↗", url: "https://manglacharan.com" },
+    ],
   },
   {
     numeral: "੨",
-    tag: "CONTEMPORARY WITNESS",
-    name: "1984 Tribute & Ensaaf",
-    url: "https://1984tribute.com/",
-    secondaryUrl: "https://ensaaf.org/",
+    tag: "SOVEREIGNTY & PHILOSOPHY",
+    name: "Bunga Azadi",
+    gurmukhi: "ਬੁੰਗਾ ਆਜ਼ਾਦੀ",
     description:
-      "Verified digital memorials and human-rights documentation of June & November 1984 and Shaheed biographies.",
+      "Deep-dive discussions on Sikh sovereignty, philosophy, colonial history, and Panthic literature.",
+    links: [
+      {
+        label: "Bunga Azadi YouTube ↗",
+        url: "https://www.youtube.com/@BungaAzadi",
+      },
+      {
+        label: "Bunga Azadi Instagram ↗",
+        url: "https://www.instagram.com/bungaazadi/",
+      },
+    ],
   },
   {
     numeral: "੩",
-    tag: "MIRI-PIRI THOUGHT",
-    name: "Bunga Azaadi & SikhiToTheMax",
-    url: "https://www.bungaazaadi.com/",
-    secondaryUrl: "https://www.sikhitothemax.org/",
+    tag: "VERIFIED HISTORICAL ARCHIVES",
+    name: "Never Forget 1984",
+    gurmukhi: "੧੯੮੪ ਇਤਿਹਾਸਕ ਦਸਤਾਵੇਜ਼",
     description:
-      "Indigenous Sikh political philosophy, Miri-Piri essays, and complete BaniDB Shabad concordance.",
+      "Verified historical archives, eyewitness testimonies, and human-rights documentation of June & November 1984 and Shaheed biographies.",
+    links: [
+      {
+        label: "NeverForget84 (Wayback Archive) ↗",
+        url: "https://web.archive.org/web/20160618115353/http://www.neverforget84.com/",
+      },
+      { label: "1984 Tribute ↗", url: "https://1984tribute.com/" },
+      { label: "Ensaaf Documentation ↗", url: "https://ensaaf.org/" },
+    ],
+  },
+  {
+    numeral: "੪",
+    tag: "KIRTAN, KATHA & POTHIS",
+    name: "Gurmat Veechar",
+    gurmukhi: "ਗੁਰਮਤਿ ਵਿਚਾਰ",
+    description:
+      "Comprehensive digital archive of Puratan Kirtan, classical Katha recordings, and downloadable Granth PDFs.",
+    links: [
+      {
+        label: "Explore GurmatVeechar.com ↗",
+        url: "https://www.gurmatveechar.com",
+      },
+    ],
   },
 ];
 
@@ -137,6 +180,15 @@ export default function HomePage() {
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-6"
       >
         <DailyHukamnama mode="preview" />
+      </section>
+
+      {/* 2B. Rotating Manglacharan Classical Granth Spotlight */}
+      <section
+        id="manglacharan-spotlight"
+        aria-label="Manglacharan Classical Granth Spotlight"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      >
+        <ManglacharanSpotlight />
       </section>
 
       {/* 3. Four Clean Pillar Gateway Cards */}
@@ -322,104 +374,149 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. Smart Path-Finder ("What Are You Looking For?") & Sangat Hub */}
+      {/* 5. Smart Path-Finder, SikhInterest & Vichaar Gateway & "Want to Learn More?" */}
       <section
         id="sangat"
-        aria-labelledby="sangat-heading"
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-12"
+        aria-labelledby="learn-more-heading"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-16"
       >
-        <div className="max-w-3xl">
-          <p
-            style={{ color: "var(--accent-primary)" }}
-            className="text-xs font-bold uppercase tracking-[0.25em] mb-2"
-          >
-            Sangat Concierge &amp; Connected Scholarship
-          </p>
-          <h2
-            id="sangat-heading"
-            className="text-3xl sm:text-5xl font-serif font-bold tracking-tight"
-          >
-            Guided Path-Finder &amp; Panthic Archives
-          </h2>
-          <p
-            style={{ color: "var(--theme-text-muted)" }}
-            className="mt-3 text-base leading-relaxed"
-          >
-            Not sure where to begin, going through a difficult moment, or searching for a
-            specific historical Granth? Use the instant Path-Finder or submit a Seva request
-            below.
-          </p>
+        <div
+          style={{
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
+          }}
+          className="rounded-3xl border-2 border-[#C59B27]/55 p-8 sm:p-10 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+        >
+          <div className="space-y-2 max-w-2xl">
+            <span
+              style={{ color: "var(--accent-primary)" }}
+              className="text-xs font-bold uppercase tracking-[0.22em]"
+            >
+              NEW COMMUNITY HUB • SUBSTACK + PINTEREST + DIL DI BAAT
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-serif font-bold">
+              SikhInterest &amp; Vichaar (/sangat)
+            </h2>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-sm sm:text-base leading-relaxed"
+            >
+              Publish long-form Gurbani &amp; history research essays, curate visual pins of
+              Sikh art and calligraphy, share personal reflections in Dil Di Baat, and
+              customize your Researcher Profile Studio.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 shrink-0">
+            <Link
+              href="/sangat"
+              className="rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-[#18181B] shadow-sm transition hover:brightness-105"
+            >
+              Enter SikhInterest &amp; Vichaar (/sangat) →
+            </Link>
+          </div>
         </div>
 
         <SevaPathFinderInline />
 
-        {/* Max 3 Cards Per Row for Connected Archives */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {CONNECTED_ARCHIVES.map((item) => (
-            <div
-              key={item.name}
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-subtle)",
-              }}
-              className="rounded-2xl border p-6 shadow-sm flex flex-col justify-between gap-4"
+        <div className="space-y-10">
+          <div className="max-w-3xl">
+            <p
+              style={{ color: "var(--accent-primary)" }}
+              className="text-xs font-bold uppercase tracking-[0.25em] mb-2"
             >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span
-                    lang="pa"
-                    style={{
-                      backgroundColor: "var(--theme-card-darker)",
-                      borderColor: "var(--border-subtle)",
-                      color: "var(--accent-primary)",
-                    }}
-                    className="h-7 w-7 rounded-lg border font-gurmukhi text-xs font-bold flex items-center justify-center"
-                  >
-                    {item.numeral}
-                  </span>
-                  <span
-                    style={{ color: "var(--accent-primary)" }}
-                    className="text-[10px] font-bold uppercase tracking-[0.18em]"
-                  >
-                    {item.tag}
-                  </span>
-                </div>
-                <h3 className="text-lg font-serif font-bold">{item.name}</h3>
-                <p
-                  style={{ color: "var(--theme-text-muted)" }}
-                  className="text-xs sm:text-sm leading-relaxed"
-                >
-                  {item.description}
-                </p>
-              </div>
+              Deep-Dive Resources • Independent Scholarship
+            </p>
+            <h2
+              id="learn-more-heading"
+              className="text-3xl sm:text-5xl font-serif font-bold tracking-tight"
+            >
+              Want to Learn More? Explore Independent Sikhi Archives &amp; Research
+            </h2>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="mt-3 text-base leading-relaxed"
+            >
+              If you want to dive deeper into classical Sikh manuscripts, philosophy, and
+              historical documentation, explore these respected resources:
+            </p>
+          </div>
 
-              <div
-                style={{ borderColor: "var(--border-subtle)" }}
-                className="pt-3 border-t flex items-center justify-between text-xs font-bold"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {DEEP_DIVE_RESOURCES.map((item) => (
+              <article
+                key={item.name}
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="rounded-3xl border p-7 sm:p-8 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6"
               >
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "var(--accent-primary)" }}
-                  className="hover:underline"
-                >
-                  Visit Archive ↗
-                </a>
-                {item.secondaryUrl && (
-                  <a
-                    href={item.secondaryUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span
+                      lang="pa"
+                      style={{
+                        backgroundColor: "var(--theme-card-darker)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--accent-primary)",
+                      }}
+                      className="h-9 w-9 rounded-xl border font-gurmukhi text-sm font-bold flex items-center justify-center"
+                    >
+                      {item.numeral}
+                    </span>
+                    <span
+                      style={{ color: "var(--accent-primary)" }}
+                      className="text-[11px] font-bold uppercase tracking-[0.18em]"
+                    >
+                      {item.tag}
+                    </span>
+                  </div>
+
+                  <div>
+                    <p
+                      lang="pa"
+                      style={{ color: "var(--accent-primary)" }}
+                      className="font-gurmukhi text-sm font-medium"
+                    >
+                      {item.gurmukhi}
+                    </p>
+                    <h3 className="text-2xl font-serif font-bold mt-0.5">
+                      {item.name}
+                    </h3>
+                  </div>
+
+                  <p
                     style={{ color: "var(--theme-text-muted)" }}
-                    className="hover:underline"
+                    className="text-sm sm:text-base leading-relaxed"
                   >
-                    Partner Link ↗
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
+                    {item.description}
+                  </p>
+                </div>
+
+                <div
+                  style={{ borderColor: "var(--border-subtle)" }}
+                  className="pt-4 border-t flex flex-wrap items-center gap-2.5"
+                >
+                  {item.links.map((lnk) => (
+                    <a
+                      key={lnk.url}
+                      href={lnk.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        backgroundColor: "var(--theme-card-darker)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--accent-primary)",
+                      }}
+                      className="px-3.5 py-2 rounded-xl border text-xs font-bold hover:border-[#C59B27] transition"
+                    >
+                      {lnk.label}
+                    </a>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -8,19 +8,26 @@ const GROUPS = [
     heading: "Sanctuary Pillars",
     links: [
       { href: "/nitnem", label: "੧ · Gurbani & Nitnem Reader" },
-      { href: "/hukamnama", label: "੨ · Daily Darbar Sahib Hukamnama" },
-      { href: "/granths", label: "੩ · Granths & Puratan Kirtan" },
-      { href: "/matriarchs", label: "੪ · Matriarchs of the Panth" },
-      { href: "/games", label: "੫ · Interactive Abhiyaas Games" },
+      { href: "/live-kirtan", label: "੨ · Live 24/7 Darbar Sahib Kirtan" },
+      { href: "/hukamnama", label: "੩ · Daily Darbar Sahib Hukamnama" },
+      { href: "/granths", label: "੪ · Granths & Puratan Kirtan" },
+      { href: "/matriarchs", label: "੫ · Matriarchs of the Panth" },
+      { href: "/games", label: "੬ · Interactive Abhiyaas Games" },
+      { href: "/sangat", label: "੭ · SikhInterest & Vichaar (/sangat)" },
     ],
   },
   {
-    heading: "Research & Sangat",
+    heading: "Want to Learn More?",
     links: [
-      { href: "/ask", label: "Scriptural & Historical Inquiry" },
-      { href: "/sources", label: "Primary Scriptural Sources" },
-      { href: "/#sangat", label: "What Are You Looking For? (Concierge)" },
-      { href: "/login", label: "Scholar Sign In" },
+      { href: "https://manglacharan.com", label: "Manglacharan (Classical Granths) ↗", external: true },
+      { href: "https://www.youtube.com/@BungaAzadi", label: "Bunga Azadi (Sovereignty & History) ↗", external: true },
+      {
+        href: "https://web.archive.org/web/20160618115353/http://www.neverforget84.com/",
+        label: "Never Forget 1984 Archive ↗",
+        external: true,
+      },
+      { href: "https://1984tribute.com/", label: "1984 Tribute & Ensaaf ↗", external: true },
+      { href: "https://www.gurmatveechar.com", label: "Gurmat Veechar Library ↗", external: true },
     ],
   },
 ];
@@ -123,13 +130,25 @@ export function Footer() {
               <ul className="mt-4 space-y-2.5">
                 {g.links.map((l) => (
                   <li key={l.label}>
-                    <Link
-                      href={l.href}
-                      style={{ color: "var(--theme-text-muted)" }}
-                      className="text-sm font-medium transition hover:opacity-100 focus:outline-none focus-visible:underline"
-                    >
-                      {l.label}
-                    </Link>
+                    {"external" in l && l.external ? (
+                      <a
+                        href={l.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-sm font-medium transition hover:opacity-100 focus:outline-none focus-visible:underline"
+                      >
+                        {l.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={l.href}
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-sm font-medium transition hover:opacity-100 focus:outline-none focus-visible:underline"
+                      >
+                        {l.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
