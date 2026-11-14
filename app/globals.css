@@ -3,131 +3,168 @@
 @tailwind utilities;
 
 /* ============================================================================
-   1. SIKHI PALETTE THEME TOKENS (4 LIVE SWITCHABLE THEMES)
+   1. 5 CURATED SANCTUARY THEMES (DEFAULT: SUNLIT IVORY & DARBAR GOLD)
 ============================================================================ */
+
+/* 1. Sunlit Ivory & Darbar Gold (NEW DEFAULT — Warm, Bright, Welcoming) */
 :root,
-html[data-theme="emerald"] {
-  --bg-primary: #0a1f17;
-  --bg-surface: #153226;
-  --text-primary: #f7f2e7;
-  --text-on-surface: #faf6ee;
-  --accent-primary: #d4af37;
-  --border-subtle: rgba(212, 175, 55, 0.38);
+html[data-theme="ivory"] {
+  --bg-primary: #FAF7F0;
+  --bg-surface: #FFFFFF;
+  --text-primary: #18181B;
+  --text-on-surface: #18181B;
+  --accent-primary: #C59B27;
+  --border-subtle: rgba(197, 155, 39, 0.32);
 
-  --logo-shield-start: #234737;
-  --logo-shield-end: #071610;
+  --logo-shield-start: #1E293B;
+  --logo-shield-end: #0F172A;
 
-  --theme-bg-primary: #0a1f17;
-  --theme-bg-secondary: #112a20;
-  --theme-card-dark: #153226;
-  --theme-card-darker: #071610;
-  --theme-text-primary: #f7f2e7;
-  --theme-text-muted: #c7d3cb;
-  --theme-accent-gold: #d4af37;
-  --theme-accent-bright: #e5c158;
-  --theme-accent-highlight: #d97706;
+  --theme-bg-primary: #FAF7F0;
+  --theme-bg-secondary: #F3EDE0;
+  --theme-card-dark: #FFFFFF;
+  --theme-card-darker: #F4EFE4;
+  --theme-text-primary: #18181B;
+  --theme-text-muted: #52525B;
+  --theme-accent-gold: #C59B27;
+  --theme-accent-bright: #9A6B0A;
+  --theme-accent-highlight: #B45309;
 
-  --bg-ivory: #0a1f17;
-  --bg-parchment: #112a20;
-  --accent-olive: #153226;
-  --text-charcoal: #f7f2e7;
-  --text-muted-olive: #c7d3cb;
-  --highlight-saffron: #d97706;
-  --border-gold: #d4af37;
-  --border-gold-light: #e5c158;
+  --bg-ivory: #FAF7F0;
+  --bg-parchment: #FFFFFF;
+  --accent-olive: #18181B;
+  --text-charcoal: #18181B;
+  --text-muted-olive: #52525B;
+  --highlight-saffron: #B45309;
+  --border-gold: #C59B27;
+  --border-gold-light: #E5C158;
 }
 
-html[data-theme="parchment"] {
-  --bg-primary: #f7f2e7;
-  --bg-surface: #24382b;
-  --text-primary: #1c2421;
-  --text-on-surface: #faf6ee;
-  --accent-primary: #9a7b2c;
-  --border-subtle: rgba(154, 123, 44, 0.36);
+/* 2. Harmandir Marble & Sky (Crisp Light) */
+html[data-theme="marble"] {
+  --bg-primary: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-on-surface: #0F172A;
+  --accent-primary: #D97706;
+  --border-subtle: #E2E8F0;
 
-  --logo-shield-start: #35503f;
-  --logo-shield-end: #16241b;
+  --logo-shield-start: #1E3A8A;
+  --logo-shield-end: #0F172A;
 
-  --theme-bg-primary: #f7f2e7;
-  --theme-bg-secondary: #efe6d5;
-  --theme-card-dark: #24382b;
-  --theme-card-darker: #18261d;
-  --theme-text-primary: #1c2421;
-  --theme-text-muted: #4a554e;
-  --theme-accent-gold: #9a7b2c;
-  --theme-accent-bright: #d4af37;
-  --theme-accent-highlight: #b45309;
+  --theme-bg-primary: #F8FAFC;
+  --theme-bg-secondary: #F1F5F9;
+  --theme-card-dark: #FFFFFF;
+  --theme-card-darker: #F1F5F9;
+  --theme-text-primary: #0F172A;
+  --theme-text-muted: #475569;
+  --theme-accent-gold: #D97706;
+  --theme-accent-bright: #B45309;
+  --theme-accent-highlight: #0284C7;
 
-  --bg-ivory: #f7f2e7;
-  --bg-parchment: #efe6d5;
-  --accent-olive: #24382b;
-  --text-charcoal: #1c2421;
-  --text-muted-olive: #4a554e;
-  --highlight-saffron: #b45309;
-  --border-gold: #9a7b2c;
-  --border-gold-light: #c59b27;
+  --bg-ivory: #F8FAFC;
+  --bg-parchment: #FFFFFF;
+  --accent-olive: #0F172A;
+  --text-charcoal: #0F172A;
+  --text-muted-olive: #475569;
+  --highlight-saffron: #D97706;
+  --border-gold: #CBD5E1;
+  --border-gold-light: #D97706;
 }
 
-html[data-theme="navy"] {
-  --bg-primary: #0b162c;
-  --bg-surface: #16284c;
-  --text-primary: #f8f6f0;
-  --text-on-surface: #f8f6f0;
-  --accent-primary: #f4b41a;
-  --border-subtle: rgba(244, 180, 26, 0.38);
+/* 3. Khalsa Royal Indigo & Basanti (Rich Modern Dark) */
+html[data-theme="indigo"] {
+  --bg-primary: #0B132B;
+  --bg-surface: #1C2541;
+  --text-primary: #F8FAFC;
+  --text-on-surface: #F8FAFC;
+  --accent-primary: #F59E0B;
+  --border-subtle: rgba(245, 158, 11, 0.34);
 
-  --logo-shield-start: #213c70;
-  --logo-shield-end: #070f1f;
+  --logo-shield-start: #263859;
+  --logo-shield-end: #0B132B;
 
-  --theme-bg-primary: #0b162c;
-  --theme-bg-secondary: #132242;
-  --theme-card-dark: #16284c;
-  --theme-card-darker: #070f1f;
-  --theme-text-primary: #f8f6f0;
-  --theme-text-muted: #cbd5e1;
-  --theme-accent-gold: #f4b41a;
-  --theme-accent-bright: #ffd166;
-  --theme-accent-highlight: #f59e0b;
+  --theme-bg-primary: #0B132B;
+  --theme-bg-secondary: #141E38;
+  --theme-card-dark: #1C2541;
+  --theme-card-darker: #080E20;
+  --theme-text-primary: #F8FAFC;
+  --theme-text-muted: #CBD5E1;
+  --theme-accent-gold: #F59E0B;
+  --theme-accent-bright: #FBBF24;
+  --theme-accent-highlight: #F59E0B;
 
-  --bg-ivory: #0b162c;
-  --bg-parchment: #132242;
-  --accent-olive: #16284c;
-  --text-charcoal: #f8f6f0;
-  --text-muted-olive: #cbd5e1;
-  --highlight-saffron: #f59e0b;
-  --border-gold: #f4b41a;
-  --border-gold-light: #ffd166;
+  --bg-ivory: #0B132B;
+  --bg-parchment: #1C2541;
+  --accent-olive: #1C2541;
+  --text-charcoal: #F8FAFC;
+  --text-muted-olive: #CBD5E1;
+  --highlight-saffron: #F59E0B;
+  --border-gold: #F59E0B;
+  --border-gold-light: #FBBF24;
 }
 
-html[data-theme="dusk"] {
-  --bg-primary: #161224;
-  --bg-surface: #28213f;
-  --text-primary: #f9f5f0;
-  --text-on-surface: #f9f5f0;
-  --accent-primary: #e2b887;
-  --border-subtle: rgba(226, 184, 135, 0.38);
+/* 4. Anandpur Terracotta & Sand (Warm Earth) */
+html[data-theme="terracotta"] {
+  --bg-primary: #F5EBE6;
+  --bg-surface: #FFFDFB;
+  --text-primary: #2D1E17;
+  --text-on-surface: #2D1E17;
+  --accent-primary: #B84A39;
+  --border-subtle: rgba(184, 74, 57, 0.28);
 
-  --logo-shield-start: #3c315e;
-  --logo-shield-end: #0f0c19;
+  --logo-shield-start: #6E261C;
+  --logo-shield-end: #2D1E17;
 
-  --theme-bg-primary: #161224;
-  --theme-bg-secondary: #211b34;
-  --theme-card-dark: #28213f;
-  --theme-card-darker: #0f0c19;
-  --theme-text-primary: #f9f5f0;
-  --theme-text-muted: #d6cce2;
-  --theme-accent-gold: #e2b887;
-  --theme-accent-bright: #f0d2ad;
-  --theme-accent-highlight: #e07a5f;
+  --theme-bg-primary: #F5EBE6;
+  --theme-bg-secondary: #EBDDD5;
+  --theme-card-dark: #FFFDFB;
+  --theme-card-darker: #EFE3DC;
+  --theme-text-primary: #2D1E17;
+  --theme-text-muted: #694E42;
+  --theme-accent-gold: #B84A39;
+  --theme-accent-bright: #9E3828;
+  --theme-accent-highlight: #B84A39;
 
-  --bg-ivory: #161224;
-  --bg-parchment: #211b34;
-  --accent-olive: #28213f;
-  --text-charcoal: #f9f5f0;
-  --text-muted-olive: #d6cce2;
-  --highlight-saffron: #e07a5f;
-  --border-gold: #e2b887;
-  --border-gold-light: #f0d2ad;
+  --bg-ivory: #F5EBE6;
+  --bg-parchment: #FFFDFB;
+  --accent-olive: #2D1E17;
+  --text-charcoal: #2D1E17;
+  --text-muted-olive: #694E42;
+  --highlight-saffron: #B84A39;
+  --border-gold: #B84A39;
+  --border-gold-light: #D97706;
+}
+
+/* 5. Amrit Vela Obsidian & Rose Gold (High-Contrast OLED Dark) */
+html[data-theme="obsidian"] {
+  --bg-primary: #121316;
+  --bg-surface: #1E2025;
+  --text-primary: #F8FAFC;
+  --text-on-surface: #F8FAFC;
+  --accent-primary: #E5C158;
+  --border-subtle: rgba(229, 193, 88, 0.32);
+
+  --logo-shield-start: #2C2F37;
+  --logo-shield-end: #121316;
+
+  --theme-bg-primary: #121316;
+  --theme-bg-secondary: #181A1F;
+  --theme-card-dark: #1E2025;
+  --theme-card-darker: #0C0D0F;
+  --theme-text-primary: #F8FAFC;
+  --theme-text-muted: #A1A1AA;
+  --theme-accent-gold: #E5C158;
+  --theme-accent-bright: #F3D886;
+  --theme-accent-highlight: #E07A5F;
+
+  --bg-ivory: #121316;
+  --bg-parchment: #1E2025;
+  --accent-olive: #1E2025;
+  --text-charcoal: #F8FAFC;
+  --text-muted-olive: #A1A1AA;
+  --highlight-saffron: #E07A5F;
+  --border-gold: #E5C158;
+  --border-gold-light: #F3D886;
 }
 
 @layer base {
@@ -168,7 +205,7 @@ html[data-theme="dusk"] {
   }
 
   ::selection {
-    background: rgba(212, 175, 55, 0.28);
+    background: rgba(197, 155, 39, 0.24);
     color: var(--text-primary);
   }
 
@@ -184,104 +221,100 @@ html[data-theme="dusk"] {
 }
 
 /* ============================================================================
-   2. GLOBAL 100% THEME COVERAGE REMAPPING ACROSS ALL SECTIONS, CARDS & HEADERS
+   2. GLOBAL 100% THEME COVERAGE REMAPPING (ZERO HEAVY DARK GREEN)
 ============================================================================ */
-/* Primary page canvas classes */
-html[data-theme="emerald"] .bg-\[\#FAF6EE\],
-html[data-theme="navy"] .bg-\[\#FAF6EE\],
-html[data-theme="dusk"] .bg-\[\#FAF6EE\],
-html[data-theme="parchment"] .bg-\[\#FAF6EE\] {
+/* Page canvas classes */
+.bg-\[\#FAF6EE\],
+.bg-\[\#FAF7F0\] {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
 }
 
-/* Secondary card/parchment surfaces */
-html[data-theme="emerald"] .bg-\[\#F3ECE0\],
-html[data-theme="navy"] .bg-\[\#F3ECE0\],
-html[data-theme="dusk"] .bg-\[\#F3ECE0\],
-html[data-theme="parchment"] .bg-\[\#F3ECE0\] {
-  background-color: var(--theme-bg-secondary) !important;
+/* Card & surface classes */
+.bg-\[\#F3ECE0\],
+.bg-\[\#1B2A20\],
+.bg-\[\#1B2A20\]\/95,
+.bg-\[\#1B2A20\]\/90,
+.bg-\[\#1B2A20\]\/98,
+.bg-\[\#0A1F17\],
+.bg-\[\#0a1f17\] {
+  background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
 }
 
-/* Primary elevated dark surfaces (Headers, Footers, Hero, Feature Cards) */
-html[data-theme] .bg-\[\#1B2A20\],
-html[data-theme] .bg-\[\#1B2A20\]\/95,
-html[data-theme] .bg-\[\#1B2A20\]\/90,
-html[data-theme] .bg-\[\#1B2A20\]\/98,
-html[data-theme] .bg-\[\#0A1F17\],
-html[data-theme] .bg-\[\#0a1f17\] {
-  background-color: var(--bg-surface) !important;
-}
-
-/* Deepest inset surfaces (Badges, Wells, Controls, Dropdowns) */
-html[data-theme] .bg-\[\#121C15\],
-html[data-theme] .bg-\[\#121C15\]\/90,
-html[data-theme] .bg-\[\#121C15\]\/85,
-html[data-theme] .bg-\[\#121C15\]\/60 {
+/* Secondary / inset surface wells */
+.bg-\[\#121C15\],
+.bg-\[\#121C15\]\/90,
+.bg-\[\#121C15\]\/85,
+.bg-\[\#121C15\]\/60 {
   background-color: var(--theme-card-darker) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Hero & section gradient backdrops */
-html[data-theme] .from-\[\#121C15\] {
-  --tw-gradient-from: var(--theme-card-darker) var(--tw-gradient-from-position) !important;
+.from-\[\#121C15\] {
+  --tw-gradient-from: var(--bg-primary) var(--tw-gradient-from-position) !important;
 }
-html[data-theme] .via-\[\#1B2A20\] {
+.via-\[\#1B2A20\] {
   --tw-gradient-via: var(--bg-surface) var(--tw-gradient-via-position) !important;
 }
-html[data-theme] .to-\[\#233629\],
-html[data-theme] .to-\[\#1B2A20\] {
-  --tw-gradient-to: var(--bg-surface) var(--tw-gradient-to-position) !important;
+.to-\[\#233629\],
+.to-\[\#1B2A20\] {
+  --tw-gradient-to: var(--bg-primary) var(--tw-gradient-to-position) !important;
 }
 
-/* Primary & Muted Typography across themes */
-html[data-theme="emerald"] .text-\[\#171917\],
-html[data-theme="navy"] .text-\[\#171917\],
-html[data-theme="dusk"] .text-\[\#171917\] {
+/* Primary & Muted Typography across all 5 themes */
+.text-\[\#171917\],
+.text-\[\#18181B\],
+.text-\[\#FAF6EE\] {
   color: var(--text-primary) !important;
 }
 
-html[data-theme="emerald"] .text-\[\#4A554E\],
-html[data-theme="navy"] .text-\[\#4A554E\],
-html[data-theme="dusk"] .text-\[\#4A554E\],
-html[data-theme="parchment"] .text-\[\#4A554E\] {
+.text-\[\#4A554E\],
+.text-\[\#F3ECE0\],
+.text-\[\#F3ECE0\]\/95,
+.text-\[\#F3ECE0\]\/90,
+.text-\[\#F3ECE0\]\/85,
+.text-\[\#F3ECE0\]\/80,
+.text-\[\#F3ECE0\]\/75,
+.text-\[\#F3ECE0\]\/70 {
   color: var(--theme-text-muted) !important;
 }
 
-html[data-theme="emerald"] .text-\[\#1B2A20\],
-html[data-theme="navy"] .text-\[\#1B2A20\],
-html[data-theme="dusk"] .text-\[\#1B2A20\] {
-  color: var(--theme-accent-bright) !important;
-}
-
-/* Accent Gold, Bright Gold & Saffron Typography & Borders */
-html[data-theme] .text-\[\#E5C158\] {
-  color: var(--theme-accent-bright) !important;
-}
-
-html[data-theme] .text-\[\#C59B27\] {
+.text-\[\#1B2A20\] {
   color: var(--accent-primary) !important;
 }
 
-html[data-theme] .text-\[\#D97706\] {
+/* Accent Gold, Bright Gold & Saffron Typography & Borders */
+.text-\[\#E5C158\] {
+  color: var(--theme-accent-bright) !important;
+}
+
+.text-\[\#C59B27\] {
+  color: var(--accent-primary) !important;
+}
+
+.text-\[\#D97706\] {
   color: var(--theme-accent-highlight) !important;
 }
 
-html[data-theme] .border-\[\#C59B27\],
-html[data-theme] .border-\[\#C59B27\]\/60,
-html[data-theme] .border-\[\#C59B27\]\/50,
-html[data-theme] .border-\[\#C59B27\]\/45,
-html[data-theme] .border-\[\#C59B27\]\/40,
-html[data-theme] .border-\[\#C59B27\]\/35,
-html[data-theme] .border-\[\#C59B27\]\/30,
-html[data-theme] .border-\[\#C59B27\]\/25 {
+.border-\[\#C59B27\],
+.border-\[\#C59B27\]\/80,
+.border-\[\#C59B27\]\/60,
+.border-\[\#C59B27\]\/50,
+.border-\[\#C59B27\]\/45,
+.border-\[\#C59B27\]\/40,
+.border-\[\#C59B27\]\/35,
+.border-\[\#C59B27\]\/30,
+.border-\[\#C59B27\]\/25,
+.border-\[\#C59B27\]\/20 {
   border-color: var(--border-subtle) !important;
 }
 
 /* Keep dark text high-contrast inside gold/accent gradient CTA buttons */
-html[data-theme] button.from-\[\#C59B27\],
-html[data-theme] a.from-\[\#C59B27\] {
-  color: #111613 !important;
+button.from-\[\#C59B27\],
+a.from-\[\#C59B27\] {
+  color: #18181B !important;
 }
 
 /* ============================================================================
@@ -319,9 +352,9 @@ html[data-theme] a.from-\[\#C59B27\] {
 .theme-wave-overlay {
   background: radial-gradient(
     circle at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px),
-    var(--wave-accent, #d4af37) 0%,
-    var(--wave-surface, #153226) 42%,
-    var(--wave-bg, #0a1f17) 85%
+    var(--wave-accent, #C59B27) 0%,
+    var(--wave-surface, #FFFFFF) 42%,
+    var(--wave-bg, #FAF7F0) 85%
   );
   animation: themeRadialWave 660ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
@@ -330,9 +363,9 @@ html[data-theme] a.from-\[\#C59B27\] {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--wave-accent, #d4af37) 38%, transparent) 45%,
-    color-mix(in srgb, var(--wave-accent, #d4af37) 68%, transparent) 50%,
-    color-mix(in srgb, var(--wave-accent, #d4af37) 38%, transparent) 55%,
+    color-mix(in srgb, var(--wave-accent, #C59B27) 38%, transparent) 45%,
+    color-mix(in srgb, var(--wave-accent, #C59B27) 68%, transparent) 50%,
+    color-mix(in srgb, var(--wave-accent, #C59B27) 38%, transparent) 55%,
     transparent 100%
   );
   animation: themeDiagonalSweep 640ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -379,7 +412,7 @@ html[data-theme] a.from-\[\#C59B27\] {
 
   .border-ornamental-gold {
     border-color: var(--border-subtle);
-    box-shadow: inset 0 0 0 1px rgba(229, 193, 88, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(197, 155, 39, 0.14);
   }
 
   .surface-ivory {
@@ -388,14 +421,14 @@ html[data-theme] a.from-\[\#C59B27\] {
   }
 
   .surface-parchment {
-    background-color: var(--theme-bg-secondary);
+    background-color: var(--bg-surface);
     color: var(--text-primary);
     border: 1px solid var(--border-subtle);
   }
 
   .surface-olive {
     background-color: var(--bg-surface);
-    color: #FAF6EE;
+    color: var(--text-primary);
     border: 1px solid var(--border-subtle);
   }
 

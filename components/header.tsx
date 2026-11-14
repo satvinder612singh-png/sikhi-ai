@@ -7,25 +7,24 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useAuth } from "@/components/auth-provider";
 
 const LINKS = [
-  { href: "/hukamnama", label: "Hukamnama" },
-  { href: "/nitnem", label: "Nitnem & Bani" },
-  { href: "/#baani", label: "Gurbani" },
-  { href: "/#matriarchs", label: "Matriarchs" },
-  { href: "/#gurmat-veechar", label: "Granths" },
+  { href: "/nitnem", label: "Gurbani" },
+  { href: "/granths", label: "Granths & Kirtan" },
+  { href: "/matriarchs", label: "Matriarchs" },
   { href: "/games", label: "Abhiyaas" },
-  { href: "/sources", label: "Sources" },
+  { href: "/#sangat", label: "Sangat" },
 ];
 
 const MOBILE_EXTRA_LINKS = [
-  { href: "/#ecology", label: "Ecology & Seva" },
+  { href: "/hukamnama", label: "Daily Hukamnama" },
+  { href: "/ask", label: "Scriptural Inquiry" },
+  { href: "/sources", label: "Primary Sources" },
 ];
 
 const focusRing =
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]";
 
 /**
- * Top navigation header integrating <BrandLogo size="sm" />, <ThemeSwitcher />,
- * and single-row responsive alignment across desktop viewports.
+ * Clean, breathable 5-link top navigation bar with ThemeSwitcher and Sign In.
  */
 export function Header({ solid = false }: { solid?: boolean }) {
   const { user, signOut } = useAuth();
@@ -34,10 +33,15 @@ export function Header({ solid = false }: { solid?: boolean }) {
 
   return (
     <header
+      style={{
+        backgroundColor: "var(--bg-surface)",
+        borderColor: "var(--border-subtle)",
+        color: "var(--text-primary)",
+      }}
       className={
         solid
-          ? "sticky top-0 z-30 border-b border-[#C59B27]/35 bg-[#1B2A20]/95 text-[#FAF6EE] backdrop-blur-md shadow-sm"
-          : "sticky top-0 z-30 border-b border-[#C59B27]/25 bg-[#1B2A20]/90 text-[#FAF6EE] backdrop-blur-md"
+          ? "sticky top-0 z-30 border-b backdrop-blur-md shadow-sm"
+          : "sticky top-0 z-30 border-b backdrop-blur-md"
       }
     >
       <nav
@@ -50,20 +54,22 @@ export function Header({ solid = false }: { solid?: boolean }) {
           className={`group flex shrink-0 items-center gap-2.5 rounded-lg py-0.5 whitespace-nowrap transition ${focusRing}`}
         >
           <BrandLogo size="sm" />
-          <span className="whitespace-nowrap font-serif text-xl sm:text-2xl font-bold tracking-wide text-[#FAF6EE] transition-colors group-hover:text-[#E5C158]">
+          <span
+            className="whitespace-nowrap font-serif text-xl sm:text-2xl font-bold tracking-wide transition-colors"
+            style={{ color: "var(--text-primary)" }}
+          >
             Learn{" "}
-            <span className="text-[#E5C158] group-hover:text-[#D97706] transition-colors">
-              Sikhi
-            </span>
+            <span style={{ color: "var(--accent-primary)" }}>Sikhi</span>
           </span>
         </Link>
 
-        <ul className="hidden items-center gap-2.5 xl:gap-4 lg:flex">
+        <ul className="hidden items-center gap-4 xl:gap-6 lg:flex">
           {LINKS.map((l) => (
             <li key={l.href} className="shrink-0">
               <Link
                 href={l.href}
-                className={`whitespace-nowrap rounded text-xs xl:text-sm font-medium tracking-wide text-[#F3ECE0]/90 transition-colors hover:text-[#E5C158] ${focusRing}`}
+                style={{ color: "var(--text-primary)" }}
+                className={`whitespace-nowrap rounded text-xs xl:text-sm font-semibold tracking-wide opacity-85 transition hover:opacity-100 ${focusRing}`}
               >
                 {l.label}
               </Link>
@@ -74,21 +80,16 @@ export function Header({ solid = false }: { solid?: boolean }) {
             <ThemeSwitcher />
           </li>
 
-          <li className="shrink-0">
-            <Link
-              href="/ask"
-              className={`whitespace-nowrap rounded-full border border-[#C59B27] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-3.5 py-1.5 text-xs xl:text-sm font-semibold text-[#171917] shadow-sm transition hover:brightness-110 ${focusRing}`}
-            >
-              Scriptural Inquiry
-            </Link>
-          </li>
-
           {user ? (
             <li className="shrink-0">
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className={`whitespace-nowrap rounded-full border border-[#C59B27]/60 bg-[#FAF6EE]/10 px-3.5 py-1.5 text-xs xl:text-sm font-medium text-[#FAF6EE] transition hover:border-[#D97706] hover:text-[#E5C158] ${focusRing}`}
+                style={{
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs xl:text-sm font-semibold transition hover:opacity-80 ${focusRing}`}
                 title={user.email ?? undefined}
               >
                 Sign out
@@ -98,7 +99,11 @@ export function Header({ solid = false }: { solid?: boolean }) {
             <li className="shrink-0">
               <Link
                 href="/login"
-                className={`whitespace-nowrap rounded-full border border-[#C59B27]/80 bg-[#FAF6EE]/10 px-3.5 py-1.5 text-xs xl:text-sm font-medium text-[#FAF6EE] transition hover:border-[#D97706] hover:bg-[#D97706] hover:text-[#FAF6EE] ${focusRing}`}
+                style={{
+                  backgroundColor: "var(--accent-primary)",
+                  color: "#FFFFFF",
+                }}
+                className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs xl:text-sm font-bold shadow-sm transition hover:brightness-105 ${focusRing}`}
               >
                 Sign in
               </Link>
@@ -110,13 +115,17 @@ export function Header({ solid = false }: { solid?: boolean }) {
           <ThemeSwitcher />
           <button
             type="button"
-            className={`whitespace-nowrap rounded-md border border-[#C59B27]/40 px-3 py-1.5 text-xs uppercase tracking-[0.2em] font-semibold text-[#E5C158] hover:border-[#D97706] ${focusRing}`}
+            style={{
+              borderColor: "var(--border-subtle)",
+              color: "var(--accent-primary)",
+            }}
+            className={`whitespace-nowrap rounded-md border px-3 py-1.5 text-xs uppercase tracking-[0.2em] font-semibold ${focusRing}`}
             aria-expanded={open}
             aria-controls={menuId}
             aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? "Close" : "Index"}
+            {open ? "Close" : "Menu"}
           </button>
         </div>
       </nav>
@@ -124,7 +133,12 @@ export function Header({ solid = false }: { solid?: boolean }) {
       <div
         id={menuId}
         hidden={!open}
-        className="animate-fade-in-up mx-4 mb-3 rounded-2xl border border-[#C59B27]/35 bg-[#1B2A20]/98 p-3 text-[#FAF6EE] shadow-xl backdrop-blur-md lg:hidden"
+        style={{
+          backgroundColor: "var(--bg-surface)",
+          borderColor: "var(--border-subtle)",
+          color: "var(--text-primary)",
+        }}
+        className="animate-fade-in-up mx-4 mb-3 rounded-2xl border p-3 shadow-xl backdrop-blur-md lg:hidden"
       >
         <ul className="flex flex-col gap-1">
           {[...LINKS, ...MOBILE_EXTRA_LINKS].map((l) => (
@@ -132,21 +146,12 @@ export function Header({ solid = false }: { solid?: boolean }) {
               <Link
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[#FAF6EE] transition hover:bg-[#FAF6EE]/10 hover:text-[#E5C158]"
+                className="block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:opacity-80"
               >
                 {l.label}
               </Link>
             </li>
           ))}
-          <li>
-            <Link
-              href="/ask"
-              onClick={() => setOpen(false)}
-              className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#E5C158] hover:bg-[#FAF6EE]/10"
-            >
-              Scriptural &amp; Historical Inquiry
-            </Link>
-          </li>
           {user ? (
             <li>
               <button
@@ -155,7 +160,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                   setOpen(false);
                   void signOut();
                 }}
-                className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-[#F3ECE0]/80 hover:bg-[#FAF6EE]/10 hover:text-[#E5C158]"
+                className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold opacity-80 hover:opacity-100"
               >
                 Sign out
               </button>
@@ -165,7 +170,8 @@ export function Header({ solid = false }: { solid?: boolean }) {
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#F3ECE0]/90 hover:bg-[#FAF6EE]/10"
+                style={{ color: "var(--accent-primary)" }}
+                className="block rounded-lg px-3 py-2.5 text-sm font-bold"
               >
                 Sign in
               </Link>

@@ -2,24 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { Header } from "@/components/header";
 import { SearchBar, SuggestionChips } from "@/components/search-bar";
-import { TempleSilhouette } from "@/components/temple-silhouette";
-
-/**
- * Optional real photograph. Put a licensed Golden Temple image in /public and
- * set this to its path, e.g. "/images/golden-temple.jpg". While null, the SVG
- * scene is used and no failing image request is made.
- */
-const HERO_IMAGE: string | null = null;
 
 export function Hero() {
   const router = useRouter();
   const [query, setQuery] = useState("");
 
-  // Signed-out users are redirected to /login by middleware, then returned
-  // to /ask with their question preserved.
   function go(text: string) {
     router.push(`/ask?q=${encodeURIComponent(text)}`);
   }
@@ -28,69 +19,105 @@ export function Hero() {
     <section
       id="top"
       aria-labelledby="hero-title"
-      className="relative isolate overflow-hidden border-b border-[#C59B27]/35 bg-[#1B2A20] text-[#FAF6EE]"
+      style={{
+        backgroundColor: "var(--bg-primary)",
+        borderColor: "var(--border-subtle)",
+        color: "var(--text-primary)",
+      }}
+      className="relative isolate overflow-hidden border-b"
     >
-      {/* Rich Deep Olive & Burnished Gold Architectural Backdrop */}
-      <div className="absolute inset-0 -z-20 bg-gradient-to-b from-[#121C15] via-[#1B2A20] to-[#233629]" />
-      <div className="absolute inset-0 -z-20 opacity-45">
-        <TempleSilhouette />
-      </div>
-      {HERO_IMAGE && (
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-cover bg-center"
-          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
-        />
-      )}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#121C15]/80 via-[#1B2A20]/65 to-[#1B2A20]" />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_50%_15%,rgba(197,155,39,0.22),rgba(217,119,6,0.08)_45%,transparent_72%)]" />
+      {/* Subtle Ambient Darbar Gold Aura */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent-primary, #C59B27) 14%, transparent), transparent 70%)",
+        }}
+      />
 
       <Header />
 
-      <div className="mx-auto flex min-h-[88vh] max-w-4xl flex-col items-center justify-center px-5 pb-24 pt-16 text-center sm:px-8">
-        {/* Interactive Martial Heritage Emblem (Kataar, Crossed Talwars & Dhaal) */}
+      <div className="mx-auto flex max-w-4xl flex-col items-center justify-center px-5 py-20 sm:py-24 text-center sm:px-8">
         <div className="mb-6 flex flex-col items-center">
-          <BrandLogo size="xl" animated={true} />
+          <BrandLogo size="lg" animated={true} />
         </div>
 
         <p
           lang="pa"
-          className="mb-3 font-gurmukhi text-lg tracking-wide text-[#E5C158] sm:text-xl"
+          style={{ color: "var(--accent-primary)" }}
+          className="mb-2 font-gurmukhi text-lg font-medium tracking-wide sm:text-xl"
         >
-          ਸਿੱਖੀ · ਗੁਰਬਾਣੀ · ਇਤਿਹਾਸ
+          ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ
         </p>
 
-        {/* Official Brand Tagline */}
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-[#D97706] sm:text-sm">
-          Explore the depths of Sikhi.
+        <p
+          style={{ color: "var(--theme-text-muted)" }}
+          className="mb-4 text-xs font-bold uppercase tracking-[0.28em]"
+        >
+          Explore the depths of Sikhi
         </p>
 
         <h1
           id="hero-title"
-          className="font-serif text-5xl font-semibold leading-[1.06] tracking-tight text-[#FAF6EE] sm:text-7xl"
+          className="font-serif text-4xl font-bold leading-[1.08] tracking-tight sm:text-6xl"
         >
-          Explore Sikhi with{" "}
-          <span className="bg-gradient-to-r from-[#E5C158] via-[#C59B27] to-[#D97706] bg-clip-text text-transparent">
-            clarity and context
+          A calm, source-first{" "}
+          <span
+            style={{ color: "var(--accent-primary)" }}
+            className="underline decoration-[#C59B27]/30 decoration-2 underline-offset-8"
+          >
+            Sikhi sanctuary
           </span>
         </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#F3ECE0]/90 sm:text-lg">
-          Learn Sikhi helps you explore Sikh philosophy, history and Gurbani through clear
-          explanations, always pointing back to the sources so you can read, reflect
-          and verify for yourself.
+        <p
+          style={{ color: "var(--theme-text-muted)" }}
+          className="mt-5 max-w-2xl text-base leading-relaxed sm:text-lg"
+        >
+          Read daily Gurbani and Hukamnama, listen to Puratan Raag Kirtan, study
+          historical Granths, honor the unsung Matriarchs of the Panth, and learn
+          through interactive Abhiyaas.
         </p>
 
+        {/* Smart Concierge Search Bar */}
         <div className="mt-10 w-full max-w-2xl">
-          <div className="mb-2.5 flex items-center justify-center gap-3">
-            <span className="h-[1px] w-8 bg-[#C59B27]/45" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#E5C158]">
-              Explore Gurmat &amp; Historical Sources
-            </span>
-            <span className="h-[1px] w-8 bg-[#C59B27]/45" />
-          </div>
           <SearchBar value={query} onChange={setQuery} onSubmit={go} />
           <SuggestionChips onPick={go} className="mt-4 justify-center" />
+        </div>
+
+        {/* Minimal Quick Sanctuary Actions */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
+          <Link
+            href="/hukamnama"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+            }}
+            className="rounded-full border px-4 py-2 shadow-sm transition hover:border-[#C59B27]"
+          >
+            ੧ · Today&apos;s Darbar Sahib Hukamnama →
+          </Link>
+          <Link
+            href="/nitnem"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+            }}
+            className="rounded-full border px-4 py-2 shadow-sm transition hover:border-[#C59B27]"
+          >
+            ੨ · Nitnem &amp; Sukhmani Sahib Reader →
+          </Link>
+          <Link
+            href="/granths"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+            }}
+            className="rounded-full border px-4 py-2 shadow-sm transition hover:border-[#C59B27]"
+          >
+            ੩ · Listen to Puratan Kirtan →
+          </Link>
         </div>
       </div>
     </section>

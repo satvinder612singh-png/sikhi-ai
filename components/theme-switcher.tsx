@@ -3,7 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-export type SikhiThemeId = "emerald" | "parchment" | "navy" | "dusk";
+export type SikhiThemeId =
+  | "ivory"
+  | "marble"
+  | "indigo"
+  | "terracotta"
+  | "obsidian";
 
 export type SikhiThemeOption = {
   id: SikhiThemeId;
@@ -14,52 +19,75 @@ export type SikhiThemeOption = {
   bgPreview: string;
   surfacePreview: string;
   accentPreview: string;
+  isDark: boolean;
 };
 
 export const SIKHI_THEMES: SikhiThemeOption[] = [
   {
-    id: "emerald",
-    name: "Royal Emerald & Gold",
-    shortLabel: "Emerald",
-    gurmukhi: "ਸ਼ਾਹੀ ਪੰਨਾ",
-    subtitle: "Deep forest green (#0a1f17) with antique gold (#d4af37)",
-    bgPreview: "#0a1f17",
-    surfacePreview: "#153226",
-    accentPreview: "#d4af37",
+    id: "ivory",
+    name: "Sunlit Ivory & Darbar Gold",
+    shortLabel: "Sunlit Ivory",
+    gurmukhi: "ਸੁਨਹਿਰੀ ਪ੍ਰਕਾਸ਼",
+    subtitle: "Warm alabaster (#FAF7F0), crisp white cards & Darbar gold (#C59B27)",
+    bgPreview: "#FAF7F0",
+    surfacePreview: "#FFFFFF",
+    accentPreview: "#C59B27",
+    isDark: false,
   },
   {
-    id: "parchment",
-    name: "Puratan Parchment",
-    shortLabel: "Parchment",
-    gurmukhi: "ਪੁਰਾਤਨ ਪੱਤਰਾ",
-    subtitle: "Warm sunlit manuscript (#f7f2e7) with charcoal ink (#1c2421)",
-    bgPreview: "#f7f2e7",
-    surfacePreview: "#efe6d5",
-    accentPreview: "#9a7b2c",
+    id: "marble",
+    name: "Harmandir Marble & Sky",
+    shortLabel: "Harmandir Marble",
+    gurmukhi: "ਹਰਿਮੰਦਰ ਸੰਗਮਰਮਰ",
+    subtitle: "Pure marble white (#F8FAFC), deep navy ink (#0F172A) & amber (#D97706)",
+    bgPreview: "#F8FAFC",
+    surfacePreview: "#FFFFFF",
+    accentPreview: "#D97706",
+    isDark: false,
   },
   {
-    id: "navy",
-    name: "Khalsa Navy & Basanti",
-    shortLabel: "Nihang Blue",
-    gurmukhi: "ਖ਼ਾਲਸਾ ਨੀਲਾ",
-    subtitle: "Midnight Nihang indigo (#0b162c) with Basanti gold (#f4b41a)",
-    bgPreview: "#0b162c",
-    surfacePreview: "#16284c",
-    accentPreview: "#f4b41a",
+    id: "indigo",
+    name: "Khalsa Royal Indigo & Basanti",
+    shortLabel: "Khalsa Indigo",
+    gurmukhi: "ਖ਼ਾਲਸਾ ਨੀਲਾ ਤੇ ਬਸੰਤੀ",
+    subtitle: "Midnight sapphire (#0B132B), slate-blue cards (#1C2541) & Basanti (#F59E0B)",
+    bgPreview: "#0B132B",
+    surfacePreview: "#1C2541",
+    accentPreview: "#F59E0B",
+    isDark: true,
   },
   {
-    id: "dusk",
-    name: "Amrit Vela Dusk",
-    shortLabel: "Amrit Vela",
+    id: "terracotta",
+    name: "Anandpur Terracotta & Sand",
+    shortLabel: "Anandpur Earth",
+    gurmukhi: "ਅਨੰਦਪੁਰ ਮਿੱਟੀ",
+    subtitle: "Soft sandstone (#F5EBE6), espresso text (#2D1E17) & terracotta (#B84A39)",
+    bgPreview: "#F5EBE6",
+    surfacePreview: "#FFFDFB",
+    accentPreview: "#B84A39",
+    isDark: false,
+  },
+  {
+    id: "obsidian",
+    name: "Amrit Vela Obsidian & Rose Gold",
+    shortLabel: "Amrit Vela OLED",
     gurmukhi: "ਅੰਮ੍ਰਿਤ ਵੇਲਾ",
-    subtitle: "Serene twilight plum (#161224) with rose-gold (#e2b887)",
-    bgPreview: "#161224",
-    surfacePreview: "#28213f",
-    accentPreview: "#e2b887",
+    subtitle: "True soft black (#121316), charcoal glass (#1E2025) & champagne (#E5C158)",
+    bgPreview: "#121316",
+    surfacePreview: "#1E2025",
+    accentPreview: "#E5C158",
+    isDark: true,
   },
 ];
 
-const THEME_STORAGE_KEY = "learn_sikhi_theme_v1";
+const THEME_STORAGE_KEY = "learn_sikhi_theme_v2";
+const VALID_THEME_IDS: SikhiThemeId[] = [
+  "ivory",
+  "marble",
+  "indigo",
+  "terracotta",
+  "obsidian",
+];
 
 type WaveTransitionState = {
   key: number;
@@ -69,7 +97,7 @@ type WaveTransitionState = {
 };
 
 export function ThemeSwitcher() {
-  const [theme, setTheme] = useState<SikhiThemeId>("emerald");
+  const [theme, setTheme] = useState<SikhiThemeId>("ivory");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [wave, setWave] = useState<WaveTransitionState | null>(null);
@@ -82,13 +110,11 @@ export function ThemeSwitcher() {
     try {
       const saved = window.localStorage.getItem(THEME_STORAGE_KEY) as SikhiThemeId | null;
       const initial: SikhiThemeId =
-        saved && ["emerald", "parchment", "navy", "dusk"].includes(saved)
-          ? saved
-          : "emerald";
+        saved && VALID_THEME_IDS.includes(saved) ? saved : "ivory";
       setTheme(initial);
       document.documentElement.setAttribute("data-theme", initial);
     } catch {
-      document.documentElement.setAttribute("data-theme", "emerald");
+      document.documentElement.setAttribute("data-theme", "ivory");
     }
 
     return () => {
@@ -117,8 +143,7 @@ export function ThemeSwitcher() {
     const nextObj =
       SIKHI_THEMES.find((t) => t.id === nextTheme) || SIKHI_THEMES[0];
 
-    // Compute origin coordinates for the radial color-wash wave
-    let originX = typeof window !== "undefined" ? window.innerWidth - 120 : 800;
+    let originX = typeof window !== "undefined" ? window.innerWidth - 140 : 800;
     let originY = 36;
     if (e && e.currentTarget) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -135,7 +160,6 @@ export function ThemeSwitcher() {
       document.documentElement.style.setProperty("--wave-y", `${originY}px`);
     }
 
-    // Trigger the full-viewport radial ripple & diagonal shimmer overlay (650ms)
     if (waveTimeoutRef.current) {
       window.clearTimeout(waveTimeoutRef.current);
     }
@@ -159,7 +183,6 @@ export function ThemeSwitcher() {
       }
     };
 
-    // Coordinate with View Transition API if available for ultra-smooth clip-path morph
     const docWithTransition = document as Document & {
       startViewTransition?: (cb: () => void) => void;
     };
@@ -191,12 +214,12 @@ export function ThemeSwitcher() {
         style={{
           borderColor: "var(--border-subtle)",
           backgroundColor: "var(--bg-surface)",
-          color: "var(--text-on-surface, #FAF6EE)",
+          color: "var(--text-primary)",
         }}
-        className="whitespace-nowrap inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
+        className="whitespace-nowrap inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
       >
         <span
-          className="h-3.5 w-3.5 rounded-full border border-white/50 shadow-sm shrink-0 transition-transform duration-300"
+          className="h-3.5 w-3.5 rounded-full border border-black/20 shadow-sm shrink-0 transition-transform duration-300"
           style={{
             background: `linear-gradient(135deg, ${currentObj.bgPreview} 50%, ${currentObj.accentPreview} 50%)`,
           }}
@@ -215,22 +238,26 @@ export function ThemeSwitcher() {
           role="menu"
           aria-label="Color Themes"
           style={{
-            backgroundColor: "var(--theme-card-darker, #121C15)",
-            borderColor: "var(--accent-primary, #C59B27)",
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
+            color: "var(--text-primary)",
           }}
-          className="animate-fade-in-up absolute right-0 mt-2 w-72 origin-top-right rounded-2xl border p-2.5 text-[#FAF6EE] shadow-2xl z-50 backdrop-blur-md"
+          className="animate-fade-in-up absolute right-0 mt-2 w-80 origin-top-right rounded-2xl border p-2.5 shadow-2xl z-50 backdrop-blur-md"
         >
-          <div className="px-2.5 py-1.5 border-b border-[#C59B27]/25 mb-1.5 flex items-center justify-between">
+          <div
+            className="px-2.5 py-1.5 border-b mb-1.5 flex items-center justify-between"
+            style={{ borderColor: "var(--border-subtle)" }}
+          >
             <span
               className="text-[10px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: "var(--theme-accent-bright, #E5C158)" }}
+              style={{ color: "var(--accent-primary)" }}
             >
-              Select Palette Theme
+              5 Curated Sanctuary Themes
             </span>
             <span
               lang="pa"
               className="font-gurmukhi text-xs"
-              style={{ color: "var(--accent-primary, #D97706)" }}
+              style={{ color: "var(--accent-primary)" }}
             >
               ਰੰਗ ਸ਼ੈਲੀ
             </span>
@@ -245,33 +272,43 @@ export function ThemeSwitcher() {
                   type="button"
                   role="menuitem"
                   onClick={(e) => selectTheme(item.id, e)}
-                  className={`w-full rounded-xl p-2.5 text-left transition flex items-start gap-3 ${
-                    active
-                      ? "bg-[#1B2A20] border border-[#E5C158] shadow-sm"
-                      : "hover:bg-[#1B2A20]/60 border border-transparent"
-                  }`}
+                  style={{
+                    backgroundColor: active
+                      ? "var(--theme-bg-secondary)"
+                      : "transparent",
+                    borderColor: active
+                      ? "var(--accent-primary)"
+                      : "transparent",
+                  }}
+                  className="w-full rounded-xl p-2.5 text-left transition flex items-start gap-3 border hover:opacity-90"
                 >
                   <span
-                    className="mt-0.5 h-6 w-6 rounded-full border border-white/40 shrink-0 shadow-inner"
+                    className="mt-0.5 h-6 w-6 rounded-full border border-black/20 shrink-0 shadow-inner"
                     style={{
                       background: `linear-gradient(135deg, ${item.bgPreview} 55%, ${item.accentPreview} 45%)`,
                     }}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-serif font-bold text-[#FAF6EE]">
+                      <span
+                        className="text-xs font-serif font-bold"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {item.name}
                       </span>
                       {active && (
                         <span
-                          className="text-[10px] font-bold"
-                          style={{ color: "var(--theme-accent-bright, #E5C158)" }}
+                          className="text-[10px] font-bold shrink-0"
+                          style={{ color: "var(--accent-primary)" }}
                         >
                           Active ✓
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#F3ECE0]/75 leading-snug mt-0.5">
+                    <p
+                      className="text-[11px] leading-snug mt-0.5"
+                      style={{ color: "var(--theme-text-muted)" }}
+                    >
                       {item.subtitle}
                     </p>
                   </div>
@@ -291,7 +328,6 @@ export function ThemeSwitcher() {
             aria-hidden="true"
             className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
           >
-            {/* Expanding radial wave ring from click origin */}
             <div
               className="theme-wave-overlay absolute inset-0"
               style={
@@ -304,7 +340,6 @@ export function ThemeSwitcher() {
                 } as React.CSSProperties
               }
             />
-            {/* Diagonal metallic accent sweep across viewport */}
             <div
               className="theme-wave-shimmer absolute inset-0"
               style={

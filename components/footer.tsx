@@ -1,29 +1,25 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 
-// Static on purpose: a Date here could differ between server and client render.
 const COPYRIGHT_YEAR = 2026;
 
 const GROUPS = [
   {
-    heading: "Chapters & Archives",
+    heading: "Sanctuary Pillars",
     links: [
-      { href: "/#baani", label: "੧ · Living Gurbani Treasury" },
-      { href: "/#matriarchs", label: "੨ · Matriarchs of the Panth" },
-      { href: "/#gurmat-veechar", label: "੩ · Gurmat Veechar & Granths" },
-      { href: "/#ecology", label: "੪ · Ecology, Seva & Conscious Living" },
-      { href: "/#abhiyaas", label: "੫ · Games & Abhiyaas Hub" },
-      { href: "/#archives", label: "੬ · Connected Panthic Archives" },
+      { href: "/nitnem", label: "੧ · Gurbani & Nitnem Reader" },
+      { href: "/hukamnama", label: "੨ · Daily Darbar Sahib Hukamnama" },
+      { href: "/granths", label: "੩ · Granths & Puratan Kirtan" },
+      { href: "/matriarchs", label: "੪ · Matriarchs of the Panth" },
+      { href: "/games", label: "੫ · Interactive Abhiyaas Games" },
     ],
   },
   {
-    heading: "Research & Study",
+    heading: "Research & Sangat",
     links: [
-      { href: "/hukamnama", label: "Daily Darbar Sahib Hukamnama" },
-      { href: "/nitnem", label: "Nitnem & Sukhmani Sahib Reader" },
-      { href: "/games", label: "Abhiyaas & Games Hub" },
       { href: "/ask", label: "Scriptural & Historical Inquiry" },
       { href: "/sources", label: "Primary Scriptural Sources" },
+      { href: "/#sangat", label: "What Are You Looking For? (Concierge)" },
       { href: "/login", label: "Scholar Sign In" },
     ],
   },
@@ -31,15 +27,38 @@ const GROUPS = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-[#C59B27]/35 bg-[#1B2A20] px-4 py-16 text-[#FAF6EE] sm:px-6 lg:px-8">
+    <footer
+      style={{
+        backgroundColor: "var(--bg-surface)",
+        borderColor: "var(--border-subtle)",
+        color: "var(--text-primary)",
+      }}
+      className="border-t px-4 py-16 sm:px-6 lg:px-8"
+    >
       <div className="mx-auto max-w-7xl">
         {/* Student Individual Project Highlight Banner */}
-        <div className="mb-12 rounded-2xl border border-[#C59B27]/45 bg-[#121C15]/85 p-6 shadow-parchment flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div
+          style={{
+            backgroundColor: "var(--theme-card-darker)",
+            borderColor: "var(--border-subtle)",
+          }}
+          className="mb-12 rounded-2xl border p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+        >
           <div className="space-y-2 max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#C59B27]/50 bg-[#1B2A20] px-3.5 py-1 text-xs font-semibold text-[#E5C158]">
+            <span
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-subtle)",
+                color: "var(--accent-primary)",
+              }}
+              className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-bold"
+            >
               🎓 Student Individual Project • Built to Connect the Sangat with Sikhi
             </span>
-            <p className="text-sm sm:text-base leading-relaxed text-[#F3ECE0]/90">
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-sm sm:text-base leading-relaxed"
+            >
               Learn Sikhi is an independent student individual project dedicated to connecting
               people everywhere with the wisdom of Gurbani, Sikh history, and Gurmat philosophy
               through modern, interactive digital tools.
@@ -48,13 +67,18 @@ export function Footer() {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link
               href="/games"
-              className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#171917] transition hover:brightness-105"
+              className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#18181B] transition hover:brightness-105"
             >
               Explore Abhiyaas Games →
             </Link>
             <Link
-              href="/#baani"
-              className="whitespace-nowrap rounded-xl border border-[#C59B27]/50 bg-[#1B2A20] px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#E5C158] transition hover:border-[#D97706]"
+              href="/nitnem"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-subtle)",
+                color: "var(--accent-primary)",
+              }}
+              className="whitespace-nowrap rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:border-[#C59B27]"
             >
               Read Gurbani
             </Link>
@@ -66,31 +90,34 @@ export function Footer() {
             <div className="flex items-center gap-3.5">
               <BrandLogo size="md" />
               <div>
-                <p className="font-serif text-3xl font-semibold text-[#FAF6EE]">
-                  Learn <span className="text-[#E5C158]">Sikhi</span>
+                <p className="font-serif text-3xl font-bold">
+                  Learn{" "}
+                  <span style={{ color: "var(--accent-primary)" }}>Sikhi</span>
                 </p>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D97706]">
+                <p
+                  style={{ color: "var(--accent-primary)" }}
+                  className="text-xs font-semibold uppercase tracking-[0.2em]"
+                >
                   Learn. Understand. Practise. Connect.
                 </p>
               </div>
             </div>
 
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-[#F3ECE0]/85">
-              A living publication and study companion for Sikh philosophy, history, ecological
-              stewardship, and Gurbani—built to point you directly back to primary sources.
-            </p>
-
-            <p className="mt-3 max-w-md rounded-xl border border-[#C59B27]/30 bg-[#121C15]/60 px-3.5 py-2.5 text-xs leading-relaxed text-[#F3ECE0]/75">
-              <strong className="text-[#E5C158]">Heritage Emblem:</strong> The Learn Sikhi crest
-              is inspired by historical Sikh martial artistry (Shastarvidya)—uniting the central{" "}
-              <em>Kataar</em>, circular <em>Dhaal</em> shield, and crossed <em>Talwar</em> swords
-              as symbols of spiritual discernment and sovereign dignity.
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="mt-4 max-w-md text-sm leading-relaxed"
+            >
+              A living publication and study companion for Sikh philosophy, history, Puratan
+              Kirtan, and Gurbani—built to point you directly back to primary sources.
             </p>
           </div>
 
           {GROUPS.map((g) => (
             <nav key={g.heading} aria-label={g.heading}>
-              <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E5C158]">
+              <h2
+                style={{ color: "var(--accent-primary)" }}
+                className="text-xs font-bold uppercase tracking-[0.2em]"
+              >
                 {g.heading}
               </h2>
               <ul className="mt-4 space-y-2.5">
@@ -98,7 +125,8 @@ export function Footer() {
                   <li key={l.label}>
                     <Link
                       href={l.href}
-                      className="text-sm text-[#F3ECE0]/80 transition hover:text-[#E5C158] focus:outline-none focus-visible:underline"
+                      style={{ color: "var(--theme-text-muted)" }}
+                      className="text-sm font-medium transition hover:opacity-100 focus:outline-none focus-visible:underline"
                     >
                       {l.label}
                     </Link>
@@ -109,7 +137,13 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 border-t border-[#C59B27]/20 pt-6 text-center text-xs text-[#F3ECE0]/70">
+        <div
+          style={{
+            borderColor: "var(--border-subtle)",
+            color: "var(--theme-text-muted)",
+          }}
+          className="mt-12 border-t pt-6 text-center text-xs"
+        >
           <p>
             © {COPYRIGHT_YEAR} Learn Sikhi • Independent Student Individual Project. All rights
             reserved.
