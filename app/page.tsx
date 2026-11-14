@@ -941,7 +941,7 @@ export default function HomePage() {
         title="Deep-Dive AI Research Assistant"
         subtitle="Have a specific question about a Shabad, philosophical concept, or historical event? Ask below for answers grounded in Sri Guru Granth Sahib Ji and Panthic archives."
       >
-        <AskPanel />
+        <AskPanel initialQuery="" />
       </ChapterSection>
 
       <ChapterSection
