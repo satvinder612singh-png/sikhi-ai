@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
 
 interface PreloadedBani {
   id: string;
@@ -408,6 +410,29 @@ export function BaaniPortal() {
             </motion.div>
           </AnimatePresence>
         </div>
+      </div>
+
+      {/* ====================================================================
+          PART 1B: MULTI-PAGE MOOL MANTAR & JAPJI SAHIB PAURI EXPLORER
+      ==================================================================== */}
+      <MoolMantarExplorer />
+
+      {/* Direct Callout to Full Nitnem, Sukhmani Sahib & Complete Bani Reader */}
+      <div className="p-6 rounded-2xl bg-[#121C15] border border-[#C59B27]/50 text-[#FAF6EE] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-[11px] uppercase tracking-[0.2em] text-[#E5C158] font-bold">
+            COMPLETE NITNEM &amp; SUKHMANI SAHIB SANCTUARY
+          </span>
+          <h4 className="text-xl font-serif font-bold text-[#FAF6EE] mt-0.5">
+            Read Complete Daily Nitnem, Sukhmani Sahib (All 24 Ashtpadis) &amp; Asa Di Vaar
+          </h4>
+        </div>
+        <Link
+          href="/nitnem"
+          className="whitespace-nowrap inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#171917] shadow-md hover:brightness-105 transition"
+        >
+          Open Complete Bani Reader →
+        </Link>
       </div>
 
       {/* ====================================================================

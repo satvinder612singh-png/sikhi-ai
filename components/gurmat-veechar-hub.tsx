@@ -458,7 +458,7 @@ export function GurmatVeecharHub() {
                 key={entry.id}
                 type="button"
                 onClick={() => setSelectedEntryId(entry.id)}
-                className={`w-full text-left p-5 rounded-xl border transition-all duration-300 ${
+                className={`w-full text-left p-5 rounded-xl border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ${
                   isActive
                     ? "bg-[#1B2A20] text-[#FAF6EE] border-[#C59B27] shadow-[0_8px_24px_rgba(27,42,32,0.2)]"
                     : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"

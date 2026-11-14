@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Hero } from "@/components/hero";
+import { DailyHukamnama } from "@/components/daily-hukamnama";
 import { BaaniPortal } from "@/components/baani-portal";
 import { GurmatVeecharHub } from "@/components/gurmat-veechar-hub";
 import { EcologySevaSection } from "@/components/ecology-seva-section";
@@ -544,7 +546,18 @@ function MatriarchsGallery() {
 /* ============================================================================
    5. CURATED PANTHIC & SCHOLARLY PORTALS
 ============================================================================ */
-const PANTHIC_PORTALS = [
+type PanthicPortalItem = {
+  numeral: string;
+  archiveTag: string;
+  name: string;
+  url: string;
+  category: string;
+  description: string;
+  highlight: string;
+  secondaryLinks?: { label: string; url: string }[];
+};
+
+const PANTHIC_PORTALS: PanthicPortalItem[] = [
   {
     numeral: "੧",
     archiveTag: "ARCHIVE I • CLASSICAL GRANTHS",
@@ -558,12 +571,26 @@ const PANTHIC_PORTALS = [
   {
     numeral: "੨",
     archiveTag: "ARCHIVE II • CONTEMPORARY WITNESS",
-    name: "Never Forget 1984",
-    url: "https://www.neverforget84.com/",
-    category: "1984 Saka & Shaheed Archive",
+    name: "1984 Saka & Shaheed Historical Archives",
+    url: "https://1984tribute.com/",
+    category: "1984 Tribute, Ensaaf & Preserved NeverForget84 Memorial",
     description:
-      "Comprehensive digital memorial documenting the June 1984 military assault on Sri Harmandir Sahib (Operation Blue Star), the November 1984 anti-Sikh pogroms, and biographies of Shaheeds.",
-    highlight: "Eyewitness testimonies, rare photographs, and documented timelines.",
+      "Verified digital memorials and human-rights archives documenting the June 1984 military assault on Sri Harmandir Sahib, the November 1984 anti-Sikh pogroms, and biographies of Shaheeds.",
+    highlight: "Eyewitness testimonies, rare photographs, and documented human-rights timelines.",
+    secondaryLinks: [
+      {
+        label: "1984 Tribute Archive ↗",
+        url: "https://1984tribute.com/",
+      },
+      {
+        label: "Ensaaf Documentation ↗",
+        url: "https://ensaaf.org/",
+      },
+      {
+        label: "Original NeverForget84 (Wayback) ↗",
+        url: "https://web.archive.org/web/20160618115353/http://www.neverforget84.com/",
+      },
+    ],
   },
   {
     numeral: "੩",
@@ -591,12 +618,9 @@ function ScholarlyPortals() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {PANTHIC_PORTALS.map((portal) => (
-        <a
+        <div
           key={portal.name}
-          href={portal.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group p-6 rounded-2xl bg-[#F3ECE0] border border-[#C59B27]/40 hover:border-[#D97706] hover:bg-[#1B2A20] transition-all duration-300 flex flex-col justify-between shadow-parchment"
+          className="group p-6 rounded-2xl bg-[#F3ECE0] border border-[#C59B27]/40 hover:border-[#D97706] hover:bg-[#1B2A20] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-parchment"
         >
           <div>
             <div className="flex items-center justify-between gap-3 mb-3">
@@ -611,12 +635,24 @@ function ScholarlyPortals() {
                   {portal.archiveTag}
                 </span>
               </div>
-              <span className="text-xs uppercase tracking-widest text-[#4A554E] group-hover:text-[#E5C158] transition font-semibold">
+              <a
+                href={portal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs uppercase tracking-widest text-[#4A554E] group-hover:text-[#E5C158] hover:underline transition font-semibold"
+              >
                 Visit Archive ↗
-              </span>
+              </a>
             </div>
             <h3 className="text-xl font-serif font-bold text-[#171917] group-hover:text-[#FAF6EE] transition">
-              {portal.name}
+              <a
+                href={portal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {portal.name}
+              </a>
             </h3>
             <p className="text-xs uppercase tracking-wider text-[#4A554E] group-hover:text-[#E5C158]/80 mt-1 font-medium">
               {portal.category}
@@ -624,12 +660,152 @@ function ScholarlyPortals() {
             <p className="text-sm text-[#4A554E] group-hover:text-[#F3ECE0]/90 mt-2.5 leading-relaxed">
               {portal.description}
             </p>
+
+            {portal.secondaryLinks && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {portal.secondaryLinks.map((lnk) => (
+                  <a
+                    key={lnk.url}
+                    href={lnk.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 rounded-lg bg-[#1B2A20] text-[#E5C158] border border-[#C59B27]/45 text-xs font-semibold hover:bg-[#D97706] hover:text-[#171917] transition"
+                  >
+                    {lnk.label}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           <div className="mt-5 pt-3 border-t border-[#C59B27]/25 text-xs text-[#1B2A20] group-hover:text-[#E5C158] italic font-medium">
             {portal.highlight}
           </div>
-        </a>
+        </div>
       ))}
+    </div>
+  );
+}
+
+/* ============================================================================
+   6. INTERACTIVE SIKHI GAMES & ABHIYAAS CALLOUT
+============================================================================ */
+const FEATURED_GAMES = [
+  {
+    id: "larivaar",
+    numeral: "੧",
+    tag: "GURBANI SANTHIYA • UP TO +15 COINS",
+    title: "Larivaar Padchhed & Arth",
+    gurmukhi: "ਲੜੀਵਾਰ ਪਦਛੇਦ ਅਤੇ ਅਰਥ",
+    audience: "Adults & Scholars",
+    description:
+      "Split unbroken Gurmukhi Larivaar verses from Sri Guru Granth Sahib Ji into accurate Padchhed words, then unlock philosophical Arth and Shabad-Arth vocabulary.",
+  },
+  {
+    id: "shatranj",
+    numeral: "੨",
+    tag: "KHALSA STRATEGY • WIN +20 COINS",
+    title: "Sikh Shatranj (Dhai Phat)",
+    gurmukhi: "ਸਿੱਖ ਸ਼ਤਰੰਜ · ਢਾਈ ਫੱਟ",
+    audience: "Teens & Adults",
+    description:
+      "Command the Jathedar, Akali Nihang, Ghorchurra Cavalry, Qila Fort, Misl Vanguard, and Khalsa Sipahi on a 6×6 tactical grid with real historical battlefield dispatches.",
+  },
+  {
+    id: "hola-mahalla",
+    numeral: "੩",
+    tag: "ANANDPUR SPRINT • 1ST PLACE +10 COINS",
+    title: "Hola Mahalla Ghurdaur",
+    gurmukhi: "ਹੋਲਾ ਮਹੱਲਾ ਘੁੜਦੌੜ",
+    audience: "All Ages",
+    description:
+      "Inspired by the martial equestrian displays of Sri Anandpur Sahib (1701 CE). Pledge support to a historic steed, answer trivia for a Chardi Kala speed boost, and sprint!",
+  },
+  {
+    id: "bujharto",
+    numeral: "੪",
+    tag: "CHILDREN'S ARCADE • +5 COINS / STREAK",
+    title: "Bujharto & Painti Akhar Quest",
+    gurmukhi: "ਬੁਝਾਰਤਾਂ ਅਤੇ ਪੈਂਤੀ ਅੱਖਰ",
+    audience: "Children & Families",
+    description:
+      "Solve 'Who Am I?' historical riddles (Bujhartan) about the Ten Gurus, Chaar Sahibzaade, and Gursikhs, and master all 35 letters of the Gurmukhi Painti Akhar.",
+  },
+];
+
+function GamesAbhiyaasCallout() {
+  return (
+    <div className="space-y-8">
+      <div className="p-6 md:p-8 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-2 max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[11px] uppercase tracking-[0.22em] text-[#E5C158] font-semibold px-3 py-1 rounded bg-[#121C15] border border-[#C59B27]/45">
+              NEW • SHARED KNOWLEDGE COINS TREASURY (START WITH 50 COINS)
+            </span>
+          </div>
+          <h3 className="text-2xl md:text-3xl font-serif font-bold text-[#FAF6EE]">
+            Learn Through Abhiyaas: From Gurmukhi Painti Akhar to Larivaar Santhiya
+          </h3>
+          <p className="text-sm text-[#F3ECE0]/90 leading-relaxed">
+            Every learner begins with <strong>50 Knowledge Coins</strong> in their Abhiyaas
+            Treasury. Earn Coins and unlock scholarly badges across four purpose-built interactive
+            experiences uniting Gurmukhi literacy, Gurbani contemplation, and Khalsa history.
+          </p>
+        </div>
+
+        <Link
+          href="/games"
+          className="shrink-0 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-4 text-sm font-bold uppercase tracking-wider text-[#171917] shadow-lg transition hover:brightness-105"
+        >
+          Enter Games / Abhiyaas Hub →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {FEATURED_GAMES.map((game) => (
+          <Link
+            key={game.id}
+            href={`/games?game=${game.id}`}
+            className="group p-6 rounded-2xl bg-[#F3ECE0] border border-[#C59B27]/45 hover:border-[#D97706] hover:bg-[#1B2A20] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-parchment"
+          >
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    lang="pa"
+                    className="font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded bg-[#1B2A20] text-[#E5C158] border border-[#C59B27]/40 group-hover:bg-[#121C15]"
+                  >
+                    {game.numeral}
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#D97706] group-hover:text-[#E5C158] px-2.5 py-0.5 rounded bg-[#C59B27]/15 border border-[#C59B27]/30">
+                    {game.tag}
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-[#4A554E] group-hover:text-[#E5C158]">
+                  {game.audience}
+                </span>
+              </div>
+
+              <p
+                lang="pa"
+                className="font-gurmukhi text-sm text-[#D97706] group-hover:text-[#E5C158] font-medium"
+              >
+                {game.gurmukhi}
+              </p>
+              <h4 className="text-xl font-serif font-bold text-[#171917] group-hover:text-[#FAF6EE] mt-0.5">
+                {game.title}
+              </h4>
+              <p className="text-sm text-[#4A554E] group-hover:text-[#F3ECE0]/90 mt-2 leading-relaxed">
+                {game.description}
+              </p>
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-[#C59B27]/25 flex items-center justify-between text-xs font-semibold text-[#1B2A20] group-hover:text-[#E5C158]">
+              <span>Play Directly in Browser</span>
+              <span>Launch Module →</span>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -642,6 +818,15 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#FAF6EE] text-[#171917]">
       <IntroLoader />
       <Hero />
+
+      {/* Daily Sri Darbar Sahib (Golden Temple) Hukamnama Live Banner */}
+      <section
+        id="hukamnama-preview"
+        aria-label="Today's Hukamnama from Sri Darbar Sahib, Amritsar"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-2"
+      >
+        <DailyHukamnama mode="preview" />
+      </section>
 
       <ChapterSection
         id="baani"
@@ -684,14 +869,67 @@ export default function HomePage() {
       </ChapterSection>
 
       <ChapterSection
+        id="abhiyaas"
+        eyebrow="Chapter V • Interactive Abhiyaas & Gamified Learning"
+        gurmukhiWatermark="ਅਭਿਆਸ"
+        title="Interactive Sikhi Games & Knowledge Hub"
+        subtitle="Four interactive games for scholars, teens, and children—uniting Larivaar Padchhed contemplation, Khalsa tactical strategy, Hola Mahalla equestrian sprints, and Gurmukhi Painti Akhar literacy."
+      >
+        <GamesAbhiyaasCallout />
+      </ChapterSection>
+
+      <ChapterSection
         id="archives"
-        eyebrow="Chapter V • Community Scholarship"
+        eyebrow="Chapter VI • Community Scholarship"
         gurmukhiWatermark="ਇਤਿਹਾਸ"
         title="Connected Panthic Archives"
         subtitle="Continue your research across independent Sikh historical, scriptural, and human-rights archives."
       >
         <ScholarlyPortals />
       </ChapterSection>
+
+      {/* About This Initiative — Student Individual Project Callout Banner */}
+      <section
+        id="about-initiative"
+        aria-label="About This Student Initiative"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20"
+      >
+        <div className="p-8 md:p-10 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="space-y-3 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#C59B27] bg-[#121C15] px-4 py-1.5 text-xs font-bold tracking-wide text-[#E5C158]">
+                🎓 Student Individual Project • Built to Connect the Sangat with Sikhi
+              </span>
+              <span className="text-xs uppercase tracking-[0.2em] text-[#D97706] font-semibold">
+                About This Initiative
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-4xl font-serif font-bold text-[#FAF6EE]">
+              Connecting the Global Sangat with Gurbani, History &amp; Gurmat
+            </h2>
+            <p className="text-sm md:text-base text-[#F3ECE0]/90 leading-relaxed">
+              Learn Sikhi is an independent student individual project dedicated to connecting
+              people everywhere with the wisdom of Gurbani, Sikh history, and Gurmat philosophy
+              through modern, interactive digital tools.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+            <Link
+              href="/games"
+              className="whitespace-nowrap inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-[#171917] shadow-lg transition hover:brightness-105"
+            >
+              Launch Abhiyaas Games Hub →
+            </Link>
+            <Link
+              href="/ask"
+              className="whitespace-nowrap inline-flex items-center justify-center rounded-xl border border-[#C59B27]/60 bg-[#121C15] px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-[#E5C158] transition hover:border-[#D97706]"
+            >
+              Explore Scriptural Inquiry →
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <Footer />
     </main>

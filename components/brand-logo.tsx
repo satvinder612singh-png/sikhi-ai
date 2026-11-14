@@ -30,6 +30,8 @@ const TEXT_SIZE_CLASSES: Record<BrandLogoSize, string> = {
  * - Two curved Talwar swords with traditional disc-hilts crossed diagonally in the background
  * - Central circular Dhaal (shield) with ornate double-ring border, geometric inner rim, and four circular bosses
  * - Vertical Kataar (H-grip dagger) centered in the foreground
+ * - Dynamically binds its SVG gradients, strokes, and fills to CSS theme variables
+ *   (--accent-primary, --bg-surface, --theme-accent-bright, --theme-accent-highlight)
  */
 export function BrandLogo({
   size = "md",
@@ -50,10 +52,14 @@ export function BrandLogo({
       <span
         className={`relative inline-flex shrink-0 items-center justify-center rounded-full transition-transform duration-500 ease-out group-hover/logo:scale-105 ${SIZE_CLASSES[size]}`}
       >
-        {/* Subtle ambient saffron/gold aura on hover or when animated */}
+        {/* Dynamic theme-reactive aura on hover or when animated */}
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(217,119,6,0.28)_0%,rgba(197,155,39,0.12)_55%,transparent_75%)] transition-opacity duration-500 ${
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--accent-primary, #d4af37) 34%, transparent) 0%, color-mix(in srgb, var(--theme-accent-highlight, #d97706) 14%, transparent) 55%, transparent 75%)",
+          }}
+          className={`pointer-events-none absolute inset-0 rounded-full transition-opacity duration-500 ${
             animated
               ? "opacity-90 animate-pulse"
               : "opacity-0 group-hover/logo:opacity-100"
@@ -66,36 +72,72 @@ export function BrandLogo({
           xmlns="http://www.w3.org/2000/svg"
           role="img"
           aria-label="Learn Sikhi emblem: crossed Talwar swords, Dhaal shield, and Kataar dagger"
-          className="relative h-full w-full drop-shadow-[0_2px_10px_rgba(197,155,39,0.3)]"
+          className="relative h-full w-full drop-shadow-[0_2px_10px_rgba(197,155,39,0.3)] transition-colors duration-500"
         >
           <defs>
-            {/* Burnished Gold to Warm Gold Gradient */}
+            {/* Theme-bound Primary Metallic Accent Gradient */}
             <linearGradient id={goldGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#E5C158" />
-              <stop offset="50%" stopColor="#C59B27" />
-              <stop offset="100%" stopColor="#D97706" />
+              <stop
+                offset="0%"
+                style={{ stopColor: "var(--theme-accent-bright, #E5C158)" }}
+              />
+              <stop
+                offset="50%"
+                style={{ stopColor: "var(--accent-primary, #C59B27)" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "var(--theme-accent-highlight, #D97706)" }}
+              />
             </linearGradient>
 
-            {/* Saffron & Burnished Gold Highlight Gradient */}
+            {/* Theme-bound Highlight Gradient */}
             <linearGradient id={saffronGradId} x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#C59B27" />
-              <stop offset="55%" stopColor="#E5C158" />
-              <stop offset="100%" stopColor="#D97706" />
+              <stop
+                offset="0%"
+                style={{ stopColor: "var(--accent-primary, #C59B27)" }}
+              />
+              <stop
+                offset="55%"
+                style={{ stopColor: "var(--theme-accent-bright, #E5C158)" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "var(--theme-accent-highlight, #D97706)" }}
+              />
             </linearGradient>
 
-            {/* Kataar & Talwar Blade Metallic Gold-Ivory Sheen */}
+            {/* Kataar & Talwar Blade Metallic Sheen */}
             <linearGradient id={bladeGradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FAF6EE" />
-              <stop offset="35%" stopColor="#E5C158" />
-              <stop offset="75%" stopColor="#C59B27" />
-              <stop offset="100%" stopColor="#9A7418" />
+              <stop offset="0%" style={{ stopColor: "#FAF6EE" }} />
+              <stop
+                offset="35%"
+                style={{ stopColor: "var(--theme-accent-bright, #E5C158)" }}
+              />
+              <stop
+                offset="75%"
+                style={{ stopColor: "var(--accent-primary, #C59B27)" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "var(--theme-accent-highlight, #9A7418)" }}
+              />
             </linearGradient>
 
-            {/* Deep Olive Dhaal Shield Fill */}
+            {/* Theme-bound Dhaal Shield Fill (--bg-surface & shield stops) */}
             <radialGradient id={shieldGradId} cx="50%" cy="42%" r="58%">
-              <stop offset="0%" stopColor="#263B2D" />
-              <stop offset="65%" stopColor="#1B2A20" />
-              <stop offset="100%" stopColor="#111B14" />
+              <stop
+                offset="0%"
+                style={{ stopColor: "var(--logo-shield-start, #263B2D)" }}
+              />
+              <stop
+                offset="65%"
+                style={{ stopColor: "var(--bg-surface, #1B2A20)" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "var(--logo-shield-end, #111B14)" }}
+              />
             </radialGradient>
           </defs>
 
@@ -103,23 +145,23 @@ export function BrandLogo({
               1. BACKGROUND: TWO CROSSED CURVED TALWAR SWORDS WITH DISC-HILTS
           ============================================================== */}
           <g className="transition-transform duration-500 ease-out group-hover/logo:scale-[1.02] origin-center">
-            {/* Left-to-Right Curved Talwar Blade (Hilt bottom-left -> Tip top-right) */}
+            {/* Left-to-Right Curved Talwar Blade */}
             <path
               d="M26 94 C44 74, 68 46, 104 14 C96 28, 72 58, 31 98 Z"
               fill={`url(#${bladeGradId})`}
-              stroke="#C59B27"
+              style={{ stroke: "var(--accent-primary, #C59B27)" }}
               strokeWidth="1.2"
               strokeLinejoin="round"
             />
             {/* Fuller blood-groove on Left-to-Right Talwar */}
             <path
               d="M30 95 C50 73, 74 46, 99 19"
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.75"
               strokeOpacity="0.65"
               strokeLinecap="round"
             />
-            {/* Disc-Hilt (Bottom-Left Talwar: Quillons, Grip, andIndo-Sikh Disc Pommel) */}
+            {/* Disc-Hilt (Bottom-Left Talwar) */}
             <path
               d="M23 90 L35 102"
               stroke={`url(#${goldGradId})`}
@@ -139,35 +181,35 @@ export function BrandLogo({
               ry="2.6"
               transform="rotate(45 16.5 107.5)"
               fill={`url(#${saffronGradId})`}
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.9"
             />
             {/* Knuckle-bow guard arc (Bottom-Left) */}
             <path
               d="M24 91 C19 95, 17 100, 20 104"
-              stroke="#E5C158"
+              style={{ stroke: "var(--theme-accent-bright, #E5C158)" }}
               strokeWidth="1.2"
               strokeLinecap="round"
               fill="none"
             />
 
-            {/* Right-to-Left Curved Talwar Blade (Hilt bottom-right -> Tip top-left) */}
+            {/* Right-to-Left Curved Talwar Blade */}
             <path
               d="M94 94 C76 74, 52 46, 16 14 C24 28, 48 58, 89 98 Z"
               fill={`url(#${bladeGradId})`}
-              stroke="#C59B27"
+              style={{ stroke: "var(--accent-primary, #C59B27)" }}
               strokeWidth="1.2"
               strokeLinejoin="round"
             />
             {/* Fuller blood-groove on Right-to-Left Talwar */}
             <path
               d="M90 95 C70 73, 46 46, 21 19"
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.75"
               strokeOpacity="0.65"
               strokeLinecap="round"
             />
-            {/* Disc-Hilt (Bottom-Right Talwar: Quillons, Grip, and Disc Pommel) */}
+            {/* Disc-Hilt (Bottom-Right Talwar) */}
             <path
               d="M97 90 L85 102"
               stroke={`url(#${goldGradId})`}
@@ -187,13 +229,13 @@ export function BrandLogo({
               ry="2.6"
               transform="rotate(-45 103.5 107.5)"
               fill={`url(#${saffronGradId})`}
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.9"
             />
             {/* Knuckle-bow guard arc (Bottom-Right) */}
             <path
               d="M96 91 C101 95, 103 100, 100 104"
-              stroke="#E5C158"
+              style={{ stroke: "var(--theme-accent-bright, #E5C158)" }}
               strokeWidth="1.2"
               strokeLinecap="round"
               fill="none"
@@ -203,7 +245,6 @@ export function BrandLogo({
           {/* ==============================================================
               2. MIDDLE: CENTRAL CIRCULAR DHAAL (SHIELD) WITH 4 BOSSES
           ============================================================== */}
-          {/* Outer Shimmer / Animated Decorative Filigree Ring */}
           <g
             className={
               animated
@@ -222,7 +263,7 @@ export function BrandLogo({
             />
           </g>
 
-          {/* Dhaal Base Body (Deep Olive #1B2A20 with Burnished Gold Outer Rim) */}
+          {/* Dhaal Base Body */}
           <circle
             cx="60"
             cy="60"
@@ -237,24 +278,24 @@ export function BrandLogo({
             cx="60"
             cy="60"
             r="30.5"
-            stroke="#E5C158"
+            style={{ stroke: "var(--theme-accent-bright, #E5C158)" }}
             strokeWidth="0.9"
             strokeOpacity="0.7"
           />
 
-          {/* Subtle Geometric Inner Rim (8-Pointed Floral/Octagonal Rosette) */}
+          {/* Subtle Geometric Inner Rim */}
           <circle
             cx="60"
             cy="60"
             r="24.5"
-            stroke="#C59B27"
+            style={{ stroke: "var(--accent-primary, #C59B27)" }}
             strokeWidth="0.85"
             strokeDasharray="2 2"
             strokeOpacity="0.65"
           />
           <polygon
             points="60,36 69,40 77,43 80,52 84,60 80,68 77,77 69,80 60,84 51,80 43,77 40,68 36,60 40,52 43,43 51,40"
-            stroke="#C59B27"
+            style={{ stroke: "var(--accent-primary, #C59B27)" }}
             strokeWidth="0.6"
             strokeOpacity="0.4"
             fill="none"
@@ -272,11 +313,16 @@ export function BrandLogo({
                 cx={boss.cx}
                 cy={boss.cy}
                 r="4.2"
-                fill="#1B2A20"
+                style={{ fill: "var(--bg-surface, #1B2A20)" }}
                 stroke={`url(#${goldGradId})`}
                 strokeWidth="1.4"
               />
-              <circle cx={boss.cx} cy={boss.cy} r="1.7" fill="#E5C158" />
+              <circle
+                cx={boss.cx}
+                cy={boss.cy}
+                r="1.7"
+                style={{ fill: "var(--theme-accent-bright, #E5C158)" }}
+              />
             </g>
           ))}
 
@@ -287,8 +333,10 @@ export function BrandLogo({
             {/* Dark Halo Outline behind Kataar for Crisp Contrast */}
             <path
               d="M60 11 L68.5 58 H51.5 Z"
-              fill="#1B2A20"
-              stroke="#1B2A20"
+              style={{
+                fill: "var(--bg-surface, #1B2A20)",
+                stroke: "var(--bg-surface, #1B2A20)",
+              }}
               strokeWidth="2.8"
               strokeLinejoin="round"
             />
@@ -307,7 +355,7 @@ export function BrandLogo({
               y1="15"
               x2="60"
               y2="57"
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="1.1"
               strokeOpacity="0.75"
             />
@@ -328,7 +376,7 @@ export function BrandLogo({
               height="3.5"
               rx="1.5"
               fill={`url(#${saffronGradId})`}
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.8"
             />
 
@@ -340,7 +388,7 @@ export function BrandLogo({
               height="29"
               rx="1.5"
               fill={`url(#${goldGradId})`}
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.7"
             />
             <rect
@@ -350,19 +398,21 @@ export function BrandLogo({
               height="29"
               rx="1.5"
               fill={`url(#${goldGradId})`}
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.7"
             />
 
-            {/* H-Grip Twin Center Crossbars (Swelled Baluster Bars) */}
+            {/* H-Grip Twin Center Crossbars */}
             <rect
               x="54"
               y="69.5"
               width="12"
               height="2.5"
               rx="1.2"
-              fill="#E5C158"
-              stroke="#1B2A20"
+              style={{
+                fill: "var(--theme-accent-bright, #E5C158)",
+                stroke: "var(--bg-surface, #1B2A20)",
+              }}
               strokeWidth="0.6"
             />
             <rect
@@ -372,22 +422,42 @@ export function BrandLogo({
               height="2.5"
               rx="1.2"
               fill={`url(#${saffronGradId})`}
-              stroke="#1B2A20"
+              style={{ stroke: "var(--bg-surface, #1B2A20)" }}
               strokeWidth="0.6"
             />
 
             {/* H-Grip Bottom Pommel Caps */}
-            <circle cx="53.1" cy="89" r="2.3" fill="#E5C158" stroke="#1B2A20" strokeWidth="0.6" />
-            <circle cx="66.9" cy="89" r="2.3" fill="#E5C158" stroke="#1B2A20" strokeWidth="0.6" />
+            <circle
+              cx="53.1"
+              cy="89"
+              r="2.3"
+              style={{
+                fill: "var(--theme-accent-bright, #E5C158)",
+                stroke: "var(--bg-surface, #1B2A20)",
+              }}
+              strokeWidth="0.6"
+            />
+            <circle
+              cx="66.9"
+              cy="89"
+              r="2.3"
+              style={{
+                fill: "var(--theme-accent-bright, #E5C158)",
+                stroke: "var(--bg-surface, #1B2A20)",
+              }}
+              strokeWidth="0.6"
+            />
           </g>
         </svg>
       </span>
 
       {showText && (
         <span
-          className={`font-serif font-semibold tracking-wide text-charcoal dark:text-ivory ${TEXT_SIZE_CLASSES[size]}`}
+          className={`font-serif font-semibold tracking-wide ${TEXT_SIZE_CLASSES[size]}`}
+          style={{ color: "var(--text-primary, #FAF6EE)" }}
         >
-          Learn <span className="text-saffron">Sikhi</span>
+          Learn{" "}
+          <span style={{ color: "var(--accent-primary, #D97706)" }}>Sikhi</span>
         </span>
       )}
     </span>

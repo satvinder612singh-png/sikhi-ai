@@ -2,28 +2,161 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-ivory: #FAF6EE;
-  --bg-parchment: #F3ECE0;
-  --accent-olive: #1B2A20;
-  --text-charcoal: #171917;
-  --text-muted-olive: #4A554E;
-  --highlight-saffron: #D97706;
-  --border-gold: #C59B27;
-  --border-gold-light: #E5C158;
+/* ============================================================================
+   1. SIKHI PALETTE THEME TOKENS (4 LIVE SWITCHABLE THEMES)
+============================================================================ */
+:root,
+html[data-theme="emerald"] {
+  --bg-primary: #0a1f17;
+  --bg-surface: #153226;
+  --text-primary: #f7f2e7;
+  --text-on-surface: #faf6ee;
+  --accent-primary: #d4af37;
+  --border-subtle: rgba(212, 175, 55, 0.38);
+
+  --logo-shield-start: #234737;
+  --logo-shield-end: #071610;
+
+  --theme-bg-primary: #0a1f17;
+  --theme-bg-secondary: #112a20;
+  --theme-card-dark: #153226;
+  --theme-card-darker: #071610;
+  --theme-text-primary: #f7f2e7;
+  --theme-text-muted: #c7d3cb;
+  --theme-accent-gold: #d4af37;
+  --theme-accent-bright: #e5c158;
+  --theme-accent-highlight: #d97706;
+
+  --bg-ivory: #0a1f17;
+  --bg-parchment: #112a20;
+  --accent-olive: #153226;
+  --text-charcoal: #f7f2e7;
+  --text-muted-olive: #c7d3cb;
+  --highlight-saffron: #d97706;
+  --border-gold: #d4af37;
+  --border-gold-light: #e5c158;
+}
+
+html[data-theme="parchment"] {
+  --bg-primary: #f7f2e7;
+  --bg-surface: #24382b;
+  --text-primary: #1c2421;
+  --text-on-surface: #faf6ee;
+  --accent-primary: #9a7b2c;
+  --border-subtle: rgba(154, 123, 44, 0.36);
+
+  --logo-shield-start: #35503f;
+  --logo-shield-end: #16241b;
+
+  --theme-bg-primary: #f7f2e7;
+  --theme-bg-secondary: #efe6d5;
+  --theme-card-dark: #24382b;
+  --theme-card-darker: #18261d;
+  --theme-text-primary: #1c2421;
+  --theme-text-muted: #4a554e;
+  --theme-accent-gold: #9a7b2c;
+  --theme-accent-bright: #d4af37;
+  --theme-accent-highlight: #b45309;
+
+  --bg-ivory: #f7f2e7;
+  --bg-parchment: #efe6d5;
+  --accent-olive: #24382b;
+  --text-charcoal: #1c2421;
+  --text-muted-olive: #4a554e;
+  --highlight-saffron: #b45309;
+  --border-gold: #9a7b2c;
+  --border-gold-light: #c59b27;
+}
+
+html[data-theme="navy"] {
+  --bg-primary: #0b162c;
+  --bg-surface: #16284c;
+  --text-primary: #f8f6f0;
+  --text-on-surface: #f8f6f0;
+  --accent-primary: #f4b41a;
+  --border-subtle: rgba(244, 180, 26, 0.38);
+
+  --logo-shield-start: #213c70;
+  --logo-shield-end: #070f1f;
+
+  --theme-bg-primary: #0b162c;
+  --theme-bg-secondary: #132242;
+  --theme-card-dark: #16284c;
+  --theme-card-darker: #070f1f;
+  --theme-text-primary: #f8f6f0;
+  --theme-text-muted: #cbd5e1;
+  --theme-accent-gold: #f4b41a;
+  --theme-accent-bright: #ffd166;
+  --theme-accent-highlight: #f59e0b;
+
+  --bg-ivory: #0b162c;
+  --bg-parchment: #132242;
+  --accent-olive: #16284c;
+  --text-charcoal: #f8f6f0;
+  --text-muted-olive: #cbd5e1;
+  --highlight-saffron: #f59e0b;
+  --border-gold: #f4b41a;
+  --border-gold-light: #ffd166;
+}
+
+html[data-theme="dusk"] {
+  --bg-primary: #161224;
+  --bg-surface: #28213f;
+  --text-primary: #f9f5f0;
+  --text-on-surface: #f9f5f0;
+  --accent-primary: #e2b887;
+  --border-subtle: rgba(226, 184, 135, 0.38);
+
+  --logo-shield-start: #3c315e;
+  --logo-shield-end: #0f0c19;
+
+  --theme-bg-primary: #161224;
+  --theme-bg-secondary: #211b34;
+  --theme-card-dark: #28213f;
+  --theme-card-darker: #0f0c19;
+  --theme-text-primary: #f9f5f0;
+  --theme-text-muted: #d6cce2;
+  --theme-accent-gold: #e2b887;
+  --theme-accent-bright: #f0d2ad;
+  --theme-accent-highlight: #e07a5f;
+
+  --bg-ivory: #161224;
+  --bg-parchment: #211b34;
+  --accent-olive: #28213f;
+  --text-charcoal: #f9f5f0;
+  --text-muted-olive: #d6cce2;
+  --highlight-saffron: #e07a5f;
+  --border-gold: #e2b887;
+  --border-gold-light: #f0d2ad;
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
-    background-color: var(--bg-ivory);
-    color: var(--text-charcoal);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
   }
 
   body {
-    background-color: var(--bg-ivory);
-    color: var(--text-charcoal);
-    @apply font-sans antialiased transition-colors duration-300;
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+    @apply font-sans antialiased;
+  }
+
+  main,
+  section,
+  header,
+  footer,
+  article,
+  aside,
+  nav,
+  div,
+  a,
+  button {
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease,
+      transform 0.25s ease, box-shadow 0.25s ease;
   }
 
   /* Generous Gurmukhi line-height so Sihari/Bihari/Lavan/Dulavan vowel marks never clip */
@@ -35,8 +168,8 @@
   }
 
   ::selection {
-    background: rgba(217, 119, 6, 0.22);
-    color: #171917;
+    background: rgba(212, 175, 55, 0.28);
+    color: var(--text-primary);
   }
 
   section[id] {
@@ -50,27 +183,220 @@
   }
 }
 
+/* ============================================================================
+   2. GLOBAL 100% THEME COVERAGE REMAPPING ACROSS ALL SECTIONS, CARDS & HEADERS
+============================================================================ */
+/* Primary page canvas classes */
+html[data-theme="emerald"] .bg-\[\#FAF6EE\],
+html[data-theme="navy"] .bg-\[\#FAF6EE\],
+html[data-theme="dusk"] .bg-\[\#FAF6EE\],
+html[data-theme="parchment"] .bg-\[\#FAF6EE\] {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Secondary card/parchment surfaces */
+html[data-theme="emerald"] .bg-\[\#F3ECE0\],
+html[data-theme="navy"] .bg-\[\#F3ECE0\],
+html[data-theme="dusk"] .bg-\[\#F3ECE0\],
+html[data-theme="parchment"] .bg-\[\#F3ECE0\] {
+  background-color: var(--theme-bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Primary elevated dark surfaces (Headers, Footers, Hero, Feature Cards) */
+html[data-theme] .bg-\[\#1B2A20\],
+html[data-theme] .bg-\[\#1B2A20\]\/95,
+html[data-theme] .bg-\[\#1B2A20\]\/90,
+html[data-theme] .bg-\[\#1B2A20\]\/98,
+html[data-theme] .bg-\[\#0A1F17\],
+html[data-theme] .bg-\[\#0a1f17\] {
+  background-color: var(--bg-surface) !important;
+}
+
+/* Deepest inset surfaces (Badges, Wells, Controls, Dropdowns) */
+html[data-theme] .bg-\[\#121C15\],
+html[data-theme] .bg-\[\#121C15\]\/90,
+html[data-theme] .bg-\[\#121C15\]\/85,
+html[data-theme] .bg-\[\#121C15\]\/60 {
+  background-color: var(--theme-card-darker) !important;
+}
+
+/* Hero & section gradient backdrops */
+html[data-theme] .from-\[\#121C15\] {
+  --tw-gradient-from: var(--theme-card-darker) var(--tw-gradient-from-position) !important;
+}
+html[data-theme] .via-\[\#1B2A20\] {
+  --tw-gradient-via: var(--bg-surface) var(--tw-gradient-via-position) !important;
+}
+html[data-theme] .to-\[\#233629\],
+html[data-theme] .to-\[\#1B2A20\] {
+  --tw-gradient-to: var(--bg-surface) var(--tw-gradient-to-position) !important;
+}
+
+/* Primary & Muted Typography across themes */
+html[data-theme="emerald"] .text-\[\#171917\],
+html[data-theme="navy"] .text-\[\#171917\],
+html[data-theme="dusk"] .text-\[\#171917\] {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="emerald"] .text-\[\#4A554E\],
+html[data-theme="navy"] .text-\[\#4A554E\],
+html[data-theme="dusk"] .text-\[\#4A554E\],
+html[data-theme="parchment"] .text-\[\#4A554E\] {
+  color: var(--theme-text-muted) !important;
+}
+
+html[data-theme="emerald"] .text-\[\#1B2A20\],
+html[data-theme="navy"] .text-\[\#1B2A20\],
+html[data-theme="dusk"] .text-\[\#1B2A20\] {
+  color: var(--theme-accent-bright) !important;
+}
+
+/* Accent Gold, Bright Gold & Saffron Typography & Borders */
+html[data-theme] .text-\[\#E5C158\] {
+  color: var(--theme-accent-bright) !important;
+}
+
+html[data-theme] .text-\[\#C59B27\] {
+  color: var(--accent-primary) !important;
+}
+
+html[data-theme] .text-\[\#D97706\] {
+  color: var(--theme-accent-highlight) !important;
+}
+
+html[data-theme] .border-\[\#C59B27\],
+html[data-theme] .border-\[\#C59B27\]\/60,
+html[data-theme] .border-\[\#C59B27\]\/50,
+html[data-theme] .border-\[\#C59B27\]\/45,
+html[data-theme] .border-\[\#C59B27\]\/40,
+html[data-theme] .border-\[\#C59B27\]\/35,
+html[data-theme] .border-\[\#C59B27\]\/30,
+html[data-theme] .border-\[\#C59B27\]\/25 {
+  border-color: var(--border-subtle) !important;
+}
+
+/* Keep dark text high-contrast inside gold/accent gradient CTA buttons */
+html[data-theme] button.from-\[\#C59B27\],
+html[data-theme] a.from-\[\#C59B27\] {
+  color: #111613 !important;
+}
+
+/* ============================================================================
+   3. FULL-VIEWPORT THEME WAVE & RADIAL RIPPLE ANIMATION
+============================================================================ */
+@keyframes themeRadialWave {
+  0% {
+    clip-path: circle(0px at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px));
+    opacity: 0.78;
+  }
+  55% {
+    clip-path: circle(145vmax at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px));
+    opacity: 0.42;
+  }
+  100% {
+    clip-path: circle(165vmax at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px));
+    opacity: 0;
+  }
+}
+
+@keyframes themeDiagonalSweep {
+  0% {
+    transform: translateX(-110%) skewX(-18deg);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateX(125%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+.theme-wave-overlay {
+  background: radial-gradient(
+    circle at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px),
+    var(--wave-accent, #d4af37) 0%,
+    var(--wave-surface, #153226) 42%,
+    var(--wave-bg, #0a1f17) 85%
+  );
+  animation: themeRadialWave 660ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.theme-wave-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--wave-accent, #d4af37) 38%, transparent) 45%,
+    color-mix(in srgb, var(--wave-accent, #d4af37) 68%, transparent) 50%,
+    color-mix(in srgb, var(--wave-accent, #d4af37) 38%, transparent) 55%,
+    transparent 100%
+  );
+  animation: themeDiagonalSweep 640ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Native View Transition radial clip-path support when switching themes */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: viewTransitionRipple 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes viewTransitionRipple {
+  from {
+    clip-path: circle(0px at var(--wave-x, 90%) var(--wave-y, 36px));
+  }
+  to {
+    clip-path: circle(150vmax at var(--wave-x, 90%) var(--wave-y, 36px));
+  }
+}
+
+/* ============================================================================
+   4. SMOOTH ENTRANCE ANIMATIONS & UTILITIES
+============================================================================ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   .border-ornamental-gold {
-    border-color: rgba(197, 155, 39, 0.45);
+    border-color: var(--border-subtle);
     box-shadow: inset 0 0 0 1px rgba(229, 193, 88, 0.18);
   }
 
   .surface-ivory {
-    background-color: #FAF6EE;
-    color: #171917;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 
   .surface-parchment {
-    background-color: #F3ECE0;
-    color: #171917;
-    border: 1px solid rgba(197, 155, 39, 0.32);
+    background-color: var(--theme-bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
   }
 
   .surface-olive {
-    background-color: #1B2A20;
+    background-color: var(--bg-surface);
     color: #FAF6EE;
-    border: 1px solid rgba(197, 155, 39, 0.38);
+    border: 1px solid var(--border-subtle);
   }
 
   .gold-divider-rule {
@@ -78,7 +404,7 @@
       90deg,
       transparent 0%,
       rgba(197, 155, 39, 0.25) 20%,
-      #C59B27 50%,
+      var(--accent-primary) 50%,
       rgba(197, 155, 39, 0.25) 80%,
       transparent 100%
     );

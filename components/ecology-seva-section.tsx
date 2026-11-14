@@ -281,7 +281,7 @@ export function EcologySevaSection() {
                 key={pillar.id}
                 type="button"
                 onClick={() => setSelectedPillarId(pillar.id)}
-                className={`text-left rounded-2xl p-6 border transition-all duration-300 flex flex-col justify-between ${
+                className={`text-left rounded-2xl p-6 border hover:-translate-y-1 hover:shadow-lg transition-all duration-300 flex flex-col justify-between ${
                   isSelected
                     ? "bg-[#1B2A20] text-[#FAF6EE] border-[#C59B27] shadow-[0_12px_30px_rgba(27,42,32,0.22)]"
                     : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/40 hover:border-[#D97706] hover:bg-[#FAF6EE]"
