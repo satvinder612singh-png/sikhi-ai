@@ -15,7 +15,7 @@ type State =
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 
-export function AskPanel({ initialQuery }: { initialQuery: string }) {
+export function AskPanel({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
   const [state, setState] = useState<State>({ status: "idle" });
 
