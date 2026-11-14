@@ -4,6 +4,9 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
+import { AnimatedModal } from "@/components/animated-modal";
+import { SikhiIcon } from "@/components/sikhi-icons";
 
 type MatriarchCategory =
   | "Spiritual Pioneers"
@@ -381,13 +384,35 @@ export default function MatriarchsPage() {
               className="rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
             >
               <div className="space-y-3">
+                <ChitrakariCardHeader
+                  artKey={profile.id}
+                  variant={
+                    profile.category === "Battlefield Commanders"
+                      ? "warrior"
+                      : "woman"
+                  }
+                  title={profile.name}
+                  heightClass="h-44"
+                  editable
+                />
+
                 <div className="flex items-center justify-between gap-2">
-                  <span
-                    lang="pa"
-                    className="h-8 w-8 rounded-lg bg-[#121C15] border border-[#C59B27]/40 font-gurmukhi text-sm font-bold text-[#C59B27] flex items-center justify-center"
-                  >
-                    {profile.numeral}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <SikhiIcon
+                      name={
+                        profile.category === "Battlefield Commanders"
+                          ? "dhaal"
+                          : "lotus-dome"
+                      }
+                      size={26}
+                    />
+                    <span
+                      lang="pa"
+                      className="h-8 w-8 rounded-lg bg-[#121C15] border border-[#C59B27]/40 font-gurmukhi text-sm font-bold text-[#C59B27] flex items-center justify-center"
+                    >
+                      {profile.numeral}
+                    </span>
+                  </div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30">
                     {profile.category}
                   </span>
@@ -437,14 +462,27 @@ export default function MatriarchsPage() {
         </section>
 
         {/* Expandable Biography & Primary Citation Modal */}
-        {activeProfile && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={activeProfile.name}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm overflow-y-auto"
-          >
-            <div className="relative w-full max-w-3xl rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+        <AnimatedModal open={!!activeProfile}>
+          {activeProfile && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={activeProfile.name}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm overflow-y-auto"
+            >
+              <div className="relative w-full max-w-3xl rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+                <ChitrakariCardHeader
+                  artKey={activeProfile.id}
+                  variant={
+                    activeProfile.category === "Battlefield Commanders"
+                      ? "warrior"
+                      : "woman"
+                  }
+                  title={activeProfile.name}
+                  heightClass="h-52"
+                  editable
+                />
+
               <div className="flex items-start justify-between gap-4 border-b border-[#C59B27]/30 pb-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -523,9 +561,10 @@ export default function MatriarchsPage() {
                   Done Reading
                 </button>
               </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatedModal>
       </main>
 
       <Footer />

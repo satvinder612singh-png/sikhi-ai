@@ -1,27 +1,28 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useId, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useAuth } from "@/components/auth-provider";
+import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
 
-const LINKS = [
-  { href: "/nitnem", label: "Gurbani" },
-  { href: "/live-kirtan", label: "Live Kirtan" },
-  { href: "/granths", label: "Granths & Raag" },
-  { href: "/matriarchs", label: "Matriarchs" },
-  { href: "/games", label: "Abhiyaas" },
-  { href: "/sangat", label: "Sangat" },
+const LINKS: { href: string; title: string; sub: string; icon: SikhiIconName }[] = [
+  { href: "/foundations", title: "Start Here", sub: "Sikhi 101", icon: "ikonkar" },
+  { href: "/nitnem", title: "Daily Bani", sub: "& Hukamnama", icon: "scroll" },
+  { href: "/granths", title: "Granths", sub: "& Live Kirtan", icon: "rabab" },
+  { href: "/matriarchs", title: "Sikh Women", sub: "Matriarchs", icon: "lotus-dome" },
+  { href: "/games", title: "Games", sub: "Abhiyaas", icon: "dhaal" },
+  { href: "/sangat", title: "Community", sub: "Sangat", icon: "khanda" },
 ];
 
-const MOBILE_EXTRA_LINKS = [
-  { href: "/sangat?studio=1", label: "Profile Studio" },
-  { href: "/hukamnama", label: "Daily Hukamnama" },
-  { href: "/ask", label: "Scriptural Inquiry" },
-  { href: "/sources", label: "Primary Sources" },
+const MOBILE_EXTRA_LINKS: { href: string; title: string; sub: string; icon?: SikhiIconName }[] = [
+  { href: "/live-kirtan", title: "Live Kirtan", sub: "24/7 from Darbar Sahib" },
+  { href: "/sangat?studio=1", title: "Profile Studio", sub: "Avatar & identity" },
+  { href: "/hukamnama", title: "Daily Hukamnama", sub: "Sri Darbar Sahib" },
+  { href: "/ask", title: "Scriptural Inquiry", sub: "Ask with sources" },
+  { href: "/sources", title: "Primary Sources", sub: "Archive" },
 ];
-
 const focusRing =
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]";
 
@@ -65,15 +66,21 @@ export function Header({ solid = false }: { solid?: boolean }) {
           </span>
         </Link>
 
-        <ul className="hidden items-center gap-3 xl:gap-5 lg:flex">
+        <ul className="hidden items-center gap-2 xl:gap-4 lg:flex">
           {LINKS.map((l) => (
             <li key={l.href} className="shrink-0">
               <Link
                 href={l.href}
                 style={{ color: "var(--text-primary)" }}
-                className={`whitespace-nowrap rounded text-xs xl:text-sm font-semibold tracking-wide opacity-85 transition hover:opacity-100 ${focusRing}`}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-1.5 py-1 transition hover:bg-black/5 ${focusRing}`}
               >
-                {l.label}
+                <SikhiIcon name={l.icon} size={26} />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-xs xl:text-sm font-bold">{l.title}</span>
+                  <span className="hidden xl:block text-[10px] font-semibold" style={{ color: "var(--theme-text-muted)" }}>
+                    {l.sub}
+                  </span>
+                </span>
               </Link>
             </li>
           ))}
@@ -159,9 +166,13 @@ export function Header({ solid = false }: { solid?: boolean }) {
               <Link
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:opacity-80"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition hover:opacity-80"
               >
-                {l.label}
+                {"icon" in l && l.icon ? <SikhiIcon name={l.icon} size={28} /> : <span className="w-7" />}
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm font-bold">{l.title}</span>
+                  <span className="text-xs" style={{ color: "var(--theme-text-muted)" }}>{l.sub}</span>
+                </span>
               </Link>
             </li>
           ))}
@@ -198,3 +209,4 @@ export function Header({ solid = false }: { solid?: boolean }) {
 
 export const Navbar = Header;
 export default Header;
+

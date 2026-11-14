@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -8,6 +8,9 @@ import { ManglacharanSpotlight } from "@/components/manglacharan-spotlight";
 import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
 import { SevaPathFinderInline } from "@/components/seva-concierge";
 import { Footer } from "@/components/footer";
+import { SikhiFoundationsDeck } from "@/components/sikhi-foundations-deck";
+import { ChitrakariCardHeader, type ChitrakariVariant } from "@/components/chitrakari-card-header";
+import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
 
 type PillarGateway = {
   id: string;
@@ -19,6 +22,8 @@ type PillarGateway = {
   ctaLabel: string;
   description: string;
   highlights: string[];
+  icon: SikhiIconName;
+  art: { artKey: string; variant: ChitrakariVariant };
 };
 
 const PILLAR_GATEWAYS: PillarGateway[] = [
@@ -26,7 +31,9 @@ const PILLAR_GATEWAYS: PillarGateway[] = [
     id: "gurbani-nitnem",
     numeral: "੧",
     eyebrow: "PILLAR I • SABAD GURU & DAILY BANI",
-    title: "Gurbani & Nitnem Sanctuary",
+    title: "Daily Bani & Hukamnama",
+    icon: "scroll",
+    art: { artKey: "home-bani", variant: "manuscript" },
     gurmukhi: "ਗੁਰਬਾਣੀ ਅਤੇ ਨਿਤਨੇਮ",
     href: "/nitnem",
     ctaLabel: "Open Nitnem & Bani Reader →",
@@ -42,7 +49,9 @@ const PILLAR_GATEWAYS: PillarGateway[] = [
     id: "granths-kirtan",
     numeral: "੨",
     eyebrow: "PILLAR II • RAAG DARBAR & INTERACTIVE BOOKREADER",
-    title: "Granths & Puratan Kirtan",
+    title: "Granths & Live Kirtan",
+    icon: "rabab",
+    art: { artKey: "darbar-sahib", variant: "darbar" },
     gurmukhi: "ਪੁਰਾਤਨ ਕੀਰਤਨ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ",
     href: "/granths",
     ctaLabel: "Enter Raag Darbar & Granth Library →",
@@ -58,7 +67,9 @@ const PILLAR_GATEWAYS: PillarGateway[] = [
     id: "matriarchs",
     numeral: "੩",
     eyebrow: "PILLAR III • SOVEREIGN EQUALITY (ANG 473)",
-    title: "Matriarchs of the Panth",
+    title: "Sikh Women (Matriarchs)",
+    icon: "lotus-dome",
+    art: { artKey: "mai-bhago", variant: "woman" },
     gurmukhi: "ਪੰਥ ਦੀਆਂ ਮਹਾਨ ਸਿੰਘਣੀਆਂ ਅਤੇ ਮਾਤਾਵਾਂ",
     href: "/matriarchs",
     ctaLabel: "Explore All 13 Matriarchs & Warriors →",
@@ -74,7 +85,9 @@ const PILLAR_GATEWAYS: PillarGateway[] = [
     id: "abhiyaas-games",
     numeral: "੪",
     eyebrow: "PILLAR IV • GAMIFIED LEARNING (50-COIN TREASURY)",
-    title: "Interactive Abhiyaas Games",
+    title: "Games (Abhiyaas)",
+    icon: "dhaal",
+    art: { artKey: "home-games", variant: "horse" },
     gurmukhi: "ਗੁਰਮਤਿ ਅਭਿਆਸ ਅਤੇ ਖੇਡਾਂ",
     href: "/games",
     ctaLabel: "Launch Interactive Games Hub →",
@@ -191,6 +204,15 @@ export default function HomePage() {
         <ManglacharanSpotlight />
       </section>
 
+      {/* 2C. Who is a Sikh? & Foundations of Sikhi interactive deck */}
+      <section
+        id="foundations"
+        aria-label="Foundations of Sikhi"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+      >
+        <SikhiFoundationsDeck />
+      </section>
+
       {/* 3. Four Clean Pillar Gateway Cards */}
       <section
         id="pillars"
@@ -230,17 +252,22 @@ export default function HomePage() {
               className="group rounded-3xl border p-8 sm:p-10 shadow-sm hover:border-[#C59B27] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between gap-8"
             >
               <div className="space-y-4">
+                <ChitrakariCardHeader
+                  artKey={pillar.art.artKey}
+                  variant={pillar.art.variant}
+                  title={pillar.title}
+                  heightClass="h-44"
+                />
                 <div className="flex items-center justify-between gap-3">
-                  <span
-                    lang="pa"
-                    style={{
-                      backgroundColor: "var(--theme-card-darker)",
-                      borderColor: "var(--border-subtle)",
-                      color: "var(--accent-primary)",
-                    }}
-                    className="h-10 w-10 rounded-xl border font-gurmukhi text-base font-bold flex items-center justify-center"
-                  >
-                    {pillar.numeral}
+                  <span className="flex items-center gap-2.5">
+                    <SikhiIcon name={pillar.icon} size={40} />
+                    <span
+                      lang="pa"
+                      style={{ color: "var(--accent-primary)" }}
+                      className="font-gurmukhi text-xl font-bold"
+                    >
+                      {pillar.numeral}
+                    </span>
                   </span>
                   <span
                     style={{ color: "var(--accent-primary)" }}
@@ -524,3 +551,4 @@ export default function HomePage() {
     </main>
   );
 }
+

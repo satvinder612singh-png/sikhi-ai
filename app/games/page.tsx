@@ -14,6 +14,8 @@ import { LarivaarGame } from "@/components/games/larivaar-game";
 import { SikhShatranjGame } from "@/components/games/sikh-shatranj-game";
 import { HolaMahallaGame } from "@/components/games/hola-mahalla-game";
 import { BujhartoSakhiGame } from "@/components/games/bujharto-sakhi-game";
+import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
+import { ChitrakariCardHeader, type ChitrakariVariant } from "@/components/chitrakari-card-header";
 
 type GameTabId = "larivaar" | "shatranj" | "hola-mahalla" | "bujharto";
 
@@ -21,50 +23,70 @@ const GAME_TABS: {
   id: GameTabId;
   numeral: string;
   title: string;
+  traditionalSubtitle: string;
   gurmukhi: string;
   audience: string;
   rewardTag: string;
   shortDesc: string;
+  icon: SikhiIconName;
+  artKey: string;
+  artVariant: ChitrakariVariant;
 }[] = [
   {
     id: "larivaar",
     numeral: "੧",
-    title: "Larivaar Padchhed & Arth",
+    title: "Split the Gurbani Words (Larivaar)",
+    traditionalSubtitle: "Larivaar Padchhed & Arth",
     gurmukhi: "ਲੜੀਵਾਰ ਪਦਛੇਦ ਅਤੇ ਅਰਥ",
     audience: "Adults & Scholars",
     rewardTag: "Up to +15 Coins",
     shortDesc:
       "Split unbroken Gurmukhi Larivaar verses into Padchhed words and contemplate their philosophical Arth.",
+    icon: "scroll",
+    artKey: "game-larivaar",
+    artVariant: "manuscript",
   },
   {
     id: "shatranj",
     numeral: "੨",
-    title: "Sikh Shatranj (Dhai Phat)",
+    title: "Sikh Chess (Shatranj)",
+    traditionalSubtitle: "Sikh Shatranj · Dhai Phat",
     gurmukhi: "ਸਿੱਖ ਸ਼ਤਰੰਜ · ਢਾਈ ਫੱਟ",
     audience: "Teens & Adults",
     rewardTag: "Win +20 • Draw +5",
     shortDesc:
       "6×6 Khalsa tactical strategy grid featuring Jathedar, Akali Nihang, Ghorchurra Cavalry, and battlefield dispatches.",
+    icon: "dhaal",
+    artKey: "game-shatranj",
+    artVariant: "warrior",
   },
   {
     id: "hola-mahalla",
     numeral: "੩",
-    title: "Hola Mahalla Ghurdaur",
+    title: "Hola Mahalla Horse Race",
+    traditionalSubtitle: "Hola Mahalla Ghurdaur",
     gurmukhi: "ਹੋਲਾ ਮਹੱਲਾ ਘੁੜਦੌੜ",
     audience: "All Ages",
     rewardTag: "1st +10 • 2nd +3",
     shortDesc:
       "Anandpur Sahib equestrian sprint: sponsor a historical steed, answer trivia for a speed boost, and race!",
+    icon: "khanda",
+    artKey: "game-hola",
+    artVariant: "horse",
   },
   {
     id: "bujharto",
     numeral: "੪",
-    title: "Bujharto & Sakhi Quest",
+    title: "Sikhi Trivia & Riddles",
+    traditionalSubtitle: "Bujharto & Sakhi Quest",
     gurmukhi: "ਬੁਝਾਰਤਾਂ ਅਤੇ ਪੈਂਤੀ ਅੱਖਰ",
     audience: "Children & Families",
     rewardTag: "+5 Coins / Streak",
     shortDesc:
       "Rapid-fire 'Who Am I?' Sikh historical riddles and Gurmukhi Painti Akhar (35 letters) memory matching.",
+    icon: "ikonkar",
+    artKey: "game-bujharto",
+    artVariant: "darbar",
   },
 ];
 
@@ -298,17 +320,29 @@ function GamesHubContent() {
                   }`}
                 >
                   <div>
+                    <div className="mb-3 -mx-1 -mt-1">
+                      <ChitrakariCardHeader
+                        artKey={tab.artKey}
+                        variant={tab.artVariant}
+                        title={tab.title}
+                        heightClass="h-28"
+                        compact
+                      />
+                    </div>
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span
-                        lang="pa"
-                        className={`font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded border ${
-                          selected
-                            ? "bg-[#1B2A20] text-[#E5C158] border-[#C59B27]"
-                            : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/40"
-                        }`}
-                      >
-                        {tab.numeral}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <SikhiIcon name={tab.icon} size={26} />
+                        <span
+                          lang="pa"
+                          className={`font-gurmukhi text-sm font-bold px-2 py-0.5 rounded border ${
+                            selected
+                              ? "bg-[#1B2A20] text-[#E5C158] border-[#C59B27]"
+                              : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/40"
+                          }`}
+                        >
+                          {tab.numeral}
+                        </span>
+                      </div>
                       <span
                         className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-0.5 rounded whitespace-nowrap ${
                           selected
@@ -320,15 +354,20 @@ function GamesHubContent() {
                       </span>
                     </div>
 
-                    <p
-                      lang="pa"
-                      className={`font-gurmukhi text-xs font-semibold ${
-                        selected ? "text-[#D97706]" : "text-[#E5C158]"
-                      }`}
-                    >
-                      {tab.gurmukhi}
-                    </p>
-                    <h2 className="font-serif text-lg font-bold mt-0.5">{tab.title}</h2>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p
+                        lang="pa"
+                        className={`font-gurmukhi text-xs font-semibold ${
+                          selected ? "text-[#D97706]" : "text-[#E5C158]"
+                        }`}
+                      >
+                        {tab.gurmukhi}
+                      </p>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/20 border border-[#C59B27]/35">
+                        {tab.traditionalSubtitle}
+                      </span>
+                    </div>
+                    <h2 className="font-serif text-lg font-bold mt-1">{tab.title}</h2>
                     <p
                       className={`text-xs mt-1.5 leading-relaxed ${
                         selected ? "text-[#4A554E]" : "text-[#F3ECE0]/80"

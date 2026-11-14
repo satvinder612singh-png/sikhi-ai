@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter, Noto_Sans_Gurmukhi } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
+import { AmbientBackground } from "@/components/ambient-background";
+import { SikhiIconDefs } from "@/components/sikhi-icons";
 import { KirtanAudioProvider } from "@/components/kirtan-audio-context";
 import { SevaConcierge } from "@/components/seva-concierge";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -55,6 +57,8 @@ export default async function RootLayout({
     >
       <body className="bg-[#FAF7F0] text-[#18181B] antialiased selection:bg-[#C59B27]/20 selection:text-[#18181B]">
         <AuthProvider initialUser={initialUser} configured={isSupabaseConfigured}>
+          <AmbientBackground />
+          <SikhiIconDefs />
           <KirtanAudioProvider>
             {children}
             <SevaConcierge />

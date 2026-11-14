@@ -4,6 +4,9 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
+import { AnimatedModal } from "@/components/animated-modal";
+import { SikhiIcon } from "@/components/sikhi-icons";
 import {
   useKirtanAudio,
   formatAudioTime,
@@ -1109,13 +1112,24 @@ export default function GranthsAndKirtanPage() {
                   className="rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6"
                 >
                   <div className="space-y-3">
+                    <ChitrakariCardHeader
+                      artKey={granth.id}
+                      variant="manuscript"
+                      title={granth.title}
+                      heightClass="h-40"
+                      editable
+                    />
+
                     <div className="flex items-center justify-between gap-2">
-                      <span
-                        lang="pa"
-                        className="h-8 w-8 rounded-lg bg-[#121C15] border border-[#C59B27]/40 font-gurmukhi text-sm font-bold text-[#C59B27] flex items-center justify-center"
-                      >
-                        {granth.numeral}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <SikhiIcon name="scroll" size={26} />
+                        <span
+                          lang="pa"
+                          className="h-8 w-8 rounded-lg bg-[#121C15] border border-[#C59B27]/40 font-gurmukhi text-sm font-bold text-[#C59B27] flex items-center justify-center"
+                        >
+                          {granth.numeral}
+                        </span>
+                      </div>
                       <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30">
                         {granth.category}
                       </span>
@@ -1175,19 +1189,20 @@ export default function GranthsAndKirtanPage() {
         {/* ================================================================
             DUAL-MODE BUILT-IN GRANTH READER EXTENSION MODAL
         ================================================================ */}
-        {selectedGranth && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={selectedGranth.title}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto"
-          >
+        <AnimatedModal open={!!selectedGranth}>
+          {selectedGranth && (
             <div
-              className={`relative w-full ${
-                isFullscreenModal ? "max-w-[98vw] min-h-[94vh]" : "max-w-6xl"
-              } rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-5 sm:p-7 shadow-2xl space-y-5 my-4`}
+              role="dialog"
+              aria-modal="true"
+              aria-label={selectedGranth.title}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto"
             >
-              {/* Modal Top Bar */}
+              <div
+                className={`relative w-full ${
+                  isFullscreenModal ? "max-w-[98vw] min-h-[94vh]" : "max-w-6xl"
+                } rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-5 sm:p-7 shadow-2xl space-y-5 my-4`}
+              >
+                {/* Modal Top Bar */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#C59B27]/30 pb-4">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
@@ -1525,9 +1540,10 @@ export default function GranthsAndKirtanPage() {
                   Open Live Nitnem &amp; Bani Reader →
                 </Link>
               </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatedModal>
       </main>
 
       <Footer />

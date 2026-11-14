@@ -182,18 +182,19 @@ html[data-theme="obsidian"] {
     @apply font-sans antialiased;
   }
 
-  main,
-  section,
-  header,
-  footer,
-  article,
-  aside,
-  nav,
-  div,
+  /* Only interactive controls animate (compositor-friendly); no global per-div
+     transitions, so scrolling stays at the display's native refresh rate. */
   a,
   button {
-    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease,
-      transform 0.25s ease, box-shadow 0.25s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease,
+      filter 0.2s ease;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--theme-text-muted);
+    opacity: 0.9;
   }
 
   /* Generous Gurmukhi line-height so Sihari/Bihari/Lavan/Dulavan vowel marks never clip */
@@ -442,4 +443,178 @@ a.from-\[\#C59B27\] {
       transparent 100%
     );
   }
+}
+
+/* ============================================================================
+   5. WCAG-AAA PALETTE PASS + TRUE #000000 OLED THEME
+   (Later, same-specificity rules intentionally win over section 1 tokens.)
+   --accent-text  : gold/amber used for TEXT (>= 7:1 on that theme's surfaces)
+   --cta-*        : gradient buttons with guaranteed high-contrast labels
+============================================================================ */
+html[data-theme="ivory"] {
+  --text-primary: #14110A;
+  --theme-text-muted: #3F3A2E;
+  --border-subtle: rgba(122, 90, 0, 0.5);
+  --accent-text: #6B4A00;
+  --theme-accent-bright: #6B4A00;
+  --theme-accent-highlight: #8A3B00;
+  --cta-from: #F2C04A; --cta-to: #E8A02A; --cta-text: #14110A;
+  --vivid-blue: #1D4ED8; --vivid-crimson: #BE123C; --vivid-emerald: #047857;
+}
+html[data-theme="marble"] {
+  --text-primary: #0B1220;
+  --theme-text-muted: #334155;
+  --border-subtle: rgba(100, 116, 139, 0.55);
+  --accent-text: #7A3E00;
+  --theme-accent-bright: #7A3E00;
+  --theme-accent-highlight: #075985;
+  --cta-from: #F5B04A; --cta-to: #EA8A1B; --cta-text: #0B1220;
+  --vivid-blue: #1D4ED8; --vivid-crimson: #BE123C; --vivid-emerald: #047857;
+}
+html[data-theme="indigo"] {
+  --theme-text-muted: #E2E8F0;
+  --border-subtle: rgba(251, 191, 36, 0.55);
+  --accent-text: #FCD34D;
+  --theme-accent-bright: #FCD34D;
+  --theme-accent-highlight: #FDBA74;
+  --cta-from: #FFC933; --cta-to: #FF9F1C; --cta-text: #0B132B;
+  --vivid-blue: #60A5FA; --vivid-crimson: #FB7185; --vivid-emerald: #34D399;
+}
+html[data-theme="terracotta"] {
+  --text-primary: #24150F;
+  --theme-text-muted: #4A332A;
+  --border-subtle: rgba(158, 56, 40, 0.5);
+  --accent-text: #5A3A00;
+  --theme-accent-bright: #5A3A00;
+  --theme-accent-highlight: #8A2A1B;
+  --cta-from: #F0B45A; --cta-to: #E2893A; --cta-text: #24150F;
+  --vivid-blue: #1D4ED8; --vivid-crimson: #BE123C; --vivid-emerald: #047857;
+}
+
+/* TRUE OLED: pure #000000 canvas, #090A0F obsidian glass, vivid accents */
+html[data-theme="obsidian"] {
+  --bg-primary: #000000;
+  --bg-surface: #090A0F;
+  --text-primary: #FFFFFF;
+  --text-on-surface: #FFFFFF;
+  --accent-primary: #FFB800;
+  --border-subtle: rgba(255, 184, 0, 0.5);
+
+  --logo-shield-start: #1D4ED8;
+  --logo-shield-end: #000000;
+
+  --theme-bg-primary: #000000;
+  --theme-bg-secondary: #05060A;
+  --theme-card-dark: #090A0F;
+  --theme-card-darker: #12141C;
+  --theme-text-primary: #FFFFFF;
+  --theme-text-muted: #D4D8E1;
+  --theme-accent-gold: #FFB800;
+  --theme-accent-bright: #FFC933;
+  --theme-accent-highlight: #FF6B8A;
+
+  --accent-text: #FFC933;
+  --cta-from: #FFB800; --cta-to: #FF9500; --cta-text: #000000;
+  --vivid-blue: #3B82F6; --vivid-crimson: #F43F5E; --vivid-emerald: #10B981;
+
+  --bg-ivory: #000000;
+  --bg-parchment: #090A0F;
+  --accent-olive: #090A0F;
+  --text-charcoal: #FFFFFF;
+  --text-muted-olive: #D4D8E1;
+  --highlight-saffron: #F43F5E;
+  --border-gold: #FFB800;
+  --border-gold-light: #FFC933;
+}
+
+/* Gold TEXT now always uses the AAA-safe per-theme token */
+.text-\[\#C59B27\] { color: var(--accent-text, var(--accent-primary)) !important; }
+
+/* Gradient CTA buttons: vivid fill + high-contrast label on every theme */
+.from-\[\#C59B27\] {
+  --tw-gradient-from: var(--cta-from, #C59B27) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: var(--cta-to, #D97706) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+button.from-\[\#C59B27\],
+a.from-\[\#C59B27\],
+.from-\[\#C59B27\].text-\[\#18181B\] {
+  color: var(--cta-text, #18181B) !important;
+  font-weight: 700;
+}
+
+/* Inputs / selects: unmistakable borders and text on every theme */
+input:not([type="range"]):not([type="checkbox"]):not([type="file"]),
+select,
+textarea {
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--vivid-blue, #2563EB);
+  outline-offset: 2px;
+}
+
+/* OLED punch: crisp glass cards with a faint gold rim and vivid depth */
+html[data-theme="obsidian"] .bg-\[\#1B2A20\],
+html[data-theme="obsidian"] article {
+  box-shadow: 0 0 0 1px rgba(255, 184, 0, 0.22), 0 14px 40px rgba(0, 0, 0, 0.85);
+}
+html[data-theme="obsidian"] .surface-parchment,
+html[data-theme="obsidian"] .glass-card {
+  background-color: #090A0F;
+  border-color: rgba(255, 184, 0, 0.5);
+}
+
+/* ============================================================================
+   6. NATIVE-REFRESH-RATE MOTION SYSTEM (compositor-only: transform + opacity)
+============================================================================ */
+:root { --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1); }
+
+.ambient-layer { contain: layout paint style; }
+.ambient-gpu { will-change: transform; transform: translate3d(0, 0, 0); backface-visibility: hidden; }
+
+@keyframes ambientFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+  50% { transform: translate3d(0, -18px, 0) rotate(calc(var(--rot, 0deg) + 4deg)); }
+}
+.ambient-float { animation: ambientFloat var(--dur, 16s) ease-in-out infinite; will-change: transform; }
+
+/* Symmetric modal enter AND exit */
+.modal-anim-root {
+  position: fixed; inset: 0; z-index: 50;
+  opacity: 0;
+  transition: opacity 260ms var(--ease-out-expo);
+  will-change: opacity;
+}
+.modal-anim-root[data-state="open"] { opacity: 1; }
+.modal-anim-root[data-state="closed"] { pointer-events: none; }
+.modal-anim-root [role="dialog"] > div:first-child {
+  transform: translate3d(0, 22px, 0) scale(0.975);
+  opacity: 0;
+  transition: transform 300ms var(--ease-out-expo), opacity 260ms var(--ease-out-expo);
+  will-change: transform, opacity;
+}
+.modal-anim-root[data-state="open"] [role="dialog"] > div:first-child {
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+}
+
+/* Route enter (opacity only, so fixed/sticky children never re-anchor) */
+@keyframes pageEnter { from { opacity: 0; } to { opacity: 1; } }
+.page-enter { animation: pageEnter 320ms var(--ease-out-expo) both; }
+
+/* Slide-deck directional slides */
+@keyframes slideFromRight { from { opacity: 0; transform: translate3d(48px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes slideFromLeft { from { opacity: 0; transform: translate3d(-48px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.slide-from-right { animation: slideFromRight 420ms var(--ease-out-expo) both; }
+.slide-from-left { animation: slideFromLeft 420ms var(--ease-out-expo) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-float, .page-enter, .slide-from-right, .slide-from-left { animation: none !important; }
+  .modal-anim-root, .modal-anim-root [role="dialog"] > div:first-child { transition-duration: 1ms !important; }
 }

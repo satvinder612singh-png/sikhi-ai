@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { useAuth } from "@/components/auth-provider";
+import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   SikhHeritageAvatar,
   ProfileStudioModal,
@@ -1468,6 +1469,20 @@ function SangatHubContent() {
                       } rounded-3xl border p-7 sm:p-8 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6`}
                     >
                       <div className="space-y-4">
+                        <ChitrakariCardHeader
+                          artKey={blog.id}
+                          variant={
+                            blog.topicTag === "Sikh History"
+                              ? "warrior"
+                              : blog.topicTag === "Gurbani Research"
+                              ? "manuscript"
+                              : "darbar"
+                          }
+                          title={blog.title}
+                          heightClass={idx === 0 ? "h-52" : "h-44"}
+                          editable
+                        />
+
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="px-3 py-1 rounded-full bg-[#C59B27]/15 border border-[#C59B27]/40 text-[11px] font-bold uppercase tracking-wider text-[#C59B27]">
                             {blog.topicTag}
