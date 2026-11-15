@@ -95,39 +95,28 @@ export const LIVE_GURDWARA_STREAMS: KirtanTrack[] = [
 
 export const PURATAN_KIRTAN_TRACKS: KirtanTrack[] = LIVE_GURDWARA_STREAMS;
 
-const INITIAL_SUBMISSIONS_SEED: KirtanSubmission[] = [
-  {
-    id: "sub-avtar-singh-sri-raag",
-    title: "Moti Ta Mandar Oosreh (Puratan Guldasta Reet)",
-    gurmukhiTitle: "ਮੋਤੀ ਤ ਮੰਦਰ ਊਸਰਹਿ ਰਤਨੀ ਤ ਹੋਹਿ ਜੜਾਉ ॥",
-    ragi: "Bhai Avtar Singh Ji & Bhai Gurcharan Singh Ji Ragi",
-    raag: "Raag Sri Raag • Ang 14",
-    category: "Puratan Kirtan Masters",
-    sourceUrl:
-      "https://www.gurmatveechar.com/audio.php?q=f&f=%2FKirtan%2FBhai_Avtar_Singh_%28Delhi_Wale%29",
-    authenticityNotes:
-      "11th-generation court Rababi/Ragi lineage documented in Gurbani Sangeet Pracheen Reet Ratnavli. Please verify exact direct MP3 file before promoting to player.",
-    submittedBy: "Panthic Musicology Archive",
-    status: "pending_review",
-    createdAt: "2026-11-14T10:00:00Z",
-  },
-  {
-    id: "sub-jawaddi-taksal-dilruba",
-    title: "Puratan Dilruba & Taus Raag Alaap (Tanti Saaj)",
-    gurmukhiTitle: "ਪੁਰਾਤਨ ਦਿਲਰੁਬਾ ਅਤੇ ਤਾਊਸ ਰਾਗ ਅਲਾਪ",
-    ragi: "Gurmat Sangeet Tanti Saaj Ensemble",
-    raag: "Raag Asa & Raag Tukhari",
-    category: "Background Raag Instrumentals",
-    sourceUrl: "https://www.gurmatveechar.com/audio",
-    authenticityNotes:
-      "Submitted for Background Reading Mode (25% volume). Needs admin verification of direct MP3 link before enabling in live player.",
-    submittedBy: "Sangat Researcher",
-    status: "pending_review",
-    createdAt: "2026-11-14T14:30:00Z",
-  },
-];
+const INITIAL_SUBMISSIONS_SEED: KirtanSubmission[] = [];
 
 const SUBMISSIONS_STORAGE_KEY = "learnsikhi_kirtan_submissions_v1";
+const REQUESTS_STORAGE_KEY = "learn_sikhi_kirtan_requests_v1";
+
+export function parseLocalAudioFilename(filename: string): {
+  ragi: string;
+  title: string;
+} {
+  const withoutExt = filename.replace(/\.[^/.]+$/, "").replace(/_/g, " ").trim();
+  const sepMatch = withoutExt.match(/^(.+?)\s*(?:-|—|–)\s*(.+)$/);
+  if (sepMatch) {
+    return {
+      ragi: sepMatch[1].trim() || "Local Audio File",
+      title: sepMatch[2].trim() || withoutExt,
+    };
+  }
+  return {
+    ragi: "Local Audio File",
+    title: withoutExt || "Local Shabad Recording",
+  };
+}
 
 export function formatAudioTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -231,6 +220,8 @@ type KirtanAudioContextValue = {
   }) => Promise<void>;
   approveSubmission: (id: string) => void;
   rejectSubmission: (id: string) => void;
+  addLocalAudioFiles: (files: FileList | File[]) => KirtanTrack[];
+  showRequestToast: (msg: string) => void;
   nextTrack: () => void;
   prevTrack: () => void;
 };
@@ -246,6 +237,7 @@ export function KirtanAudioProvider({
   const [submissions, setSubmissions] = useState<KirtanSubmission[]>(
     INITIAL_SUBMISSIONS_SEED
   );
+  const [requestToast, setRequestToast] = useState<string | null>(null);
 
   const [currentTrack, setCurrentTrack] = useState<KirtanTrack>(
     LIVE_GURDWARA_STREAMS[0]
@@ -560,6 +552,51 @@ export function KirtanAudioProvider({
     }
   }, [isReadingVolumePreset, setVolume]);
 
+  const showRequestToast = useCallback((msg: string) => {
+    setRequestToast(msg);
+    window.setTimeout(() => {
+      setRequestToast((prev) => (prev === msg ? null : prev));
+    }, 4500);
+  }, []);
+
+  const addLocalAudioFiles = useCallback(
+    (files: FileList | File[]): KirtanTrack[] => {
+      const fileArray = Array.from(files);
+      if (fileArray.length === 0) return [];
+
+      const created: KirtanTrack[] = fileArray.map((file, idx) => {
+        const objectUrl = URL.createObjectURL(file);
+        const { ragi, title } = parseLocalAudioFilename(file.name);
+        return {
+          id: `local-file-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+          numeral: "੧",
+          category: "Verified Local & Approved Audio",
+          title,
+          gurmukhiTitle: "ਲੋਕਲ ਗੁਰਮਤਿ ਕੀਰਤਨ ਫ਼ਾਈਲ",
+          ragi,
+          raag: "Local MP3 Recording",
+          angCitation: "LOCAL FILE • BROWSER SESSION",
+          tantiSaaj: "User / Admin Local Audio",
+          timeOfDay: "All Pehars",
+          durationLabel: "Local Audio",
+          durationSec: 0,
+          audioUrl: objectUrl,
+          directArchiveMp3Url: objectUrl,
+          archiveEmbedUrl: objectUrl,
+          externalArchiveUrl: objectUrl,
+          raagNotes: `Playing local file "${file.name}" directly in browser.`,
+          historicalContext: "Loaded locally via File API (URL.createObjectURL).",
+          isCustomOrLocal: true,
+        };
+      });
+
+      setLocalAudioTracks((prev) => [...created, ...prev]);
+      playTrack(created[0]);
+      return created;
+    },
+    [playTrack]
+  );
+
   const startReadingInstrumental = useCallback(
     (trackId?: string) => {
       setVolume(0.25);
@@ -707,6 +744,8 @@ export function KirtanAudioProvider({
       submitTrackForReview,
       approveSubmission,
       rejectSubmission,
+      addLocalAudioFiles,
+      showRequestToast,
       nextTrack,
       prevTrack,
     }),
@@ -736,6 +775,8 @@ export function KirtanAudioProvider({
       submitTrackForReview,
       approveSubmission,
       rejectSubmission,
+      addLocalAudioFiles,
+      showRequestToast,
       nextTrack,
       prevTrack,
     ]
@@ -745,6 +786,15 @@ export function KirtanAudioProvider({
     <KirtanAudioContext.Provider value={value}>
       {children}
       <SuggestKirtanModal />
+      {requestToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-24 right-4 z-[60] max-w-sm rounded-2xl border-2 border-[#C59B27] bg-[#1B2A20] px-4 py-3 text-xs font-semibold text-[#FAF6EE] shadow-2xl"
+        >
+          ✓ {requestToast}
+        </div>
+      )}
     </KirtanAudioContext.Provider>
   );
 }
@@ -766,51 +816,89 @@ function SuggestKirtanModal() {
     isCustomModalOpen,
     setIsCustomModalOpen,
     submitTrackForReview,
-    pendingSubmissionsCount,
+    addLocalAudioFiles,
+    showRequestToast,
   } = useKirtanAudio();
 
-  const [title, setTitle] = useState("");
-  const [gurmukhiTitle, setGurmukhiTitle] = useState("");
-  const [ragi, setRagi] = useState("");
-  const [raag, setRaag] = useState("");
-  const [category, setCategory] = useState<KirtanCollectionCategory>(
-    "Puratan Kirtan Masters"
-  );
+  const [shabadOrRagi, setShabadOrRagi] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [authenticityNotes, setAuthenticityNotes] = useState("");
-  const [submittedBy, setSubmittedBy] = useState("");
-  const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   if (!isCustomModalOpen) return null;
 
+  const handleClose = () => {
+    setFormError(null);
+    setIsCustomModalOpen(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !ragi.trim() || !sourceUrl.trim()) return;
-    await submitTrackForReview({
-      title,
-      gurmukhiTitle,
-      ragi,
-      raag,
-      category,
-      sourceUrl,
-      authenticityNotes,
-      submittedBy,
-    });
-    setTitle("");
-    setGurmukhiTitle("");
-    setRagi("");
-    setRaag("");
+    const cleanedTitle =
+      shabadOrRagi.trim() ||
+      (selectedFile ? parseLocalAudioFilename(selectedFile.name).title : "");
+    const cleanedUrl = sourceUrl.trim();
+
+    if (!cleanedTitle && !selectedFile && !cleanedUrl) {
+      setFormError("Please enter a Shabad / Raagi name, attach an audio file, or paste a link.");
+      return;
+    }
+
+    const requestRecord = {
+      id: `req-${Date.now()}`,
+      shabadOrRagi: cleanedTitle || "Shabad Request",
+      sourceUrl: cleanedUrl || (selectedFile ? `local-file://${selectedFile.name}` : ""),
+      fileName: selectedFile?.name || null,
+      notes: notes.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const existingRaw = window.localStorage.getItem(REQUESTS_STORAGE_KEY);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      const nextList = Array.isArray(existing)
+        ? [requestRecord, ...existing]
+        : [requestRecord];
+      window.localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(nextList));
+    } catch {
+      // Ignore storage quota errors
+    }
+
+    if (selectedFile) {
+      addLocalAudioFiles([selectedFile]);
+    } else if (cleanedUrl) {
+      await submitTrackForReview({
+        title: cleanedTitle || "Suggested Shabad",
+        ragi: "Sangat Request",
+        raag: "Gurmat Kirtan",
+        sourceUrl: cleanedUrl,
+        authenticityNotes: notes.trim() || "Suggested via Shabad Request modal.",
+      });
+    }
+
+    setShabadOrRagi("");
     setSourceUrl("");
-    setAuthenticityNotes("");
-    setSubmittedSuccess(true);
+    setSelectedFile(null);
+    setNotes("");
+    setFormError(null);
+    setIsCustomModalOpen(false);
+    showRequestToast(
+      selectedFile
+        ? `Playing "${requestRecord.shabadOrRagi}" and saved request for /admin review.`
+        : `Saved Shabad request "${requestRecord.shabadOrRagi}" for review. Thank you!`
+    );
   };
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Suggest a Kirtan or Bani Track for Admin Review"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm overflow-y-auto"
+      aria-label="Suggest a Shabad"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
     >
       <div
         style={{
@@ -818,246 +906,112 @@ function SuggestKirtanModal() {
           borderColor: "var(--accent-primary)",
           color: "var(--text-primary)",
         }}
-        className="w-full max-w-xl rounded-3xl border-2 p-6 sm:p-8 shadow-2xl space-y-5 my-6"
+        className="w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl border-2 shadow-2xl overflow-hidden"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#C59B27]/25 pb-4">
+        <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
-              VERIFIED AUDIO INTEGRITY • ADMIN REVIEW QUEUE ({pendingSubmissionsCount}{" "}
-              PENDING)
+              SHABAD REQUEST &amp; LOCAL PLAYBACK
             </span>
-            <h3 className="text-xl sm:text-2xl font-serif font-bold mt-1">
-              Suggest a Kirtan or Bani Track for Learn Sikhi
+            <h3 className="text-xl font-serif font-bold mt-0.5">
+              Suggest a Shabad
             </h3>
-            <p
-              style={{ color: "var(--theme-text-muted)" }}
-              className="text-xs sm:text-sm mt-1 leading-relaxed"
-            >
-              To ensure every Shabad and Raag matches its true Kirtaniye, all submitted
-              tracks enter our{" "}
-              <strong className="text-[#C59B27]">pending_review</strong> queue for
-              manual verification before appearing in the player.
-            </p>
           </div>
           <button
             type="button"
-            onClick={() => {
-              setSubmittedSuccess(false);
-              setIsCustomModalOpen(false);
-            }}
+            onClick={handleClose}
             className="px-3 py-1.5 rounded-xl border border-[#C59B27]/40 text-xs font-bold hover:border-[#C59B27]"
           >
             ✕ Close
           </button>
         </div>
 
-        {submittedSuccess ? (
-          <div className="p-6 rounded-2xl border border-[#C59B27] bg-[#C59B27]/10 space-y-4 text-center">
-            <p className="font-gurmukhi text-xl font-bold text-[#C59B27]">
-              ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖ਼ਾਲਸਾ, ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫ਼ਤਿਹ ॥
-            </p>
-            <h4 className="text-lg font-serif font-bold">
-              Submitted to Admin Review Queue (`pending_review`)
-            </h4>
-            <p
-              style={{ color: "var(--theme-text-muted)" }}
-              className="text-xs sm:text-sm leading-relaxed"
-            >
-              Thank you for contributing to the Learn Sikhi sanctuary. The site
-              administrator can now inspect your submission in the{" "}
-              <strong>Admin Review Queue</strong> on <code>/granths</code> and promote it
-              to the live player once verified.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setSubmittedSuccess(false)}
-                className="px-4 py-2 rounded-xl border border-[#C59B27]/50 text-xs font-bold text-[#C59B27]"
-              >
-                Submit Another Track
-              </button>
-              <Link
-                href="/granths"
-                onClick={() => {
-                  setSubmittedSuccess(false);
-                  setIsCustomModalOpen(false);
-                }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-              >
-                Open Admin Review Queue on /granths →
-              </Link>
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+          {formError && (
+            <div className="rounded-xl border border-amber-500/50 bg-amber-500/15 px-3.5 py-2 text-xs font-semibold text-amber-400">
+              {formError}
             </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold mb-1.5">
+              1. Shabad or Raagi Name
+            </label>
+            <input
+              type="text"
+              value={shabadOrRagi}
+              onChange={(e) => setShabadOrRagi(e.target.value)}
+              placeholder='e.g., "Bhai Avtar Singh — Aaj More Aaye Hai"'
+              style={{
+                backgroundColor: "var(--bg-primary)",
+                borderColor: "var(--border-subtle)",
+              }}
+              className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#C59B27]"
+            />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-3.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold mb-1">
-                  Shabad / Bani Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Deh Shiva Bar Mohe Ehai"
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-                />
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold mb-1">
-                  Gurmukhi Pangti (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={gurmukhiTitle}
-                  onChange={(e) => setGurmukhiTitle(e.target.value)}
-                  placeholder="e.g., ਦੇਹ ਸ਼ਿਵਾ ਬਰੁ ਮੋਹਿ ਇਹੈ"
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm font-gurmukhi focus:outline-none focus:border-[#C59B27]"
-                />
-              </div>
-            </div>
+          <div className="space-y-2">
+            <label className="block text-xs font-bold">
+              2. Upload Audio File (.mp3) OR Paste YouTube / SoundCloud / Archive Link
+            </label>
+            <input
+              type="file"
+              accept="audio/*,.mp3,.wav,.m4a,.ogg"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setSelectedFile(file);
+                if (file && !shabadOrRagi.trim()) {
+                  const parsed = parseLocalAudioFilename(file.name);
+                  setShabadOrRagi(
+                    parsed.ragi === "Local Audio File"
+                      ? parsed.title
+                      : `${parsed.ragi} — ${parsed.title}`
+                  );
+                }
+              }}
+              style={{
+                backgroundColor: "var(--bg-primary)",
+                borderColor: "var(--border-subtle)",
+              }}
+              className="w-full rounded-xl border px-3 py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-[#C59B27] file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-[#18181B]"
+            />
+            <input
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="Or paste YouTube / SoundCloud / Archive.org / GurmatVeechar link..."
+              style={{
+                backgroundColor: "var(--bg-primary)",
+                borderColor: "var(--border-subtle)",
+              }}
+              className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#C59B27]"
+            />
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold mb-1">
-                  Raagi / Kirtaniye Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={ragi}
-                  onChange={(e) => setRagi(e.target.value)}
-                  placeholder="e.g., Bhai Avtar Singh Ji Ragi"
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-bold mb-1.5">
+              3. Optional Note / Feedback
+            </label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any Raag notes, recording era, or feedback..."
+              style={{
+                backgroundColor: "var(--bg-primary)",
+                borderColor: "var(--border-subtle)",
+              }}
+              className="w-full rounded-xl border px-3.5 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+            />
+          </div>
 
-              <div>
-                <label className="block text-xs font-bold mb-1">
-                  Raag &amp; Ang Reference *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={raag}
-                  onChange={(e) => setRaag(e.target.value)}
-                  placeholder="e.g., Raag Tilang • Ang 721"
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold mb-1">
-                  Collection Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) =>
-                    setCategory(e.target.value as KirtanCollectionCategory)
-                  }
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-                >
-                  <option value="Puratan Kirtan Masters">
-                    Puratan Kirtan Masters
-                  </option>
-                  <option value="Complete Nitnem & Sacred Bani">
-                    Complete Nitnem &amp; Sacred Bani
-                  </option>
-                  <option value="Puratan Katha & Vichaar">
-                    Puratan Katha &amp; Vichaar
-                  </option>
-                  <option value="Background Raag Instrumentals">
-                    Background Raag Instrumentals (Reading Mode)
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1">
-                  Your Name / Handle (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={submittedBy}
-                  onChange={(e) => setSubmittedBy(e.target.value)}
-                  placeholder="e.g., @khalsa_archivist"
-                  style={{
-                    backgroundColor: "var(--bg-primary)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold mb-1">
-                Source Link (GurmatVeechar / Archive.org / YouTube / Direct MP3) *
-              </label>
-              <input
-                type="url"
-                required
-                value={sourceUrl}
-                onChange={(e) => setSourceUrl(e.target.value)}
-                placeholder="https://www.gurmatveechar.com/audios/Kirtan/..."
-                style={{
-                  backgroundColor: "var(--bg-primary)",
-                  borderColor: "var(--border-subtle)",
-                }}
-                className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold mb-1">
-                Notes on Authenticity &amp; Recording Details *
-              </label>
-              <textarea
-                rows={2}
-                required
-                value={authenticityNotes}
-                onChange={(e) => setAuthenticityNotes(e.target.value)}
-                placeholder="Describe the recording year, Gurdwara, Tanti Saaj instruments, or why this track is authentic..."
-                style={{
-                  backgroundColor: "var(--bg-primary)",
-                  borderColor: "var(--border-subtle)",
-                }}
-                className="w-full rounded-xl border px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
-            >
-              Submit Track to Admin Review Queue →
-            </button>
-          </form>
-        )}
+          <button
+            type="submit"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+          >
+            Submit Request
+          </button>
+        </form>
       </div>
     </div>
   );

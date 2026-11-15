@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
@@ -9,13 +9,222 @@ import { useAuth } from "@/components/auth-provider";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   SikhHeritageAvatar,
-  ProfileStudioModal,
   PublicResearcherProfileModal,
   DEFAULT_SANGAT_PROFILE,
+  SIKH_HERITAGE_AVATARS,
   type SangatUserProfile,
   type AvatarPresetId,
+  type RoleBadgeOption,
   type PublishedSummaryItem,
 } from "@/components/sangat/profile-studio-modal";
+
+/* ---------------- SikhStack & SikhInterest feed model ---------------- */
+type FeedTabId = "all" | "essays" | "visuals" | "news";
+type CuratedCategory = "essays" | "visuals" | "news";
+type FocalPoint = "center" | "top" | "bottom";
+type FrameFitMode = "auto" | "contain" | "cover";
+
+type VichaarComment = {
+  id: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+};
+
+const ADMIN_STORAGE_KEY = "learnsikhi_founder_admin_v1";
+const ADMIN_EMAIL_STORAGE_KEY = "learnsikhi_active_email_v1";
+const DEFAULT_HERO_BANNER = "/images/puratan-darbar.jpg";
+
+function isStealthAdminEmail(email?: string | null): boolean {
+  return Boolean(email && email.trim().toLowerCase().endsWith("student1313@learnsikhi.com"));
+}
+
+const HERITAGE_EMBLEM_ARTWORKS: { id: string; label: string; src: string; objectPos: string }[] = [
+  { id: "art-puratan-darbar", label: "Puratan Darbar Sahib", src: "/images/puratan-darbar.jpg", objectPos: "object-center" },
+  { id: "art-rababi-kirtan", label: "Puratan Rababi Kirtan", src: "/images/puratan-darbar.jpg", objectPos: "object-[25%_55%]" },
+  { id: "art-anandpur-hills", label: "Anandpur Hills", src: "/images/puratan-darbar.jpg", objectPos: "object-[80%_25%]" },
+];
+
+function SmartHeritageFrame({
+  src,
+  alt,
+  focalPoint = "center",
+  fitMode = "auto",
+}: {
+  src?: string | null;
+  alt: string;
+  focalPoint?: FocalPoint;
+  fitMode?: FrameFitMode;
+}) {
+  const [ratio, setRatio] = useState<number | null>(null);
+
+  if (!src || !src.trim()) return null;
+
+  const isPortraitOrSquare = ratio !== null && ratio < 1.15;
+  const useContain = fitMode === "contain" || (fitMode === "auto" && isPortraitOrSquare);
+
+  const focalClass =
+    focalPoint === "top"
+      ? "object-top"
+      : focalPoint === "bottom"
+        ? "object-bottom"
+        : "object-center";
+
+  if (useContain) {
+    return (
+      <div
+        key={src}
+        className="relative w-full overflow-hidden rounded-xl bg-[#111318] flex items-center justify-center min-h-[190px] max-h-[260px] sm:max-h-[320px]"
+      >
+        <img
+          src={src}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-35 pointer-events-none select-none"
+        />
+        <img
+          src={src}
+          alt={alt}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              setRatio(img.naturalWidth / img.naturalHeight);
+            }
+          }}
+          className={`relative z-10 w-full max-h-[260px] sm:max-h-[320px] object-contain ${focalClass}`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      key={src}
+      className="relative w-full overflow-hidden rounded-xl bg-[#111318] aspect-[16/10] sm:aspect-[16/9]"
+    >
+      <img
+        src={src}
+        alt={alt}
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          if (img.naturalWidth && img.naturalHeight) {
+            setRatio(img.naturalWidth / img.naturalHeight);
+          }
+        }}
+        className={`w-full h-full object-cover ${focalClass}`}
+      />
+    </div>
+  );
+}
+
+const FEED_TABS: { id: FeedTabId; label: string }[] = [
+  { id: "all", label: "All Dispatches" },
+  { id: "essays", label: "SikhStack Essays & Research" },
+  { id: "visuals", label: "SikhInterest Visuals" },
+  { id: "news", label: "Bunga Azadi & Panthic News" },
+];
+
+type CuratedLink = {
+  id: string;
+  url: string;
+  title: string;
+  publisher: string;
+  summary: string;
+  category: CuratedCategory;
+  curatedBy: string;
+  createdAt: string;
+  imageUrl?: string | null;
+  focalPoint?: FocalPoint;
+  isUserCreated?: boolean;
+};
+
+type FeedItem =
+  | { kind: "essay"; id: string; title: string; byline: string; preview: string; blog: SangatBlogArticle }
+  | { kind: "visual"; id: string; title: string; byline: string; preview: string; pin: SangatVisualPin }
+  | { kind: "link"; id: string; title: string; byline: string; preview: string; link: CuratedLink };
+
+/** Real, verifiable organisations only â€” each card links to its original source. */
+const CURATED_LINK_SEED: CuratedLink[] = [
+  {
+    id: "seed-bunga-azadi-yt",
+    url: "https://www.youtube.com/@BungaAzadi",
+    title: "Bunga Azadi â€” Discussions on Sikh Sovereignty & Philosophy",
+    publisher: "Bunga Azadi",
+    summary:
+      "Long-form discussions on Sikh sovereignty, philosophy, colonial history and Panthic literature.",
+    category: "news",
+    curatedBy: "Learn Sikhi Editors",
+    createdAt: "Curated resource",
+  },
+  {
+    id: "seed-ensaaf",
+    url: "https://ensaaf.org/",
+    title: "Ensaaf â€” Human-Rights Documentation of 1984 and After",
+    publisher: "Ensaaf",
+    summary:
+      "Human-rights documentation, data and reports on enforced disappearances and extrajudicial killings in Punjab.",
+    category: "news",
+    curatedBy: "Learn Sikhi Editors",
+    createdAt: "Curated resource",
+  },
+  {
+    id: "seed-1984-tribute",
+    url: "https://1984tribute.com/",
+    title: "1984 Tribute â€” Remembering June & November 1984",
+    publisher: "1984 Tribute",
+    summary:
+      "Archive of testimonies, history and remembrance of the June and November 1984 events.",
+    category: "news",
+    curatedBy: "Learn Sikhi Editors",
+    createdAt: "Curated resource",
+  },
+  {
+    id: "seed-manglacharan",
+    url: "https://manglacharan.com",
+    title: "Manglacharan â€” Translations of Classical Sikh Granths",
+    publisher: "Manglacharan",
+    summary:
+      "Translations and scholarly commentary on classical Braj and Gurmukhi Sikh texts such as Suraj Prakash and Panth Prakash.",
+    category: "essays",
+    curatedBy: "Learn Sikhi Editors",
+    createdAt: "Curated resource",
+  },
+  {
+    id: "seed-gurmatveechar",
+    url: "https://www.gurmatveechar.com",
+    title: "Gurmat Veechar â€” Puratan Kirtan, Katha & Pothi Archive",
+    publisher: "GurmatVeechar.com",
+    summary:
+      "A large digital archive of Puratan Kirtan, classical Katha recordings and downloadable Granth PDFs.",
+    category: "essays",
+    curatedBy: "Learn Sikhi Editors",
+    createdAt: "Curated resource",
+  },
+];
+
+const PROFILE_ROLE_CHOICES = [
+  "Sangat Member",
+  "Sikh Researcher",
+  "History Student",
+  "Gurbani Learner",
+] as const;
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function slugifyName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "sangat_member"
+  );
+}
 
 type BlogTopicTag =
   | "Gurbani Research"
@@ -63,6 +272,8 @@ type SangatBlogArticle = {
   paragraphs: string[];
   likesCount: number;
   comments: ThreadedComment[];
+  imageUrl?: string | null;
+  focalPoint?: FocalPoint;
   isUserCreated?: boolean;
 };
 
@@ -88,6 +299,7 @@ type SangatVisualPin = {
   gurmukhiCalligraphy: string;
   visualPalette: "darbar-gold" | "amrit-indigo" | "saffron-dawn" | "emerald-manuscript";
   imageDataUrl?: string | null;
+  focalPoint?: FocalPoint;
   availableToCoordinate: boolean;
   artistContactNote: string;
   savesCount: number;
@@ -96,10 +308,10 @@ type SangatVisualPin = {
 };
 
 type DilMoodTag =
-  | "🌱 Seeking Strength / In Pain"
-  | "✨ Sharing Happiness / Gratitude"
-  | "📚 Researcher Note"
-  | "🤝 Sangat Advice";
+  | "ðŸŒ± Seeking Strength / In Pain"
+  | "âœ¨ Sharing Happiness / Gratitude"
+  | "ðŸ“š Researcher Note"
+  | "ðŸ¤ Sangat Advice";
 
 type DilSupportReply = {
   id: string;
@@ -137,32 +349,32 @@ type DilDiBaatPost = {
 
 const UPLIFTING_SHABADS_LIBRARY = [
   {
-    label: "Ang 628 • Raag Sorath M:5 (Tati Vao Na Lagai)",
-    gurmukhi: "ਤਾਤੀ ਵਾਉ ਨ ਲਗਈ ਪਾਰਬ੍ਰਹਮ ਸਰਣਾਈ ॥ ਚਉਗਿਰਦ ਹਮਾਰੈ ਰਾਮ ਕਾਰ ਦੁਖੁ ਲਗੈ ਨ ਭਾਈ ॥੧॥",
+    label: "Ang 628 â€¢ Raag Sorath M:5 (Tati Vao Na Lagai)",
+    gurmukhi: "à¨¤à¨¾à¨¤à©€ à¨µà¨¾à¨‰ à¨¨ à¨²à¨—à¨ˆ à¨ªà¨¾à¨°à¨¬à©à¨°à¨¹à¨® à¨¸à¨°à¨£à¨¾à¨ˆ à¥¥ à¨šà¨‰à¨—à¨¿à¨°à¨¦ à¨¹à¨®à¨¾à¨°à©ˆ à¨°à¨¾à¨® à¨•à¨¾à¨° à¨¦à©à¨–à© à¨²à¨—à©ˆ à¨¨ à¨­à¨¾à¨ˆ à¥¥à©§à¥¥",
     english:
-      "Not even a hot wind touches one who takes shelter in the Supreme Lord; all around us is the Divine Circle of Protection—pain cannot overwhelm us, O Siblings of Destiny.",
-    ang: "Sri Guru Granth Sahib Ji • Ang 628",
+      "Not even a hot wind touches one who takes shelter in the Supreme Lord; all around us is the Divine Circle of Protectionâ€”pain cannot overwhelm us, O Siblings of Destiny.",
+    ang: "Sri Guru Granth Sahib Ji â€¢ Ang 628",
   },
   {
-    label: "Ang 1366 • Salok Kabir Ji (Kabeer Jis Marne Te Jag Darai)",
-    gurmukhi: "ਕਬੀਰ ਜਿਸੁ ਮਰਨੇ ਤੇ ਜਗੁ ਡਰੈ ਮੇਰੇ ਮਨਿ ਆਨੰਦੁ ॥ ਮਰਨੇ ਹੀ ਤੇ ਪਾਈਐ ਪੂਰਨੁ ਪਰਮਾਨੰਦੁ ॥",
+    label: "Ang 1366 â€¢ Salok Kabir Ji (Kabeer Jis Marne Te Jag Darai)",
+    gurmukhi: "à¨•à¨¬à©€à¨° à¨œà¨¿à¨¸à© à¨®à¨°à¨¨à©‡ à¨¤à©‡ à¨œà¨—à© à¨¡à¨°à©ˆ à¨®à©‡à¨°à©‡ à¨®à¨¨à¨¿ à¨†à¨¨à©°à¨¦à© à¥¥ à¨®à¨°à¨¨à©‡ à¨¹à©€ à¨¤à©‡ à¨ªà¨¾à¨ˆà¨ à¨ªà©‚à¨°à¨¨à© à¨ªà¨°à¨®à¨¾à¨¨à©°à¨¦à© à¥¥",
     english:
       "Kabeer, that dissolution of ego which the world fears brings bliss to my mind; only by dissolving self-will does one merge into Supreme Bliss.",
-    ang: "Sri Guru Granth Sahib Ji • Ang 1366",
+    ang: "Sri Guru Granth Sahib Ji â€¢ Ang 1366",
   },
   {
-    label: "Ang 457 • Raag Asa M:5 (Tu Mera Pita Tu Hai Mera Mata)",
-    gurmukhi: "ਤੂੰ ਮੇਰਾ ਪਿਤਾ ਤੂੰਹੈ ਮੇਰਾ ਮਾਤਾ ॥ ਤੂੰ ਮੇਰਾ ਬੰਧਪੁ ਤੂੰ ਮੇਰਾ ਭ੍ਰਾਤਾ ॥ ਤੂੰ ਮੇਰਾ ਰਾਖਾ ਸਭਨੀ ਥਾਈ ਤਾ ਭਉ ਕੇਹਾ ਕਾੜਾ ਜੀਉ ॥੧॥",
+    label: "Ang 457 â€¢ Raag Asa M:5 (Tu Mera Pita Tu Hai Mera Mata)",
+    gurmukhi: "à¨¤à©‚à©° à¨®à©‡à¨°à¨¾ à¨ªà¨¿à¨¤à¨¾ à¨¤à©‚à©°à¨¹à©ˆ à¨®à©‡à¨°à¨¾ à¨®à¨¾à¨¤à¨¾ à¥¥ à¨¤à©‚à©° à¨®à©‡à¨°à¨¾ à¨¬à©°à¨§à¨ªà© à¨¤à©‚à©° à¨®à©‡à¨°à¨¾ à¨­à©à¨°à¨¾à¨¤à¨¾ à¥¥ à¨¤à©‚à©° à¨®à©‡à¨°à¨¾ à¨°à¨¾à¨–à¨¾ à¨¸à¨­à¨¨à©€ à¨¥à¨¾à¨ˆ à¨¤à¨¾ à¨­à¨‰ à¨•à©‡à¨¹à¨¾ à¨•à¨¾à©œà¨¾ à¨œà©€à¨‰ à¥¥à©§à¥¥",
     english:
       "You are my Father, and You are my Mother; You are my Relative, and You are my Brother. When You are my Protector everywhere, what fear or anxiety can touch me?",
-    ang: "Sri Guru Granth Sahib Ji • Ang 457",
+    ang: "Sri Guru Granth Sahib Ji â€¢ Ang 457",
   },
   {
-    label: "Ang 962 • Raag Ramkali M:5 (Jis Ke Sir Upar Tu Swami)",
-    gurmukhi: "ਜਿਸ ਕੇ ਸਿਰ ਊਪਰਿ ਤੂੰ ਸੁਆਮੀ ਸੋ ਦੁਖੁ ਕੈਸਾ ਪਾਵੈ ॥",
+    label: "Ang 962 â€¢ Raag Ramkali M:5 (Jis Ke Sir Upar Tu Swami)",
+    gurmukhi: "à¨œà¨¿à¨¸ à¨•à©‡ à¨¸à¨¿à¨° à¨Šà¨ªà¨°à¨¿ à¨¤à©‚à©° à¨¸à©à¨†à¨®à©€ à¨¸à©‹ à¨¦à©à¨–à© à¨•à©ˆà¨¸à¨¾ à¨ªà¨¾à¨µà©ˆ à¥¥",
     english:
-      "One above whose head You stand, O Sovereign Lord—how could sorrow ever overpower them?",
-    ang: "Sri Guru Granth Sahib Ji • Ang 962",
+      "One above whose head You stand, O Sovereign Lordâ€”how could sorrow ever overpower them?",
+    ang: "Sri Guru Granth Sahib Ji â€¢ Ang 962",
   },
 ];
 
@@ -179,16 +391,16 @@ const INITIAL_BLOGS: SangatBlogArticle[] = [
     title: "How One Sihari & Aunkar Transforms the Meaning of Mool Mantar",
     subtitle:
       "A closer look at Prof. Sahib Singh Ji's Sri Guru Granth Sahib Darpan and why Gurbani grammar protects us from arbitrary translations.",
-    gurmukhiHeader: "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+    gurmukhiHeader: "à©´ à¨¸à¨¤à¨¿ à¨¨à¨¾à¨®à© à¨•à¨°à¨¤à¨¾ à¨ªà©à¨°à¨–à© à¨¨à¨¿à¨°à¨­à¨‰ à¨¨à¨¿à¨°à¨µà©ˆà¨°à© à¨…à¨•à¨¾à¨² à¨®à©‚à¨°à¨¤à¨¿ à¨…à¨œà©‚à¨¨à©€ à¨¸à©ˆà¨­à©° à¨—à©à¨° à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿ à¥¥",
     topicTag: "Gurbani Research",
     readingTime: "6 min read",
     createdAt: "Nov 14, 2026",
     pullQuote:
-      "In Gurbani grammar, vowel markers are never decorative—an Aunkar (ੁ) marks a singular subject, while a Sihari (ਿ) on 'ਪ੍ਰਸਾਦਿ' reveals the instrumental path: 'realized through the Guru's Grace.'",
+      "In Gurbani grammar, vowel markers are never decorativeâ€”an Aunkar (à©) marks a singular subject, while a Sihari (à¨¿) on 'à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿' reveals the instrumental path: 'realized through the Guru's Grace.'",
     paragraphs: [
-      "When we read Sri Guru Granth Sahib Ji in Puratan Larivaar or modern Padchhed, it is easy for a casual English reader to assume that Gurmukhi vowel endings work like modern spoken Punjabi. Yet the Gurus composed Gurbani using a precise morphological system where every final Aunkar (ੁ) and Sihari (ਿ) carries grammatical case.",
-      "In Volume 1 of Sri Guru Granth Sahib Darpan, Prof. Sahib Singh Ji demonstrates why 'ਸਤਿ ਨਾਮੁ' has an Aunkar beneath the মাম (mamma) of 'ਨਾਮੁ': it designates a masculine singular noun in the nominative case ('Whose Eternal Name is Truth'). Similarly, 'ਕਰਤਾ ਪੁਰਖੁ', 'ਨਿਰਭਉ', and 'ਨਿਰਵੈਰੁ' all carry singular nominative endings pointing back to the One Creator (ੴ).",
-      "Contrast this with the concluding word of the Mool Mantar: 'ਗੁਰ ਪ੍ਰਸਾਦਿ' (Gur Prasaadi). Here, the দੱਦਾ (dadda) carries a Sihari (ਿ) rather than an Aunkar. In Gurbani Viyakaran, this Sihari marks the Karan Karaka (instrumental case)—meaning 'by means of, or through, the Guru's Grace.' Understanding this single vowel marker transforms theology from passive belief into active relationship with the Satguru.",
+      "When we read Sri Guru Granth Sahib Ji in Puratan Larivaar or modern Padchhed, it is easy for a casual English reader to assume that Gurmukhi vowel endings work like modern spoken Punjabi. Yet the Gurus composed Gurbani using a precise morphological system where every final Aunkar (à©) and Sihari (à¨¿) carries grammatical case.",
+      "In Volume 1 of Sri Guru Granth Sahib Darpan, Prof. Sahib Singh Ji demonstrates why 'à¨¸à¨¤à¨¿ à¨¨à¨¾à¨®à©' has an Aunkar beneath the à¦®à¦¾à¦® (mamma) of 'à¨¨à¨¾à¨®à©': it designates a masculine singular noun in the nominative case ('Whose Eternal Name is Truth'). Similarly, 'à¨•à¨°à¨¤à¨¾ à¨ªà©à¨°à¨–à©', 'à¨¨à¨¿à¨°à¨­à¨‰', and 'à¨¨à¨¿à¨°à¨µà©ˆà¨°à©' all carry singular nominative endings pointing back to the One Creator (à©´).",
+      "Contrast this with the concluding word of the Mool Mantar: 'à¨—à©à¨° à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿' (Gur Prasaadi). Here, the à¦¦à©±à¨¦à¨¾ (dadda) carries a Sihari (à¨¿) rather than an Aunkar. In Gurbani Viyakaran, this Sihari marks the Karan Karaka (instrumental case)â€”meaning 'by means of, or through, the Guru's Grace.' Understanding this single vowel marker transforms theology from passive belief into active relationship with the Satguru.",
     ],
     likesCount: 48,
     comments: [
@@ -198,7 +410,7 @@ const INITIAL_BLOGS: SangatBlogArticle[] = [
         authorHandle: "harjinder_santhiya",
         authorRole: "Gurbani Learner",
         authorAvatarPreset: "ik-onkar-medallion",
-        body: "Waheguru Ji! Comparing 'ਪ੍ਰਸਾਦੁ' (blessed gift, nominative) with 'ਪ੍ਰਸਾਦਿ' (by Grace, instrumental) was the single biggest breakthrough in my daily Nitnem contemplation.",
+        body: "Waheguru Ji! Comparing 'à¨ªà©à¨°à¨¸à¨¾à¨¦à©' (blessed gift, nominative) with 'à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿' (by Grace, instrumental) was the single biggest breakthrough in my daily Nitnem contemplation.",
         createdAt: "2 hours ago",
         likes: 14,
         replies: [
@@ -208,7 +420,7 @@ const INITIAL_BLOGS: SangatBlogArticle[] = [
             authorHandle: "gurpreet_viyakaran",
             authorRole: "Independent Sikh Researcher",
             authorAvatarPreset: "parchment-quill",
-            body: "Spot on, Veer Ji! Once you see how 'ਭੰਡਿ' (in woman) vs 'ਭੰਡਹੁ' (from woman) works on Ang 473 as well, every Shabad opens up like a lotus.",
+            body: "Spot on, Veer Ji! Once you see how 'à¨­à©°à¨¡à¨¿' (in woman) vs 'à¨­à©°à¨¡à¨¹à©' (from woman) works on Ang 473 as well, every Shabad opens up like a lotus.",
             createdAt: "1 hour ago",
           },
         ],
@@ -227,15 +439,15 @@ const INITIAL_BLOGS: SangatBlogArticle[] = [
     title: "Why Shaheed Bhai Rattan Singh Bhangu Wrote Sri Gur Panth Prakash in 1841",
     subtitle:
       "When British East India Company officers demanded to know what earthly emperor granted Sikhs the right to rule, Bhangu answered with the Guru's Patshahi.",
-    gurmukhiHeader: "ਸਿੰਘਨ ਕੀ ਪਾਤਸ਼ਾਹੀ ਸਾਚੀ । ਸਤਿਗੁਰਿ ਆਪੁ ਸਿੰਘਨ ਕਉ ਦੀਨੀ ॥",
+    gurmukhiHeader: "à¨¸à¨¿à©°à¨˜à¨¨ à¨•à©€ à¨ªà¨¾à¨¤à¨¸à¨¼à¨¾à¨¹à©€ à¨¸à¨¾à¨šà©€ à¥¤ à¨¸à¨¤à¨¿à¨—à©à¨°à¨¿ à¨†à¨ªà© à¨¸à¨¿à©°à¨˜à¨¨ à¨•à¨‰ à¨¦à©€à¨¨à©€ à¥¥",
     topicTag: "Sikh History",
     readingTime: "8 min read",
     createdAt: "Nov 12, 2026",
     pullQuote:
-      "Khalsa sovereignty was never a feudal grant from Delhi or London; it was bestowed directly by Guru Nanak – Guru Gobind Singh Ji and defended in the saddle.",
+      "Khalsa sovereignty was never a feudal grant from Delhi or London; it was bestowed directly by Guru Nanak â€“ Guru Gobind Singh Ji and defended in the saddle.",
     paragraphs: [
-      "In the early 1800s, Captain William Murray—the British East India Company's political agent at Ambala—commissioned Persian court munshis to write a history of the Sikhs. Those court scribes, trained in imperial Mughal categories, portrayed the Khalsa as mere rebels who had seized territory without royal sanction.",
-      "Hearing this distortion, Bhai Rattan Singh Bhangu—the grandson of Shaheed Bhai Mehtab Singh Ji (who liberated Sri Harmandir Sahib from Massa Ranghar in 1740) and maternal grandson of Sardar Shyam Singh Karorsinghia—sat down with Captain Murray in Ludhiana to record the Panth's own testimony.",
+      "In the early 1800s, Captain William Murrayâ€”the British East India Company's political agent at Ambalaâ€”commissioned Persian court munshis to write a history of the Sikhs. Those court scribes, trained in imperial Mughal categories, portrayed the Khalsa as mere rebels who had seized territory without royal sanction.",
+      "Hearing this distortion, Bhai Rattan Singh Bhanguâ€”the grandson of Shaheed Bhai Mehtab Singh Ji (who liberated Sri Harmandir Sahib from Massa Ranghar in 1740) and maternal grandson of Sardar Shyam Singh Karorsinghiaâ€”sat down with Captain Murray in Ludhiana to record the Panth's own testimony.",
       "Across 81 vivid episodes, Sri Gur Panth Prakash documents how Guru Gobind Singh Ji vested true Patshahi (sovereign self-rule) in the collective Khalsa Panth at Sri Anandpur Sahib in 1699, and how two Singhs like Bhai Bota Singh and Bhai Garja Singh could stand on the Grand Trunk Road and embody an unbroken sovereign state.",
     ],
     likesCount: 63,
@@ -265,7 +477,7 @@ const INITIAL_BLOGS: SangatBlogArticle[] = [
     title: "The Spiritual Physics of Tanti Saaj: Why the Gurus Designed the Rabab, Saranda & Taus",
     subtitle:
       "How bowed and plucked string instruments mirror the natural microtones (Shrutis) of the human voice in Raag Kirtan.",
-    gurmukhiHeader: "ਧੰਨੁ ਸੁ ਰਾਗ ਸੁਰੰਗੜੇ ਆਲਾਪਤ ਸਭ ਤਿਖ ਜਾਇ ॥ (ਅੰਗ ੯੫੮)",
+    gurmukhiHeader: "à¨§à©°à¨¨à© à¨¸à© à¨°à¨¾à¨— à¨¸à©à¨°à©°à¨—à©œà©‡ à¨†à¨²à¨¾à¨ªà¨¤ à¨¸à¨­ à¨¤à¨¿à¨– à¨œà¨¾à¨‡ à¥¥ (à¨…à©°à¨— à©¯à©«à©®)",
     topicTag: "Philosophy",
     readingTime: "5 min read",
     createdAt: "Nov 10, 2026",
@@ -273,7 +485,7 @@ const INITIAL_BLOGS: SangatBlogArticle[] = [
       "Unlike fixed-reed instruments introduced during the colonial era, the fretless glide (Meend) of the Saranda, Dilruba, and Taus breathes with the human soul.",
     paragraphs: [
       "From the very first Udasi of Guru Nanak Dev Ji alongside Bhai Mardana Ji and his six-stringed Rabab, Gurmat Sangeet was inseparable from Tanti Saaj (stringed instruments). Later, Guru Arjan Dev Ji shaped the resonant Saranda, and Guru Hargobind Sahib Ji and Guru Gobind Singh Ji blessed the Taus and Dilruba.",
-      "Why did the Gurus place such emphasis on bowed and plucked strings? In the 31 primary Raags and 31 Raag-forms of Sri Guru Granth Sahib Ji, emotional depth (Rasa) lives in the delicate microtonal intervals between fixed notes—the Meend (glide) and Gamak.",
+      "Why did the Gurus place such emphasis on bowed and plucked strings? In the 31 primary Raags and 31 Raag-forms of Sri Guru Granth Sahib Ji, emotional depth (Rasa) lives in the delicate microtonal intervals between fixed notesâ€”the Meend (glide) and Gamak.",
       "When Bhai Avtar Singh Ji and Bhai Gurcharan Singh Ji published Gurbani Sangeet Pracheen Reet Ratnavli in 1979, they preserved nearly 500 centuries-old Shabad Reets passed down across eleven generations. Reviving these instruments in our Gurdwaras and homes reconnects us to the acoustic sanctuary of the Gurus' court.",
     ],
     likesCount: 41,
@@ -294,11 +506,11 @@ const INITIAL_PINS: SangatVisualPin[] = [
     description:
       "Hand-lettered study inspired by 17th-century Damdami Bir manuscripts, featuring geometric floral Phulkari borders and unbroken Gurmukhi script.",
     category: "Gurmukhi Calligraphy",
-    gurmukhiCalligraphy: "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ",
+    gurmukhiCalligraphy: "à©´ à¨¸à¨¤à¨¿ à¨¨à¨¾à¨®à© à¨•à¨°à¨¤à¨¾ à¨ªà©à¨°à¨–à© à¨¨à¨¿à¨°à¨­à¨‰ à¨¨à¨¿à¨°à¨µà©ˆà¨°à©",
     visualPalette: "darbar-gold",
     availableToCoordinate: true,
     artistContactNote:
-      "Original hand-illuminated cotton rag folio (12×16 in). Reach out via @amrit_kalam or email amrit.kalam.art@sangat.org to coordinate framing or Gurdwara gifting.",
+      "Original hand-illuminated cotton rag folio (12Ã—16 in). Reach out via @amrit_kalam or email amrit.kalam.art@sangat.org to coordinate framing or Gurdwara gifting.",
     savesCount: 92,
     createdAt: "2 days ago",
   },
@@ -312,9 +524,9 @@ const INITIAL_PINS: SangatVisualPin[] = [
     authorAvatarPreset: "darbar-lantern",
     title: "Amrit Vela Reflection at Sachkhand Sri Harmandir Sahib",
     description:
-      "At 3:40 AM IST during Asa Di Vaar, the golden dome of Sri Darbar Sahib shimmers across the still waters of the Amrit Sarovar—a living architectural metaphor for the lotus untouched by the world.",
+      "At 3:40 AM IST during Asa Di Vaar, the golden dome of Sri Darbar Sahib shimmers across the still waters of the Amrit Sarovarâ€”a living architectural metaphor for the lotus untouched by the world.",
     category: "Gurdwara Architecture",
-    gurmukhiCalligraphy: "ਡਿਠੇ ਸਭੇ ਥਾਵ ਨਹੀ ਤੁਧੁ ਜੇਹਿਆ ॥ (ਅੰਗ ੧੩੬੨)",
+    gurmukhiCalligraphy: "à¨¡à¨¿à¨ à©‡ à¨¸à¨­à©‡ à¨¥à¨¾à¨µ à¨¨à¨¹à©€ à¨¤à©à¨§à© à¨œà©‡à¨¹à¨¿à¨† à¥¥ (à¨…à©°à¨— à©§à©©à©¬à©¨)",
     visualPalette: "amrit-indigo",
     availableToCoordinate: false,
     artistContactNote: "",
@@ -333,11 +545,11 @@ const INITIAL_PINS: SangatVisualPin[] = [
     description:
       "Gouache and mineral pigment study depicting Mai Bhago Ji leading the Chali Mukte in defense of Guru Gobind Singh Ji at Sri Muktsar Sahib.",
     category: "Sikh Art & Miniature",
-    gurmukhiCalligraphy: "ਸੂਰਾ ਸੋ ਪਹਿਚਾਨੀਐ ਜੁ ਲਰੈ ਦੀਨ ਕੇ ਹੇਤ ॥",
+    gurmukhiCalligraphy: "à¨¸à©‚à¨°à¨¾ à¨¸à©‹ à¨ªà¨¹à¨¿à¨šà¨¾à¨¨à©€à¨ à¨œà© à¨²à¨°à©ˆ à¨¦à©€à¨¨ à¨•à©‡ à¨¹à©‡à¨¤ à¥¥",
     visualPalette: "saffron-dawn",
     availableToCoordinate: true,
     artistContactNote:
-      "Archival giclée prints and original mineral-pigment study available for Sikh heritage collections. Coordinate via @simran_miniature.",
+      "Archival giclÃ©e prints and original mineral-pigment study available for Sikh heritage collections. Coordinate via @simran_miniature.",
     savesCount: 118,
     createdAt: "5 days ago",
   },
@@ -351,9 +563,9 @@ const INITIAL_PINS: SangatVisualPin[] = [
     authorAvatarPreset: "parchment-quill",
     title: "Bhai Gurdas Ji Vaar 1: The Tree That Bears Fruit When Struck by Stones",
     description:
-      "Calligraphic study of Vaar 6, Pauri 19: 'ਵਿਰਲੇ ਕੇਈ ਗੁਰਮੁਖਿ ਜਾਣਨਿ । ਵੱਟੇ ਮਾਰਨਿ ਫਲੁ ਦੇਨਿ, ਪਰਉਪਕਾਰੀ ਸਤਿਗੁਰੁ ਭਾਵਨਿ ॥'",
+      "Calligraphic study of Vaar 6, Pauri 19: 'à¨µà¨¿à¨°à¨²à©‡ à¨•à©‡à¨ˆ à¨—à©à¨°à¨®à©à¨–à¨¿ à¨œà¨¾à¨£à¨¨à¨¿ à¥¤ à¨µà©±à¨Ÿà©‡ à¨®à¨¾à¨°à¨¨à¨¿ à¨«à¨²à© à¨¦à©‡à¨¨à¨¿, à¨ªà¨°à¨‰à¨ªà¨•à¨¾à¨°à©€ à¨¸à¨¤à¨¿à¨—à©à¨°à© à¨­à¨¾à¨µà¨¨à¨¿ à¥¥'",
     category: "Manuscript & Book Quotes",
-    gurmukhiCalligraphy: "ਵੱਟੇ ਮਾਰਨਿ ਫਲੁ ਦੇਨਿ ਪਰਉਪਕਾਰੀ ਸਤਿਗੁਰੁ ਭਾਵਨਿ ॥",
+    gurmukhiCalligraphy: "à¨µà©±à¨Ÿà©‡ à¨®à¨¾à¨°à¨¨à¨¿ à¨«à¨²à© à¨¦à©‡à¨¨à¨¿ à¨ªà¨°à¨‰à¨ªà¨•à¨¾à¨°à©€ à¨¸à¨¤à¨¿à¨—à©à¨°à© à¨­à¨¾à¨µà¨¨à¨¿ à¥¥",
     visualPalette: "emerald-manuscript",
     availableToCoordinate: false,
     artistContactNote: "",
@@ -371,13 +583,13 @@ const INITIAL_DIL_POSTS: DilDiBaatPost[] = [
     authorBio: "University student learning Nitnem and finding anchor in Sadh Sangat.",
     authorInterests: ["Gurbani Research", "Seva & Ecology"],
     authorAvatarPreset: "darbar-lantern",
-    moodTag: "🌱 Seeking Strength / In Pain",
+    moodTag: "ðŸŒ± Seeking Strength / In Pain",
     title: "Walking through the grief of losing my grandfather who taught me Japji Sahib",
     body: "My Baba Ji was the one who sat with me every morning at 6 AM and taught me the pronunciation of every Pauri of Japji Sahib. Since his passing last month, opening my Gutka Sahib brings tears to my eyes, yet I also feel closest to him when I recite. Please keep our family in your Ardas.",
-    shabadGurmukhi: "ਜੋਤਿ ਮਿਲੀ ਸੰਗਿ ਜੋਤਿ ਰਹਿਆ ਘਾਲਿਆ ॥ ਸੂਰਜ ਕਿਰਣਿ ਮਿਲੇ ਜਲ ਕਾ ਜਲੁ ਹੂਆ ਰਾਮ ॥",
+    shabadGurmukhi: "à¨œà©‹à¨¤à¨¿ à¨®à¨¿à¨²à©€ à¨¸à©°à¨—à¨¿ à¨œà©‹à¨¤à¨¿ à¨°à¨¹à¨¿à¨† à¨˜à¨¾à¨²à¨¿à¨† à¥¥ à¨¸à©‚à¨°à¨œ à¨•à¨¿à¨°à¨£à¨¿ à¨®à¨¿à¨²à©‡ à¨œà¨² à¨•à¨¾ à¨œà¨²à© à¨¹à©‚à¨† à¨°à¨¾à¨® à¥¥",
     shabadEnglish:
-      "One's light merges into the Supreme Light, and all struggles come to rest—like the ray of sunlight merging back into the sun, and the droplet merging into the ocean.",
-    shabadAng: "Sri Guru Granth Sahib Ji • Ang 846 (Raag Bilawal M:5)",
+      "One's light merges into the Supreme Light, and all struggles come to restâ€”like the ray of sunlight merging back into the sun, and the droplet merging into the ocean.",
+    shabadAng: "Sri Guru Granth Sahib Ji â€¢ Ang 846 (Raag Bilawal M:5)",
     ardasCount: 54,
     createdAt: "5 hours ago",
     replies: [
@@ -388,7 +600,7 @@ const INITIAL_DIL_POSTS: DilDiBaatPost[] = [
         authorRole: "Gurbani Learner",
         authorAvatarPreset: "ik-onkar-medallion",
         body: "Bhenji, every time you recite those Pauris of Japji Sahib, your Baba Ji's Seva and love are alive in your voice. Our whole Sangat stands in Ardas for his Gurmukh soul and your family's Chardi Kala.",
-        shabadGurmukhi: "ਤਾਤੀ ਵਾਉ ਨ ਲਗਈ ਪਾਰਬ੍ਰਹਮ ਸਰਣਾਈ ॥",
+        shabadGurmukhi: "à¨¤à¨¾à¨¤à©€ à¨µà¨¾à¨‰ à¨¨ à¨²à¨—à¨ˆ à¨ªà¨¾à¨°à¨¬à©à¨°à¨¹à¨® à¨¸à¨°à¨£à¨¾à¨ˆ à¥¥",
         shabadEnglish: "Not even a hot wind touches one who abides in the Sanctuary of the Supreme Lord.",
         shabadAng: "Ang 628",
         createdAt: "3 hours ago",
@@ -403,13 +615,13 @@ const INITIAL_DIL_POSTS: DilDiBaatPost[] = [
     authorBio: "Software engineer & father teaching Painti Akhar to my kids.",
     authorInterests: ["Gurmukhi Calligraphy", "Puratan Kirtan"],
     authorAvatarPreset: "sovereign-baaj",
-    moodTag: "✨ Sharing Happiness / Gratitude",
+    moodTag: "âœ¨ Sharing Happiness / Gratitude",
     title: "My 7-year-old daughter read her first complete Hukamnama in Gurmukhi today!",
     body: "After six months of practicing the 35 Painti Akhar and Larivaar word-splitting games together for 15 minutes every evening, she stood up after our family Rehras Sahib today and read the Pangtis cleanly on her own. Shukar Waheguru Ji!",
-    shabadGurmukhi: "ਪੀਊ ਦਾਦੇ ਕਾ ਖੋਲਿ ਡਿਠਾ ਖਜਾਨਾ ॥ ਤਾ ਮੇਰੈ ਮਨਿ ਭਇਆ ਨਿਧਾਨਾ ॥੧॥",
+    shabadGurmukhi: "à¨ªà©€à¨Š à¨¦à¨¾à¨¦à©‡ à¨•à¨¾ à¨–à©‹à¨²à¨¿ à¨¡à¨¿à¨ à¨¾ à¨–à¨œà¨¾à¨¨à¨¾ à¥¥ à¨¤à¨¾ à¨®à©‡à¨°à©ˆ à¨®à¨¨à¨¿ à¨­à¨‡à¨† à¨¨à¨¿à¨§à¨¾à¨¨à¨¾ à¥¥à©§à¥¥",
     shabadEnglish:
       "When I opened and beheld the treasury of my Father and Grandfather, my mind was filled with the priceless spiritual treasure.",
-    shabadAng: "Sri Guru Granth Sahib Ji • Ang 186 (Raag Gauri M:5)",
+    shabadAng: "Sri Guru Granth Sahib Ji â€¢ Ang 186 (Raag Gauri M:5)",
     ardasCount: 89,
     createdAt: "1 day ago",
     replies: [
@@ -432,6 +644,11 @@ const STORAGE_KEYS = {
   PINS: "learnsikhi_sangat_pins_v1",
   SAVED_PIN_IDS: "learnsikhi_sangat_saved_pins_v1",
   DIL_POSTS: "learnsikhi_sangat_dil_posts_v1",
+  CURATED_LINKS: "learnsikhi_sangat_curated_links_v1",
+  HERO_BANNER: "learnsikhi_sangat_hero_banner_v1",
+  VICHAAR_COMMENTS: "learnsikhi_sangat_vichaar_comments_v1",
+  DELETED_IDS: "learnsikhi_sangat_deleted_ids_v1",
+  IMAGE_OVERRIDES: "learnsikhi_sangat_image_overrides_v1",
 };
 
 function SangatHubContent() {
@@ -516,11 +733,91 @@ function SangatHubContent() {
 
   // Dil Composer Inputs
   const [newDilMood, setNewDilMood] = useState<DilMoodTag>(
-    "✨ Sharing Happiness / Gratitude"
+    "âœ¨ Sharing Happiness / Gratitude"
   );
   const [newDilTitle, setNewDilTitle] = useState("");
   const [newDilBody, setNewDilBody] = useState("");
   const [newDilShabadIdx, setNewDilShabadIdx] = useState<number>(0);
+
+  // SikhStack & SikhInterest unified feed
+  const [feedTab, setFeedTab] = useState<FeedTabId>("all");
+  const [curatedLinks, setCuratedLinks] = useState<CuratedLink[]>(CURATED_LINK_SEED);
+  const [readingItem, setReadingItem] = useState<FeedItem | null>(null);
+
+  // Share Article / Link modal
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [shareTab, setShareTab] = useState<"curate" | "write">("curate");
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [curateUrl, setCurateUrl] = useState("");
+  const [curateTitle, setCurateTitle] = useState("");
+  const [curatePublisher, setCuratePublisher] = useState("");
+  const [curateSummary, setCurateSummary] = useState("");
+  const [curateCategory, setCurateCategory] = useState<CuratedCategory>("essays");
+  const [writeKind, setWriteKind] = useState<"essay" | "pin">("essay");
+  const [writeTitle, setWriteTitle] = useState("");
+  const [writeSubtitle, setWriteSubtitle] = useState("");
+  const [writeBody, setWriteBody] = useState("");
+  const [writeGurmukhi, setWriteGurmukhi] = useState("");
+  const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
+  const [shareFocalPoint, setShareFocalPoint] = useState<FocalPoint>("center");
+
+  // Stealth Admin, Hero Banner, Overrides & Vichaar Comments
+  const [isStealthAdmin, setIsStealthAdmin] = useState(false);
+  const [heroBannerUrl, setHeroBannerUrl] = useState<string>(DEFAULT_HERO_BANNER);
+  const [vichaarMap, setVichaarMap] = useState<Record<string, VichaarComment[]>>({});
+  const [vichaarInput, setVichaarInput] = useState("");
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const [imageOverrides, setImageOverrides] = useState<
+    Record<string, { imageUrl?: string | null; focalPoint?: FocalPoint }>
+  >({});
+
+  // Minimal Edit Profile modal drafts
+  const [draftName, setDraftName] = useState("");
+  const [draftEmail, setDraftEmail] = useState("");
+  const [draftRole, setDraftRole] = useState<string>("Sangat Member");
+  const [draftAvatar, setDraftAvatar] = useState<AvatarPresetId>("khanda-crest");
+  const [draftCustomAvatar, setDraftCustomAvatar] = useState<string | null>(null);
+  const [showCustomUpload, setShowCustomUpload] = useState(false);
+
+  useEffect(() => {
+    const syncAdmin = () => {
+      try {
+        const storedEmail = window.localStorage.getItem(ADMIN_EMAIL_STORAGE_KEY);
+        const unlocked = isStealthAdminEmail(user?.email) || isStealthAdminEmail(storedEmail);
+        if (unlocked) {
+          window.localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+          setIsStealthAdmin(true);
+        } else {
+          setIsStealthAdmin(false);
+        }
+      } catch {
+        setIsStealthAdmin(isStealthAdminEmail(user?.email));
+      }
+    };
+    syncAdmin();
+    window.addEventListener("storage", syncAdmin);
+    window.addEventListener("focus", syncAdmin);
+    window.addEventListener("learnsikhi-admin-change", syncAdmin);
+    return () => {
+      window.removeEventListener("storage", syncAdmin);
+      window.removeEventListener("focus", syncAdmin);
+      window.removeEventListener("learnsikhi-admin-change", syncAdmin);
+    };
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!isStudioOpen) return;
+    setDraftName(profile.displayName);
+    try {
+      setDraftEmail(user?.email || window.localStorage.getItem(ADMIN_EMAIL_STORAGE_KEY) || "");
+    } catch {
+      setDraftEmail(user?.email || "");
+    }
+    setDraftRole(profile.roleBadge);
+    setDraftAvatar(profile.avatarPreset);
+    setDraftCustomAvatar(profile.customAvatarDataUrl);
+    setShowCustomUpload(Boolean(profile.customAvatarDataUrl));
+  }, [isStudioOpen, profile, user?.email]);
 
   // Open Profile Studio if URL has ?studio=1
   useEffect(() => {
@@ -555,6 +852,24 @@ function SangatHubContent() {
         const parsed = JSON.parse(savedDil);
         if (Array.isArray(parsed) && parsed.length > 0) setDilPosts(parsed);
       }
+
+      const savedLinks = window.localStorage.getItem(STORAGE_KEYS.CURATED_LINKS);
+      if (savedLinks) {
+        const parsed = JSON.parse(savedLinks);
+        if (Array.isArray(parsed)) setCuratedLinks([...parsed, ...CURATED_LINK_SEED]);
+      }
+
+      const savedBanner = window.localStorage.getItem(STORAGE_KEYS.HERO_BANNER);
+      if (savedBanner) setHeroBannerUrl(savedBanner);
+
+      const savedVichaar = window.localStorage.getItem(STORAGE_KEYS.VICHAAR_COMMENTS);
+      if (savedVichaar) setVichaarMap(JSON.parse(savedVichaar));
+
+      const savedDeleted = window.localStorage.getItem(STORAGE_KEYS.DELETED_IDS);
+      if (savedDeleted) setDeletedIds(JSON.parse(savedDeleted));
+
+      const savedOverrides = window.localStorage.getItem(STORAGE_KEYS.IMAGE_OVERRIDES);
+      if (savedOverrides) setImageOverrides(JSON.parse(savedOverrides));
     } catch {
       // Ignore storage read errors
     }
@@ -607,6 +922,431 @@ function SangatHubContent() {
     if (selectedMoodFilter === "All") return dilPosts;
     return dilPosts.filter((d) => d.moodTag === selectedMoodFilter);
   }, [dilPosts, selectedMoodFilter]);
+
+  const feedItems: FeedItem[] = useMemo(() => {
+    const isVisible = (kind: FeedItem["kind"], id: string) =>
+      !deletedIds.includes(`${kind}:${id}`);
+
+    const essayItems: FeedItem[] = blogs
+      .filter((b) => isVisible("essay", b.id))
+      .map((b) => ({
+        kind: "essay",
+        id: b.id,
+        title: b.title,
+        byline: b.authorName,
+        preview: b.subtitle || b.paragraphs[0] || "",
+        blog: b,
+      }));
+    const visualItems: FeedItem[] = pins
+      .filter((p) => isVisible("visual", p.id))
+      .map((p) => ({
+        kind: "visual",
+        id: p.id,
+        title: p.title,
+        byline: p.authorName,
+        preview: p.description,
+        pin: p,
+      }));
+    const linkItems = (cat?: CuratedCategory): FeedItem[] =>
+      curatedLinks
+        .filter((l) => isVisible("link", l.id) && (!cat || l.category === cat))
+        .map((l) => ({
+          kind: "link",
+          id: l.id,
+          title: l.title,
+          byline: l.publisher,
+          preview: l.summary,
+          link: l,
+        }));
+
+    switch (feedTab) {
+      case "essays":
+        return [...linkItems("essays").filter((i) => i.kind === "link" && i.link.isUserCreated), ...essayItems, ...linkItems("essays").filter((i) => i.kind === "link" && !i.link.isUserCreated)];
+      case "visuals":
+        return [...linkItems("visuals"), ...visualItems];
+      case "news":
+        return linkItems("news");
+      default: {
+        const all = linkItems();
+        return [
+          ...all.filter((i) => i.kind === "link" && i.link.isUserCreated),
+          ...essayItems,
+          ...visualItems,
+          ...all.filter((i) => i.kind === "link" && !i.link.isUserCreated),
+        ];
+      }
+    }
+  }, [blogs, pins, curatedLinks, feedTab, deletedIds]);
+
+  const feedCounts = useMemo(
+    () => ({
+      all: blogs.length + pins.length + curatedLinks.length,
+      essays: blogs.length + curatedLinks.filter((l) => l.category === "essays").length,
+      visuals: pins.length + curatedLinks.filter((l) => l.category === "visuals").length,
+      news: curatedLinks.filter((l) => l.category === "news").length,
+    }),
+    [blogs, pins, curatedLinks]
+  );
+
+  const handleAutoFillFromLink = () => {
+    setShareError(null);
+    try {
+      const parsed = new URL(curateUrl.trim());
+      const domain = parsed.hostname.replace(/^www\./, "");
+      if (!curatePublisher.trim()) {
+        const base = domain.split(".")[0] || domain;
+        setCuratePublisher(base.charAt(0).toUpperCase() + base.slice(1));
+      }
+      if (!curateTitle.trim()) {
+        const lastSegment = parsed.pathname.split("/").filter(Boolean).pop() || "";
+        const pretty = decodeURIComponent(lastSegment)
+          .replace(/\.[a-z0-9]{2,5}$/i, "")
+          .replace(/[-_]+/g, " ")
+          .trim();
+        if (pretty) setCurateTitle(pretty.charAt(0).toUpperCase() + pretty.slice(1));
+      }
+    } catch {
+      setShareError("Paste a full link starting with https:// to auto-fill.");
+    }
+  };
+
+  const resetShareForm = () => {
+    setCurateUrl("");
+    setCurateTitle("");
+    setCuratePublisher("");
+    setCurateSummary("");
+    setWriteTitle("");
+    setWriteSubtitle("");
+    setWriteBody("");
+    setWriteGurmukhi("");
+    setShareImageUrl(null);
+    setShareFocalPoint("center");
+    setShareError(null);
+  };
+
+  const handlePublishShare = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShareError(null);
+
+    if (!user) {
+      setIsShareOpen(false);
+      setAuthGateActionLabel("Publish to SikhStack & SikhInterest");
+      return;
+    }
+
+    const authorSlug = slugifyName(profile.displayName);
+    const cleanImage = shareImageUrl?.trim() || null;
+
+    if (shareTab === "curate") {
+      let normalizedUrl = "";
+      try {
+        const parsed = new URL(curateUrl.trim());
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("bad");
+        normalizedUrl = parsed.toString();
+      } catch {
+        setShareError("Please paste a valid article link (https://…).");
+        return;
+      }
+      if (!curateTitle.trim() || !curateSummary.trim()) {
+        setShareError("Title and a short summary are required.");
+        return;
+      }
+      const created: CuratedLink = {
+        id: `link-${Date.now()}`,
+        url: normalizedUrl,
+        title: curateTitle.trim(),
+        publisher: curatePublisher.trim() || getDomain(normalizedUrl),
+        summary: curateSummary.trim(),
+        category: curateCategory,
+        curatedBy: profile.displayName,
+        createdAt: "Just now",
+        imageUrl: cleanImage,
+        focalPoint: shareFocalPoint,
+        isUserCreated: true,
+      };
+      const userLinks = [created, ...curatedLinks.filter((l) => l.isUserCreated)];
+      setCuratedLinks([...userLinks, ...CURATED_LINK_SEED]);
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.CURATED_LINKS, JSON.stringify(userLinks));
+      } catch {
+        // Ignore quota errors
+      }
+      setFeedTab(curateCategory);
+      setShareToast(`Published "${created.title}" with a link to its original source.`);
+    } else if (writeKind === "essay") {
+      if (!writeTitle.trim() || !writeBody.trim()) {
+        setShareError("An essay needs a title and body.");
+        return;
+      }
+      const paragraphs = writeBody.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+      const words = writeBody.trim().split(/\s+/).length;
+      const created: SangatBlogArticle = {
+        id: `blog-${Date.now()}`,
+        authorName: profile.displayName,
+        authorHandle: authorSlug,
+        authorRole: profile.roleBadge,
+        authorBio: profile.bio,
+        authorInterests: profile.interests,
+        authorAvatarPreset: profile.avatarPreset,
+        authorCustomAvatar: profile.customAvatarDataUrl,
+        title: writeTitle.trim(),
+        subtitle: writeSubtitle.trim() || paragraphs[0] || "",
+        gurmukhiHeader: writeGurmukhi.trim(),
+        topicTag: "Gurbani Research",
+        readingTime: `${Math.max(2, Math.ceil(words / 180))} min read`,
+        createdAt: "Just now",
+        pullQuote: "",
+        paragraphs,
+        likesCount: 0,
+        comments: [],
+        imageUrl: cleanImage,
+        focalPoint: shareFocalPoint,
+        isUserCreated: true,
+      };
+      const next = [created, ...blogs];
+      setBlogs(next);
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.BLOGS, JSON.stringify(next));
+      } catch {
+        // Ignore quota errors
+      }
+      setFeedTab("essays");
+      setShareToast(`Published your SikhStack essay "${created.title}".`);
+    } else {
+      if (!writeTitle.trim() || !writeBody.trim()) {
+        setShareError("A pin needs a title and description.");
+        return;
+      }
+      const created: SangatVisualPin = {
+        id: `pin-${Date.now()}`,
+        authorName: profile.displayName,
+        authorHandle: authorSlug,
+        authorRole: profile.roleBadge,
+        authorBio: profile.bio,
+        authorInterests: profile.interests,
+        authorAvatarPreset: profile.avatarPreset,
+        authorCustomAvatar: profile.customAvatarDataUrl,
+        title: writeTitle.trim(),
+        description: writeBody.trim(),
+        category: "Gurmukhi Calligraphy",
+        gurmukhiCalligraphy: writeGurmukhi.trim() || "à©´",
+        visualPalette: "darbar-gold",
+        imageDataUrl: cleanImage,
+        focalPoint: shareFocalPoint,
+        availableToCoordinate: false,
+        artistContactNote: "",
+        savesCount: 0,
+        createdAt: "Just now",
+        isUserCreated: true,
+      };
+      const next = [created, ...pins];
+      setPins(next);
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(next));
+      } catch {
+        // Ignore quota errors
+      }
+      setFeedTab("visuals");
+      setShareToast(`Published your SikhInterest pin "${created.title}".`);
+    }
+
+    window.setTimeout(() => setShareToast(null), 3500);
+    resetShareForm();
+    setIsShareOpen(false);
+  };
+
+  const handleSaveMinimalProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = draftName.trim() || DEFAULT_SANGAT_PROFILE.displayName;
+    const trimmedEmail = draftEmail.trim();
+    try {
+      if (trimmedEmail) {
+        window.localStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, trimmedEmail);
+      } else {
+        window.localStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+      }
+      if (isStealthAdminEmail(trimmedEmail) || isStealthAdminEmail(user?.email)) {
+        window.localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+        setIsStealthAdmin(true);
+      } else {
+        window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+        setIsStealthAdmin(false);
+      }
+      window.dispatchEvent(new Event("learnsikhi-admin-change"));
+    } catch {
+      // ignore storage errors
+    }
+
+    saveProfileToStorage({
+      ...profile,
+      displayName: name,
+      handle: slugifyName(name),
+      roleBadge: draftRole as RoleBadgeOption,
+      avatarPreset: draftAvatar,
+      customAvatarDataUrl: draftCustomAvatar,
+    });
+    setIsStudioOpen(false);
+  };
+
+  const handleCustomAvatarFile = (file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setDraftCustomAvatar(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const getItemKey = (item: FeedItem) => `${item.kind}:${item.id}`;
+
+  const getItemImage = (item: FeedItem): string | null => {
+    const key = getItemKey(item);
+    const override = imageOverrides[key];
+    if (override && override.imageUrl !== undefined) {
+      return override.imageUrl;
+    }
+    if (item.kind === "link") return item.link.imageUrl ?? null;
+    if (item.kind === "essay") return item.blog.imageUrl ?? null;
+    return item.pin.imageDataUrl ?? null;
+  };
+
+  const getItemFocal = (item: FeedItem): FocalPoint => {
+    const key = getItemKey(item);
+    const override = imageOverrides[key];
+    if (override?.focalPoint) return override.focalPoint;
+    if (item.kind === "link") return item.link.focalPoint ?? "center";
+    if (item.kind === "essay") return item.blog.focalPoint ?? "center";
+    return item.pin.focalPoint ?? "center";
+  };
+
+  const persistOverrides = (
+    next: Record<string, { imageUrl?: string | null; focalPoint?: FocalPoint }>
+  ) => {
+    setImageOverrides(next);
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.IMAGE_OVERRIDES, JSON.stringify(next));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
+  const handleHeroBannerFile = (file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setHeroBannerUrl(reader.result);
+        try {
+          window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, reader.result);
+        } catch {
+          // ignore quota errors
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleShareImageFile = (file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setShareImageUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAdminReplaceImage = (item: FeedItem, file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        const key = getItemKey(item);
+        const prev = imageOverrides[key] ?? {};
+        persistOverrides({
+          ...imageOverrides,
+          [key]: { ...prev, imageUrl: reader.result },
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAdminRemoveImage = (item: FeedItem) => {
+    const key = getItemKey(item);
+    const prev = imageOverrides[key] ?? {};
+    persistOverrides({
+      ...imageOverrides,
+      [key]: { ...prev, imageUrl: null },
+    });
+  };
+
+  const handleAdminCycleFocal = (item: FeedItem) => {
+    const order: FocalPoint[] = ["center", "top", "bottom"];
+    const current = getItemFocal(item);
+    const nextFocal = order[(order.indexOf(current) + 1) % order.length];
+    const key = getItemKey(item);
+    const prev = imageOverrides[key] ?? {};
+    persistOverrides({
+      ...imageOverrides,
+      [key]: { ...prev, focalPoint: nextFocal },
+    });
+  };
+
+  const handleAdminDeletePost = (item: FeedItem) => {
+    const key = getItemKey(item);
+    const nextDeleted = deletedIds.includes(key) ? deletedIds : [...deletedIds, key];
+    setDeletedIds(nextDeleted);
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.DELETED_IDS, JSON.stringify(nextDeleted));
+    } catch {
+      // ignore quota errors
+    }
+    if (readingItem && getItemKey(readingItem) === key) {
+      setReadingItem(null);
+    }
+  };
+
+  const handleAddVichaar = (item: FeedItem, e: React.FormEvent) => {
+    e.preventDefault();
+    const text = vichaarInput.trim();
+    if (!text) return;
+    const key = getItemKey(item);
+    const entry: VichaarComment = {
+      id: `vichaar-${Date.now()}`,
+      authorName: profile.displayName || "Sangat Member",
+      body: text,
+      createdAt: "Just now",
+    };
+    const nextMap = {
+      ...vichaarMap,
+      [key]: [...(vichaarMap[key] || []), entry],
+    };
+    setVichaarMap(nextMap);
+    setVichaarInput("");
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.VICHAAR_COMMENTS, JSON.stringify(nextMap));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
+  const handleAdminDeleteVichaar = (itemKey: string, commentId: string) => {
+    const nextList = (vichaarMap[itemKey] || []).filter((c) => c.id !== commentId);
+    const nextMap = { ...vichaarMap, [itemKey]: nextList };
+    setVichaarMap(nextMap);
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.VICHAAR_COMMENTS, JSON.stringify(nextMap));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
+  const openFullDiscussion = (blogId: string) => {
+    setReadingItem(null);
+    setActiveMode("blogs");
+    setActiveBlogId(blogId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const publishedItems: PublishedSummaryItem[] = useMemo(() => {
     const items: PublishedSummaryItem[] = [];
@@ -722,7 +1462,7 @@ function SangatHubContent() {
         newBlogSubtitle.trim() ||
         "Published in the SikhInterest & Vichaar Research Sanctuary",
       gurmukhiHeader:
-        newBlogGurmukhi.trim() || "ਗੁਰ ਪਰਸਾਦੀ ਵਿਦਿਆ ਵੀਚਾਰੈ ਪੜਿ ਪੜਿ ਪਾਵੈ ਮਾਨੁ ॥",
+        newBlogGurmukhi.trim() || "à¨—à©à¨° à¨ªà¨°à¨¸à¨¾à¨¦à©€ à¨µà¨¿à¨¦à¨¿à¨† à¨µà©€à¨šà¨¾à¨°à©ˆ à¨ªà©œà¨¿ à¨ªà©œà¨¿ à¨ªà¨¾à¨µà©ˆ à¨®à¨¾à¨¨à© à¥¥",
       topicTag: newBlogTopic,
       readingTime: `${estMinutes} min read`,
       createdAt: "Just now",
@@ -851,7 +1591,7 @@ function SangatHubContent() {
       description: newPinDesc.trim(),
       category: newPinCat,
       gurmukhiCalligraphy:
-        newPinCalligraphy.trim() || "ੴ ਸਤਿਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+        newPinCalligraphy.trim() || "à©´ à¨¸à¨¤à¨¿à¨—à©à¨° à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿ à¥¥",
       visualPalette: newPinPalette,
       imageDataUrl: newPinImageDataUrl,
       availableToCoordinate: newPinAvailable,
@@ -963,176 +1703,142 @@ function SangatHubContent() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
         {/* ================================================================
-            HERO SANCTUARY BANNER + PROFILE STUDIO LAUNCHER
+            PUBLICATION HEADER BAR + MINIMAL FEED TABS
         ================================================================ */}
         <section
           style={{
             backgroundColor: "var(--bg-surface)",
             borderColor: "var(--border-subtle)",
           }}
-          className="rounded-3xl border-2 border-[#C59B27]/55 p-8 md:p-10 shadow-sm space-y-6"
+          className="relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6"
         >
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-3xl">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#C59B27]/10">
-                  SIKHINTEREST &amp; VICHAAR • SUBSTACK + PINTEREST + DIL DI BAAT
-                </span>
-                <span lang="pa" className="font-gurmukhi text-sm text-[#D97706] font-semibold">
-                  ਸੰਗਤ ਵਿਚਾਰ, ਕਲਾ ਅਤੇ ਦਿਲ ਦੀ ਗੱਲ
-                </span>
-              </div>
+          {/* Ambient Heritage Hero Backdrop */}
+          {heroBannerUrl && (
+            <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+              <img
+                src={heroBannerUrl}
+                alt=""
+                aria-hidden="true"
+                className="w-full h-full object-cover object-center opacity-15 dark:opacity-20"
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(90deg, var(--bg-surface) 20%, transparent 100%)",
+                }}
+              />
+            </div>
+          )}
 
-              <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight">
-                SikhInterest &amp; Vichaar Community Hub
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-2 max-w-2xl">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]">
+                SIKHSTACK &amp; SIKHINTEREST
+              </p>
+              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight">
+                SikhStack &amp; SikhInterest
               </h1>
               <p
                 style={{ color: "var(--theme-text-muted)" }}
                 className="text-sm sm:text-base leading-relaxed"
               >
-                Read and publish Substack-style research essays on Gurbani &amp; history,
-                curate visual art and calligraphy on our Pinterest-style{" "}
-                <strong>SikhInterest</strong> board, or share personal joys, grief, and
-                questions in <strong>Dil Di Baat</strong>.
+                Independent essays on Gurbani &amp; Sikh history, curated research links with
+                original source attribution, and SikhInterest visual heritage.
               </p>
-            </div>
-
-            {/* Active Researcher Profile Pill + Customize Studio Button */}
-            <div
-              style={{
-                backgroundColor: "var(--theme-card-darker)",
-                borderColor: "var(--border-subtle)",
-              }}
-              className="p-4 rounded-2xl border flex items-center gap-3.5 shrink-0"
-            >
-              <SikhHeritageAvatar
-                preset={profile.avatarPreset}
-                customDataUrl={profile.customAvatarDataUrl}
-                size="md"
-              />
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[#C59B27] truncate">
-                  {profile.roleBadge}
-                </p>
-                <p className="text-sm font-serif font-bold truncate">
-                  {profile.displayName}{" "}
-                  <span className="text-xs font-mono font-normal opacity-75">
-                    @{profile.handle}
-                  </span>
-                </p>
-                <div className="flex flex-wrap gap-2 mt-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsStudioOpen(true)}
-                    className="px-3 py-1 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-[11px] font-bold uppercase tracking-wider"
-                  >
-                    🎨 Customize Profile &amp; Avatar
-                  </button>
-                  {!user && (
-                    <Link
-                      href="/auth?next=/sangat"
-                      className="px-2.5 py-1 rounded-lg border border-[#C59B27]/50 text-[11px] font-bold text-[#C59B27]"
-                    >
-                      Sign In to Post →
-                    </Link>
-                  )}
+              {isStealthAdmin && (
+                <div className="pt-1">
+                  <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border border-[#C59B27]/50 bg-[#C59B27]/10 text-[11px] font-bold text-[#9A7418] dark:text-[#E5C158] hover:border-[#C59B27] transition">
+                    <span>Change Page Banner / Upload New Artwork</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => handleHeroBannerFile(e.target.files?.[0])}
+                    />
+                  </label>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
 
-          {/* Three Community Mode Tabs + Primary Action Buttons */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-4 border-t border-[#C59B27]/25">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => {
-                  setActiveMode("blogs");
-                  setActiveBlogId(null);
+                  resetShareForm();
+                  setIsShareOpen(true);
                 }}
-                className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
-                  activeMode === "blogs"
-                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
-                    : "border border-[#C59B27]/35 hover:border-[#C59B27]"
-                }`}
-              >
-                ੧ · Substack Research &amp; Vichaar Blogs ({blogs.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMode("pins")}
-                className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
-                  activeMode === "pins"
-                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
-                    : "border border-[#C59B27]/35 hover:border-[#C59B27]"
-                }`}
-              >
-                ੨ · SikhInterest Visual Pinboard ({pins.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMode("dil")}
-                className={`px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
-                  activeMode === "dil"
-                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
-                    : "border border-[#C59B27]/35 hover:border-[#C59B27]"
-                }`}
-              >
-                ੩ · Dil Di Baat — Joy, Sorrow &amp; Support ({dilPosts.length})
-              </button>
-            </div>
-
-            {/* Auth-Gated Creation Buttons */}
-            <div className="flex flex-wrap gap-2.5">
-              <button
-                type="button"
-                onClick={() =>
-                  requireSignedIn("Publish a Blog / Research Essay", () =>
-                    setIsBlogComposerOpen(true)
-                  )
-                }
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
               >
-                ✍ Publish a Blog / Research Essay
+                + Share Article or Link
               </button>
+
               <button
                 type="button"
-                onClick={() =>
-                  requireSignedIn("Create a SikhInterest Pin", () =>
-                    setIsPinComposerOpen(true)
-                  )
-                }
-                className="px-4 py-2.5 rounded-xl border border-[#C59B27]/55 text-xs font-bold uppercase tracking-wider text-[#C59B27] hover:border-[#C59B27] transition"
+                onClick={() => setIsStudioOpen(true)}
+                style={{
+                  backgroundColor: "var(--theme-card-darker)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl border hover:border-[#C59B27] transition text-left"
               >
-                📌 Create a SikhInterest Pin
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  requireSignedIn("Share What's on Your Heart (Dil Di Baat)", () =>
-                    setIsDilComposerOpen(true)
-                  )
-                }
-                className="px-4 py-2.5 rounded-xl border border-[#C59B27]/55 text-xs font-bold uppercase tracking-wider text-[#C59B27] hover:border-[#C59B27] transition"
-              >
-                💛 Share What&apos;s on Your Heart
+                <SikhHeritageAvatar
+                  preset={profile.avatarPreset}
+                  customDataUrl={profile.customAvatarDataUrl}
+                  size="sm"
+                />
+                <span className="min-w-0">
+                  <span className="block text-xs font-serif font-bold truncate max-w-[140px]">
+                    {profile.displayName}
+                  </span>
+                  <span className="block text-[10px] font-semibold text-[#C59B27] truncate">
+                    {profile.roleBadge}
+                  </span>
+                </span>
               </button>
             </div>
           </div>
+
+          {/* Clean Minimal Text Tabs */}
+          <nav
+            aria-label="Feed categories"
+            className="flex flex-wrap items-center gap-1 sm:gap-2 border-t pt-4"
+            style={{ borderColor: "var(--border-subtle)" }}
+          >
+            {FEED_TABS.map((tab) => {
+              const active = !activeBlog && feedTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveBlogId(null);
+                    setFeedTab(tab.id);
+                  }}
+                  className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm transition ${
+                    active
+                      ? "bg-[#C59B27]/15 text-[#C59B27] font-bold border border-[#C59B27]/50"
+                      : "font-medium opacity-75 hover:opacity-100 border border-transparent"
+                  }`}
+                >
+                  {tab.label} ({feedCounts[tab.id]})
+                </button>
+              );
+            })}
+          </nav>
         </section>
 
         {shareToast && (
           <div className="p-3.5 rounded-2xl border border-[#C59B27] bg-[#C59B27]/15 text-xs font-bold text-[#C59B27] text-center">
-            ✓ {shareToast}
+            âœ“ {shareToast}
           </div>
         )}
 
         {/* ================================================================
-            MODE 1: SUBSTACK-STYLE RESEARCH & VICHAAR BLOGS
+            MAIN DISPATCH FEED OR FULL ESSAY READER
         ================================================================ */}
-        {activeMode === "blogs" && (
-          <div className="space-y-8">
-            {activeBlog ? (
+        <div className="space-y-8">
+          {activeBlog ? (
               /* Full Article Reader View + Threaded Comments */
               <article
                 style={{
@@ -1147,7 +1853,7 @@ function SangatHubContent() {
                     onClick={() => setActiveBlogId(null)}
                     className="px-4 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold text-[#C59B27] hover:border-[#C59B27]"
                   >
-                    ← Back to All Research Essays
+                    â† Back to All Research Essays
                   </button>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-full bg-[#C59B27]/15 border border-[#C59B27]/40 text-xs font-bold text-[#C59B27]">
@@ -1157,7 +1863,7 @@ function SangatHubContent() {
                       style={{ color: "var(--theme-text-muted)" }}
                       className="text-xs font-semibold"
                     >
-                      {activeBlog.readingTime} • {activeBlog.createdAt}
+                      {activeBlog.readingTime} â€¢ {activeBlog.createdAt}
                     </span>
                   </div>
                 </div>
@@ -1212,16 +1918,13 @@ function SangatHubContent() {
                     />
                     <div>
                       <p className="text-sm font-serif font-bold group-hover:underline">
-                        {activeBlog.authorName}{" "}
-                        <span className="text-xs font-mono font-normal text-[#C59B27]">
-                          @{activeBlog.authorHandle}
-                        </span>
+                        {activeBlog.authorName}
                       </p>
                       <p
                         style={{ color: "var(--theme-text-muted)" }}
                         className="text-xs"
                       >
-                        {activeBlog.authorRole} • Click to view Researcher Profile
+                        {activeBlog.authorRole} â€¢ Click to view Researcher Profile
                       </p>
                     </div>
                   </button>
@@ -1236,14 +1939,14 @@ function SangatHubContent() {
                           : "border-[#C59B27]/45 text-[#C59B27]"
                       }`}
                     >
-                      🙏 Waheguru / Chardi Kala ({activeBlog.likesCount})
+                      ðŸ™ Waheguru / Chardi Kala ({activeBlog.likesCount})
                     </button>
                     <button
                       type="button"
                       onClick={() => handleShareBlog(activeBlog)}
                       className="px-3.5 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold hover:border-[#C59B27]"
                     >
-                      ↗ Share Article
+                      â†— Share Article
                     </button>
                   </div>
                 </div>
@@ -1297,7 +2000,7 @@ function SangatHubContent() {
                         type="submit"
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
                       >
-                        Post Comment →
+                        Post Comment â†’
                       </button>
                     </div>
                   </form>
@@ -1324,14 +2027,11 @@ function SangatHubContent() {
                               <span className="text-xs font-bold">
                                 {com.authorName}
                               </span>{" "}
-                              <span className="text-[11px] font-mono text-[#C59B27]">
-                                @{com.authorHandle}
-                              </span>
                               <span
                                 style={{ color: "var(--theme-text-muted)" }}
                                 className="block text-[10px]"
                               >
-                                {com.authorRole} • {com.createdAt}
+                                {com.authorRole} â€¢ {com.createdAt}
                               </span>
                             </div>
                           </div>
@@ -1347,7 +2047,7 @@ function SangatHubContent() {
                             }
                             className="text-xs font-bold text-[#C59B27] hover:underline"
                           >
-                            ↩ Reply
+                            â†© Reply
                           </button>
                         </div>
 
@@ -1376,7 +2076,7 @@ function SangatHubContent() {
                                     {rep.authorName}
                                   </span>
                                   <span className="text-[10px] text-[#C59B27]">
-                                    • {rep.createdAt}
+                                    â€¢ {rep.createdAt}
                                   </span>
                                 </div>
                                 <p className="text-xs leading-relaxed">
@@ -1417,618 +2117,643 @@ function SangatHubContent() {
                 </div>
               </article>
             ) : (
-              /* Substack Editorial Feed View */
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "All",
-                      "Gurbani Research",
-                      "Sikh History",
-                      "Personal Journey",
-                      "Philosophy",
-                    ].map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => setSelectedTopic(tag)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                          selectedTopic === tag
-                            ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                            : "border border-[#C59B27]/35 hover:border-[#C59B27]"
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      requireSignedIn("Publish a Blog / Research Essay", () =>
-                        setIsBlogComposerOpen(true)
-                      )
-                    }
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-                  >
-                    + Write New Research Essay
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {filteredBlogs.map((blog, idx) => (
-                    <article
-                      key={blog.id}
-                      style={{
-                        backgroundColor: "var(--bg-surface)",
-                        borderColor: "var(--border-subtle)",
-                      }}
-                      className={`${
-                        idx === 0 ? "lg:col-span-12" : "lg:col-span-6"
-                      } rounded-3xl border p-7 sm:p-8 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6`}
-                    >
-                      <div className="space-y-4">
-                        <ChitrakariCardHeader
-                          artKey={blog.id}
-                          variant={
-                            blog.topicTag === "Sikh History"
-                              ? "warrior"
-                              : blog.topicTag === "Gurbani Research"
-                              ? "manuscript"
-                              : "darbar"
-                          }
-                          title={blog.title}
-                          heightClass={idx === 0 ? "h-52" : "h-44"}
-                          editable
-                        />
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="px-3 py-1 rounded-full bg-[#C59B27]/15 border border-[#C59B27]/40 text-[11px] font-bold uppercase tracking-wider text-[#C59B27]">
-                            {blog.topicTag}
-                          </span>
-                          <span
-                            style={{ color: "var(--theme-text-muted)" }}
-                            className="text-xs font-semibold"
-                          >
-                            {blog.readingTime} • {blog.createdAt}
-                          </span>
-                        </div>
-
-                        <p
-                          lang="pa"
-                          className="font-gurmukhi text-base sm:text-lg font-medium text-[#C59B27]"
-                        >
-                          {blog.gurmukhiHeader}
-                        </p>
-
-                        <div>
-                          <h2 className="text-2xl sm:text-3xl font-serif font-bold">
-                            <button
-                              type="button"
-                              onClick={() => setActiveBlogId(blog.id)}
-                              className="text-left hover:underline"
-                            >
-                              {blog.title}
-                            </button>
-                          </h2>
-                          <p
-                            style={{ color: "var(--theme-text-muted)" }}
-                            className="text-sm sm:text-base mt-2 leading-relaxed"
-                          >
-                            {blog.subtitle}
-                          </p>
-                        </div>
-
-                        {blog.pullQuote && (
-                          <blockquote className="p-4 rounded-xl border-l-4 border-[#C59B27] bg-[#C59B27]/10 text-xs sm:text-sm italic">
-                            &ldquo;{blog.pullQuote}&rdquo;
-                          </blockquote>
-                        )}
-                      </div>
-
-                      <div className="pt-4 border-t border-[#C59B27]/25 flex flex-wrap items-center justify-between gap-4">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setInspectedAuthor({
-                              name: blog.authorName,
-                              handle: blog.authorHandle,
-                              role: blog.authorRole,
-                              bio: blog.authorBio,
-                              avatarPreset: blog.authorAvatarPreset,
-                              customAvatar: blog.authorCustomAvatar,
-                              interests: blog.authorInterests,
-                              contributionsCount: 4,
-                            })
-                          }
-                          className="flex items-center gap-3 text-left group"
-                        >
-                          <SikhHeritageAvatar
-                            preset={blog.authorAvatarPreset}
-                            customDataUrl={blog.authorCustomAvatar}
-                            size="sm"
-                          />
-                          <div>
-                            <p className="text-xs font-bold group-hover:underline">
-                              {blog.authorName}
-                            </p>
-                            <p
-                              style={{ color: "var(--theme-text-muted)" }}
-                              className="text-[11px]"
-                            >
-                              {blog.authorRole}
-                            </p>
-                          </div>
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLikeBlog(blog.id)}
-                            className="px-3 py-1.5 rounded-xl border border-[#C59B27]/40 text-xs font-bold text-[#C59B27]"
-                          >
-                            🙏 {blog.likesCount}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActiveBlogId(blog.id)}
-                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
-                          >
-                            Read Essay &amp; {blog.comments.length} Comments →
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ================================================================
-            MODE 2: SIKHINTEREST VISUAL PINBOARD (MASONRY GRID)
-        ================================================================ */}
-        {activeMode === "pins" && (
-          <div className="space-y-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "All",
-                  "Sikh Art & Miniature",
-                  "Gurmukhi Calligraphy",
-                  "Gurdwara Architecture",
-                  "Manuscript & Book Quotes",
-                  `Saved Collection`,
-                ].map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedPinCategory(cat)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                      selectedPinCategory === cat
-                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                        : "border border-[#C59B27]/35 hover:border-[#C59B27]"
-                    }`}
-                  >
-                    {cat === "Saved Collection"
-                      ? `📌 Saved Collection (${savedPinIds.length})`
-                      : cat}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  requireSignedIn("Create a SikhInterest Pin", () =>
-                    setIsPinComposerOpen(true)
-                  )
-                }
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-              >
-                + Create SikhInterest Pin
-              </button>
-            </div>
-
-            {/* Responsive Masonry Layout */}
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-              {filteredPins.map((pin) => {
-                const isSaved = savedPinIds.includes(pin.id);
-                const paletteGradient =
-                  pin.visualPalette === "amrit-indigo"
-                    ? "from-[#0F172A] via-[#1E3A8A] to-[#172554]"
-                    : pin.visualPalette === "saffron-dawn"
-                    ? "from-[#7C2D12] via-[#9A3412] to-[#451A03]"
-                    : pin.visualPalette === "emerald-manuscript"
-                    ? "from-[#064E3B] via-[#1B2A20] to-[#121C15]"
-                    : "from-[#1B2A20] via-[#271203] to-[#78350F]";
-
-                return (
-                  <div
-                    key={pin.id}
-                    style={{
-                      backgroundColor: "var(--bg-surface)",
-                      borderColor: "var(--border-subtle)",
-                    }}
-                    className="break-inside-avoid rounded-3xl border overflow-hidden shadow-sm hover:border-[#C59B27] transition flex flex-col"
-                  >
-                    {/* Visual Artwork / Calligraphy Canvas */}
-                    {pin.imageDataUrl ? (
-                      <div className="relative w-full overflow-hidden bg-[#121C15]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={pin.imageDataUrl}
-                          alt={pin.title}
-                          className="w-full h-auto object-cover max-h-80"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className={`p-7 bg-gradient-to-br ${paletteGradient} text-[#FAF6EE] space-y-3 border-b border-[#C59B27]/30`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#E5C158] px-2.5 py-0.5 rounded-full bg-black/35 border border-[#C59B27]/40">
-                            {pin.category}
-                          </span>
-                          {pin.availableToCoordinate && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
-                              🎨 Available • Artist Direct
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          lang="pa"
-                          className="font-gurmukhi text-xl sm:text-2xl font-bold text-[#E5C158] leading-relaxed py-3"
-                        >
-                          {pin.gurmukhiCalligraphy}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Pin Content */}
-                    <div className="p-6 space-y-4">
-                      <div>
-                        <h3 className="text-lg font-serif font-bold">
-                          {pin.title}
-                        </h3>
-                        <p
-                          style={{ color: "var(--theme-text-muted)" }}
-                          className="text-xs sm:text-sm mt-1.5 leading-relaxed"
-                        >
-                          {pin.description}
-                        </p>
-                      </div>
-
-                      {pin.availableToCoordinate && (
-                        <button
-                          type="button"
-                          onClick={() => setCoordinatingPin(pin)}
-                          className="w-full py-2 px-3 rounded-xl border border-[#C59B27] bg-[#C59B27]/10 text-xs font-bold text-[#C59B27] hover:bg-[#C59B27]/20 transition"
-                        >
-                          🎨 Available — Coordinate with Artist →
-                        </button>
-                      )}
-
-                      <div className="pt-3 border-t border-[#C59B27]/20 flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setInspectedAuthor({
-                              name: pin.authorName,
-                              handle: pin.authorHandle,
-                              role: pin.authorRole,
-                              bio: pin.authorBio,
-                              avatarPreset: pin.authorAvatarPreset,
-                              customAvatar: pin.authorCustomAvatar,
-                              interests: pin.authorInterests,
-                              contributionsCount: 3,
-                            })
-                          }
-                          className="flex items-center gap-2 text-left group min-w-0"
-                        >
-                          <SikhHeritageAvatar
-                            preset={pin.authorAvatarPreset}
-                            customDataUrl={pin.authorCustomAvatar}
-                            size="sm"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold truncate group-hover:underline">
-                              {pin.authorName}
-                            </p>
-                            <p className="text-[10px] text-[#C59B27] truncate">
-                              @{pin.authorHandle}
-                            </p>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSavePin(pin.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                            isSaved
-                              ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                              : "border border-[#C59B27]/45 text-[#C59B27]"
-                          }`}
-                        >
-                          {isSaved
-                            ? `📌 Saved (${pin.savesCount})`
-                            : `📌 Save (${pin.savesCount})`}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================
-            MODE 3: DIL DI BAAT (SHARE JOY, SORROW, PAIN, KNOWLEDGE & SUPPORT)
-        ================================================================ */}
-        {activeMode === "dil" && (
-          <div className="space-y-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    "All",
-                    "🌱 Seeking Strength / In Pain",
-                    "✨ Sharing Happiness / Gratitude",
-                    "📚 Researcher Note",
-                    "🤝 Sangat Advice",
-                  ] as const
-                ).map((mood) => (
-                  <button
-                    key={mood}
-                    type="button"
-                    onClick={() => setSelectedMoodFilter(mood)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                      selectedMoodFilter === mood
-                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                        : "border border-[#C59B27]/35 hover:border-[#C59B27]"
-                    }`}
-                  >
-                    {mood}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  requireSignedIn(
-                    "Share What's on Your Heart (Dil Di Baat)",
-                    () => setIsDilComposerOpen(true)
-                  )
-                }
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-              >
-                💛 Share What&apos;s on Your Heart
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {filteredDilPosts.map((post) => (
-                <article
-                  key={post.id}
-                  style={{
-                    backgroundColor: "var(--bg-surface)",
-                    borderColor: "var(--border-subtle)",
-                  }}
-                  className="rounded-3xl border p-6 sm:p-8 shadow-sm space-y-5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setInspectedAuthor({
-                          name: post.authorName,
-                          handle: post.authorHandle,
-                          role: post.authorRole,
-                          bio: post.authorBio,
-                          avatarPreset: post.authorAvatarPreset,
-                          customAvatar: post.authorCustomAvatar,
-                          interests: post.authorInterests,
-                          contributionsCount: 2,
-                        })
-                      }
-                      className="flex items-center gap-3 text-left group"
-                    >
-                      <SikhHeritageAvatar
-                        preset={post.authorAvatarPreset}
-                        customDataUrl={post.authorCustomAvatar}
-                        size="md"
-                      />
-                      <div>
-                        <p className="text-sm font-serif font-bold group-hover:underline">
-                          {post.authorName}{" "}
-                          <span className="text-xs font-mono font-normal text-[#C59B27]">
-                            @{post.authorHandle}
-                          </span>
-                        </p>
-                        <p
-                          style={{ color: "var(--theme-text-muted)" }}
-                          className="text-xs"
-                        >
-                          {post.authorRole} • {post.createdAt}
-                        </p>
-                      </div>
-                    </button>
-
-                    <span className="px-3.5 py-1.5 rounded-full bg-[#C59B27]/15 border border-[#C59B27]/45 text-xs font-bold text-[#C59B27]">
-                      {post.moodTag}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-xl sm:text-2xl font-serif font-bold">
-                      {post.title}
-                    </h3>
-                    <p
-                      style={{ color: "var(--theme-text-muted)" }}
-                      className="text-sm sm:text-base leading-relaxed"
-                    >
-                      {post.body}
+              <div className="space-y-10">
+                {feedItems.length === 0 ? (
+                  <div className="rounded-2xl border border-[#C59B27]/25 bg-[var(--bg-surface)] p-8 text-center">
+                    <p className="text-sm opacity-75">
+                      No dispatches in this category yet. Use &ldquo;+ Share Article or Link&rdquo; to publish one.
                     </p>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+                    {feedItems.map((item) => {
+                      const badge =
+                        item.kind === "link"
+                          ? getDomain(item.link.url)
+                          : item.kind === "essay"
+                            ? item.blog.topicTag
+                            : item.pin.category;
+                      const imgSrc = getItemImage(item);
+                      const focal = getItemFocal(item);
 
-                  {/* Attached Comforting Gurbani Shabad */}
-                  {post.shabadGurmukhi && (
-                    <div
-                      style={{
-                        backgroundColor: "var(--theme-card-darker)",
-                        borderColor: "var(--border-subtle)",
-                      }}
-                      className="p-5 rounded-2xl border space-y-1.5"
+                      return (
+                        <article
+                          key={`${item.kind}-${item.id}`}
+                          className="group flex flex-col justify-between rounded-2xl border border-[#C59B27]/25 bg-[var(--bg-surface)] p-5 shadow-sm hover:border-[#C59B27]/65 transition"
+                        >
+                          <div className="space-y-3 flex-1">
+                            <SmartHeritageFrame
+                              src={imgSrc}
+                              alt={item.title}
+                              focalPoint={focal}
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() => setReadingItem(item)}
+                              className="w-full text-left space-y-2.5"
+                            >
+                              <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158]">
+                                <span className="truncate">{badge}</span>
+                                {item.kind === "essay" && (
+                                  <span className="shrink-0 opacity-75">{item.blog.readingTime}</span>
+                                )}
+                              </div>
+
+                              <h3 className="text-base sm:text-lg font-extrabold leading-snug group-hover:text-[#9A7418] dark:group-hover:text-[#E5C158] transition">
+                                {item.title}
+                              </h3>
+
+                              <p className="text-xs font-semibold opacity-75">By {item.byline}</p>
+
+                              <p className="text-sm opacity-80 leading-relaxed line-clamp-2">
+                                {item.preview}
+                              </p>
+                            </button>
+                          </div>
+
+                          <div className="pt-4 mt-4 border-t border-[#C59B27]/15 space-y-2.5">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => setReadingItem(item)}
+                                className="font-bold text-[#9A7418] dark:text-[#E5C158] hover:underline"
+                              >
+                                Read Summary →
+                              </button>
+
+                              {item.kind === "link" && (
+                                <a
+                                  href={item.link.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-semibold opacity-80 hover:opacity-100 hover:underline truncate max-w-[160px]"
+                                >
+                                  {getDomain(item.link.url)} ↗
+                                </a>
+                              )}
+                            </div>
+
+                            {isStealthAdmin && (
+                              <div className="pt-2 border-t border-[#C59B27]/15 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                                <label className="cursor-pointer px-2 py-1 rounded-lg border border-[#C59B27]/40 hover:border-[#C59B27] transition">
+                                  <span>Edit / Replace Image</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="sr-only"
+                                    onChange={(e) =>
+                                      handleAdminReplaceImage(item, e.target.files?.[0])
+                                    }
+                                  />
+                                </label>
+                                {imgSrc && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAdminCycleFocal(item)}
+                                      className="px-2 py-1 rounded-lg border border-[#C59B27]/40 hover:border-[#C59B27] transition"
+                                    >
+                                      Change Focal Point ({focal})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAdminRemoveImage(item)}
+                                      className="px-2 py-1 rounded-lg border border-[#C59B27]/40 hover:border-[#C59B27] transition opacity-80"
+                                    >
+                                      Remove Image
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdminDeletePost(item)}
+                                  className="px-2 py-1 rounded-lg border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition"
+                                >
+                                  Delete Post
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Compact secondary exploration strip */}
+                <section className="rounded-2xl border border-[#C59B27]/25 bg-[var(--bg-surface)] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider opacity-70">
+                    Explore Core Pillars
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                    <a
+                      href="/foundations"
+                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
                     >
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
-                        ANCHORING GURBANI SHABAD • {post.shabadAng}
-                      </span>
-                      <p
-                        lang="pa"
-                        className="font-gurmukhi text-lg sm:text-xl font-semibold text-[#C59B27]"
-                      >
-                        {post.shabadGurmukhi}
-                      </p>
-                      <p className="text-xs sm:text-sm italic">
-                        &ldquo;{post.shabadEnglish}&rdquo;
-                      </p>
+                      Foundations →
+                    </a>
+                    <a
+                      href="/nitnem"
+                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
+                    >
+                      Daily Bani →
+                    </a>
+                    <a
+                      href="/granths"
+                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
+                    >
+                      Granths &amp; Kirtan →
+                    </a>
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+      </main>
+
+      {/* ================================================================
+          CLICK-TO-READ SUMMARY & SOURCE ATTRIBUTION MODAL
+      ================================================================ */}
+      {readingItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
+          onClick={() => setReadingItem(null)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-[#FAF7F0] dark:bg-[#111318] text-[#18181B] dark:text-[#FAF7F0] border border-[#C59B27]/35 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158]">
+                  {readingItem.kind === "link"
+                    ? `Curated Source • ${readingItem.link.publisher}`
+                    : readingItem.kind === "essay"
+                      ? `SikhStack Essay • ${readingItem.blog.topicTag}`
+                      : `SikhInterest Visual • ${readingItem.pin.category}`}
+                </p>
+                <h2 className="text-lg sm:text-xl font-extrabold leading-snug mt-0.5">
+                  {readingItem.title}
+                </h2>
+                <p className="text-xs opacity-75 mt-1">
+                  By {readingItem.byline}
+                  {readingItem.kind === "link" ? ` • Shared by ${readingItem.link.curatedBy}` : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReadingItem(null)}
+                className="shrink-0 px-3 py-1.5 rounded-lg border border-[#C59B27]/35 text-xs font-bold hover:border-[#C59B27]"
+              >
+                Close ✕
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5 text-sm leading-relaxed">
+              <SmartHeritageFrame
+                src={getItemImage(readingItem)}
+                alt={readingItem.title}
+                focalPoint={getItemFocal(readingItem)}
+                fitMode="contain"
+              />
+
+              {readingItem.kind === "link" && (
+                <>
+                  <p className="opacity-90">{readingItem.link.summary}</p>
+                  <div className="rounded-xl border border-[#C59B27]/30 bg-[#C59B27]/10 p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-xs">
+                      <p className="font-bold">Original Publication</p>
+                      <p className="opacity-75 truncate max-w-xs">{readingItem.link.url}</p>
                     </div>
+                    <a
+                      href={readingItem.link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold shadow-sm hover:opacity-95 transition"
+                    >
+                      Read Original Source at {readingItem.link.publisher || getDomain(readingItem.link.url)} ↗
+                    </a>
+                  </div>
+                </>
+              )}
+
+              {readingItem.kind === "essay" && (
+                <>
+                  {readingItem.blog.subtitle && (
+                    <p className="font-semibold opacity-85">{readingItem.blog.subtitle}</p>
                   )}
-
-                  {/* Actions & Supportive Replies */}
-                  <div className="pt-3 border-t border-[#C59B27]/20 flex flex-wrap items-center justify-between gap-3">
+                  {(readingItem.blog.gurmukhiHeader || readingItem.blog.pullQuote) && (
+                    <blockquote className="rounded-xl border-l-4 border-[#C59B27] bg-[#C59B27]/10 px-4 py-3 text-sm font-semibold">
+                      {readingItem.blog.gurmukhiHeader || readingItem.blog.pullQuote}
+                    </blockquote>
+                  )}
+                  <div className="space-y-3 opacity-90">
+                    {readingItem.blog.paragraphs.slice(0, 3).map((para, idx) => (
+                      <p key={idx}>{para}</p>
+                    ))}
+                  </div>
+                  <div className="pt-2">
                     <button
                       type="button"
-                      onClick={() => handleOfferArdas(post.id)}
-                      className="px-4 py-2 rounded-xl border border-[#C59B27]/50 text-xs font-bold text-[#C59B27] hover:bg-[#C59B27]/10 transition"
+                      onClick={() => openFullDiscussion(readingItem.blog.id)}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold"
                     >
-                      🙏 Stand in Ardas / Send Chardi Kala ({post.ardasCount})
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        requireSignedIn(
-                          "Leave a Supportive Reply & Shabad",
-                          () =>
-                            setReplyingDilPostId(
-                              replyingDilPostId === post.id ? null : post.id
-                            )
-                        )
-                      }
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-                    >
-                      🤝 Leave Supportive Reply &amp; Attach Shabad
+                      Open Full Essay &amp; Discussion →
                     </button>
                   </div>
+                </>
+              )}
 
-                  {/* Existing Supportive Replies */}
-                  {post.replies.length > 0 && (
-                    <div className="space-y-3 pt-2 pl-4 border-l-2 border-[#C59B27]/40">
-                      {post.replies.map((rep) => (
+              {readingItem.kind === "visual" && (
+                <>
+                  {readingItem.pin.gurmukhiCalligraphy && (
+                    <blockquote className="rounded-xl border-l-4 border-[#C59B27] bg-[#C59B27]/10 px-4 py-3 text-sm font-semibold">
+                      {readingItem.pin.gurmukhiCalligraphy}
+                    </blockquote>
+                  )}
+                  <p className="opacity-90">{readingItem.pin.description}</p>
+                  {readingItem.pin.artistContactNote && (
+                    <p className="text-xs opacity-70">{readingItem.pin.artistContactNote}</p>
+                  )}
+                </>
+              )}
+
+              {/* Vichaar (Comments & Discussion) */}
+              <div className="pt-5 border-t border-[#C59B27]/25 space-y-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158]">
+                  Vichaar (Comments &amp; Discussion)
+                </h3>
+
+                <form
+                  onSubmit={(e) => handleAddVichaar(readingItem, e)}
+                  className="flex flex-col sm:flex-row gap-2"
+                >
+                  <input
+                    type="text"
+                    value={vichaarInput}
+                    onChange={(e) => setVichaarInput(e.target.value)}
+                    placeholder="Share a reflection or question on this dispatch..."
+                    className="flex-1 min-w-0 rounded-xl border border-[#C59B27]/35 bg-transparent px-3.5 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold"
+                  >
+                    Post Vichaar
+                  </button>
+                </form>
+
+                {(() => {
+                  const key = getItemKey(readingItem);
+                  const list = vichaarMap[key] || [];
+                  if (list.length === 0) {
+                    return (
+                      <p className="text-xs opacity-65">
+                        No Vichaar comments yet. Start the discussion above.
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="space-y-2.5">
+                      {list.map((c) => (
                         <div
-                          key={rep.id}
-                          style={{
-                            backgroundColor: "var(--bg-primary)",
-                            borderColor: "var(--border-subtle)",
-                          }}
-                          className="p-4 rounded-2xl border space-y-2"
+                          key={c.id}
+                          className="rounded-xl border border-[#C59B27]/20 bg-black/5 dark:bg-white/5 px-3.5 py-2.5 flex items-start justify-between gap-3"
                         >
-                          <div className="flex items-center gap-2">
-                            <SikhHeritageAvatar
-                              preset={rep.authorAvatarPreset}
-                              size="sm"
-                            />
-                            <span className="text-xs font-bold">
-                              {rep.authorName}
-                            </span>
-                            <span className="text-[11px] font-mono text-[#C59B27]">
-                              @{rep.authorHandle}
-                            </span>
-                            <span
-                              style={{ color: "var(--theme-text-muted)" }}
-                              className="text-[10px]"
-                            >
-                              • {rep.createdAt}
-                            </span>
+                          <div className="space-y-0.5 min-w-0">
+                            <p className="text-xs font-bold">
+                              {c.authorName}{" "}
+                              <span className="font-normal opacity-60">• {c.createdAt}</span>
+                            </p>
+                            <p className="text-xs sm:text-sm opacity-90">{c.body}</p>
                           </div>
-                          <p className="text-xs sm:text-sm leading-relaxed">
-                            {rep.body}
-                          </p>
-                          {rep.shabadGurmukhi && (
-                            <div className="p-3 rounded-xl bg-[#C59B27]/10 border border-[#C59B27]/30 text-xs space-y-0.5">
-                              <p
-                                lang="pa"
-                                className="font-gurmukhi font-bold text-[#C59B27]"
-                              >
-                                {rep.shabadGurmukhi}
-                              </p>
-                              <p className="italic">{rep.shabadEnglish}</p>
-                            </div>
+                          {isStealthAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleAdminDeleteVichaar(key, c.id)}
+                              className="shrink-0 px-2 py-1 rounded-lg border border-red-500/40 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                            >
+                              Delete Comment
+                            </button>
                           )}
                         </div>
                       ))}
                     </div>
-                  )}
-
-                  {/* Supportive Reply Composer */}
-                  {replyingDilPostId === post.id && (
-                    <div
-                      style={{
-                        backgroundColor: "var(--bg-primary)",
-                        borderColor: "var(--border-subtle)",
-                      }}
-                      className="p-4 rounded-2xl border space-y-3"
-                    >
-                      <textarea
-                        rows={2}
-                        value={dilReplyBody}
-                        onChange={(e) => setDilReplyBody(e.target.value)}
-                        placeholder="Write words of encouragement, Ardas, or Sangati support..."
-                        style={{
-                          backgroundColor: "var(--bg-surface)",
-                          borderColor: "var(--border-subtle)",
-                        }}
-                        className="w-full rounded-xl border p-3 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
-                      />
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <select
-                          value={dilReplyShabadIdx}
-                          onChange={(e) =>
-                            setDilReplyShabadIdx(Number(e.target.value))
-                          }
-                          style={{
-                            backgroundColor: "var(--bg-surface)",
-                            borderColor: "var(--border-subtle)",
-                          }}
-                          className="rounded-xl border px-3 py-2 text-xs"
-                        >
-                          {UPLIFTING_SHABADS_LIBRARY.map((s, idx) => (
-                            <option key={s.label} value={idx}>
-                              Attach Shabad: {s.label}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => handlePostDilReply(post.id)}
-                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-                        >
-                          Send Reply &amp; Shabad →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </article>
-              ))}
+                  );
+                })()}
+              </div>
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
+
+      {/* ================================================================
+          + SHARE ARTICLE OR LINK MODAL
+      ================================================================ */}
+      {isShareOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
+          onClick={() => setIsShareOpen(false)}
+        >
+          <div
+            className="w-full max-w-xl max-h-[88vh] flex flex-col rounded-2xl bg-[#FAF7F0] dark:bg-[#111318] text-[#18181B] dark:text-[#FAF7F0] border border-[#C59B27]/35 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-extrabold">Share Article or Link</h2>
+                <p className="text-xs opacity-75">
+                  Curate an external article with source attribution or write an original dispatch.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  resetShareForm();
+                  setIsShareOpen(false);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-[#C59B27]/35 text-xs font-bold hover:border-[#C59B27]"
+              >
+                Close ✕
+              </button>
+            </div>
+
+            <div className="shrink-0 px-6 pt-3 flex gap-2 border-b border-[#C59B27]/15">
+              <button
+                type="button"
+                onClick={() => {
+                  setShareError(null);
+                  setShareTab("curate");
+                }}
+                className={`px-3.5 py-2 text-xs font-bold border-b-2 -mb-px transition ${
+                  shareTab === "curate"
+                    ? "border-[#C59B27] text-[#9A7418] dark:text-[#E5C158]"
+                    : "border-transparent opacity-65 hover:opacity-100"
+                }`}
+              >
+                Curate External Link / Article
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShareError(null);
+                  setShareTab("write");
+                }}
+                className={`px-3.5 py-2 text-xs font-bold border-b-2 -mb-px transition ${
+                  shareTab === "write"
+                    ? "border-[#C59B27] text-[#9A7418] dark:text-[#E5C158]"
+                    : "border-transparent opacity-65 hover:opacity-100"
+                }`}
+              >
+                Write Original Essay / Pin
+              </button>
+            </div>
+
+            <form onSubmit={handlePublishShare} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+              {shareError && (
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-xs font-semibold text-red-700 dark:text-red-300">
+                  {shareError}
+                </div>
+              )}
+
+              {shareTab === "curate" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold">Original Article URL *</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        required
+                        value={curateUrl}
+                        onChange={(e) => setCurateUrl(e.target.value)}
+                        placeholder="https://example.org/article"
+                        className="flex-1 min-w-0 rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAutoFillFromLink}
+                        className="shrink-0 px-3 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-bold hover:border-[#C59B27]"
+                      >
+                        Auto-fill
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold">Original Publisher / Author *</label>
+                      <input
+                        type="text"
+                        value={curatePublisher}
+                        onChange={(e) => setCuratePublisher(e.target.value)}
+                        placeholder="e.g. Ensaaf, Bunga Azadi"
+                        className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold">Feed Section</label>
+                      <select
+                        value={curateCategory}
+                        onChange={(e) => setCurateCategory(e.target.value as CuratedCategory)}
+                        className="w-full rounded-xl border border-[#C59B27]/35 bg-[#FAF7F0] dark:bg-[#111318] px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                      >
+                        <option value="essays">SikhStack Essays &amp; Research</option>
+                        <option value="visuals">SikhInterest Visuals</option>
+                        <option value="news">Bunga Azadi &amp; Panthic News</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold">Article Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={curateTitle}
+                      onChange={(e) => setCurateTitle(e.target.value)}
+                      placeholder="Clear headline for the shared dispatch"
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold">Why it matters (2-3 line summary) *</label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={curateSummary}
+                      onChange={(e) => setCurateSummary(e.target.value)}
+                      placeholder="Summarize the key takeaway while crediting the original source..."
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWriteKind("essay")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                        writeKind === "essay"
+                          ? "border-[#C59B27] bg-[#C59B27]/15"
+                          : "border-[#C59B27]/25 opacity-75"
+                      }`}
+                    >
+                      SikhStack Essay
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWriteKind("pin")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                        writeKind === "pin"
+                          ? "border-[#C59B27] bg-[#C59B27]/15"
+                          : "border-[#C59B27]/25 opacity-75"
+                      }`}
+                    >
+                      SikhInterest Visual Note
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold">Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={writeTitle}
+                      onChange={(e) => setWriteTitle(e.target.value)}
+                      placeholder={writeKind === "essay" ? "Essay title" : "Visual or archive title"}
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                    />
+                  </div>
+
+                  {writeKind === "essay" && (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold">Subtitle</label>
+                      <input
+                        type="text"
+                        value={writeSubtitle}
+                        onChange={(e) => setWriteSubtitle(e.target.value)}
+                        placeholder="Optional one-line thesis"
+                        className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold">Gurmukhi Quote / Inscription (optional)</label>
+                    <input
+                      type="text"
+                      value={writeGurmukhi}
+                      onChange={(e) => setWriteGurmukhi(e.target.value)}
+                      placeholder="Optional Gurmukhi pangti or inscription"
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold">
+                      {writeKind === "essay" ? "Essay Body *" : "Description & Context *"}
+                    </label>
+                    <textarea
+                      required
+                      rows={5}
+                      value={writeBody}
+                      onChange={(e) => setWriteBody(e.target.value)}
+                      placeholder="Write clearly..."
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Unified Artwork / Visual Attachment (Works for Articles, Visuals, and Curated Links) */}
+              <div className="rounded-xl border border-[#C59B27]/25 p-3.5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold">
+                    Attach Heritage Artwork or Photo (Optional)
+                  </label>
+                  {shareImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShareImageUrl(null)}
+                      className="text-[11px] font-semibold text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
+                  <label className="cursor-pointer px-3 py-2 rounded-xl border border-[#C59B27]/35 text-xs font-semibold text-center hover:border-[#C59B27] transition">
+                    <span>Upload Image File</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => handleShareImageFile(e.target.files?.[0])}
+                    />
+                  </label>
+                  <input
+                    type="url"
+                    value={shareImageUrl && !shareImageUrl.startsWith("data:") ? shareImageUrl : ""}
+                    onChange={(e) => setShareImageUrl(e.target.value || null)}
+                    placeholder="Or paste image URL (https://...)"
+                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs focus:outline-none focus:border-[#C59B27]"
+                  />
+                </div>
+
+                {shareImageUrl && (
+                  <div className="space-y-2">
+                    <SmartHeritageFrame
+                      src={shareImageUrl}
+                      alt="Artwork preview"
+                      focalPoint={shareFocalPoint}
+                    />
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="font-semibold opacity-75">Focal point:</span>
+                      {(["center", "top", "bottom"] as FocalPoint[]).map((fp) => (
+                        <button
+                          key={fp}
+                          type="button"
+                          onClick={() => setShareFocalPoint(fp)}
+                          className={`px-2 py-0.5 rounded-md border capitalize ${
+                            shareFocalPoint === fp
+                              ? "border-[#C59B27] bg-[#C59B27]/15 font-bold"
+                              : "border-[#C59B27]/25 opacity-75"
+                          }`}
+                        >
+                          {fp}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetShareForm();
+                    setIsShareOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-[#C59B27]/30 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold shadow-sm"
+                >
+                  Publish Dispatch
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ================================================================
           STRICT AUTHENTICATION GATE MODAL FOR POSTING & COMMENTING
@@ -2075,7 +2800,7 @@ function SangatHubContent() {
                 onClick={() => router.push("/auth?next=/sangat")}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
               >
-                Continue to Sign In / Sign Up (/auth) →
+                Continue to Sign In / Sign Up (/auth) â†’
               </button>
               <button
                 type="button"
@@ -2116,7 +2841,7 @@ function SangatHubContent() {
                 onClick={() => setIsBlogComposerOpen(false)}
                 className="px-3 py-1 rounded-xl border border-[#C59B27]/40 text-xs font-bold"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -2188,7 +2913,7 @@ function SangatHubContent() {
                     type="text"
                     value={newBlogGurmukhi}
                     onChange={(e) => setNewBlogGurmukhi(e.target.value)}
-                    placeholder="ਪਵਣੁ ਗੁਰੂ ਪਾਣੀ ਪਿਤਾ..."
+                    placeholder="à¨ªà¨µà¨£à© à¨—à©à¨°à©‚ à¨ªà¨¾à¨£à©€ à¨ªà¨¿à¨¤à¨¾..."
                     style={{
                       backgroundColor: "var(--bg-primary)",
                       borderColor: "var(--border-subtle)",
@@ -2236,7 +2961,7 @@ function SangatHubContent() {
                 type="submit"
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
               >
-                Publish Research Essay →
+                Publish Research Essay â†’
               </button>
             </form>
           </div>
@@ -2270,7 +2995,7 @@ function SangatHubContent() {
                 onClick={() => setIsPinComposerOpen(false)}
                 className="px-3 py-1 rounded-xl border border-[#C59B27]/40 text-xs font-bold"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -2336,7 +3061,7 @@ function SangatHubContent() {
                     type="text"
                     value={newPinCalligraphy}
                     onChange={(e) => setNewPinCalligraphy(e.target.value)}
-                    placeholder="ੴ ਸਤਿਗੁਰ ਪ੍ਰਸਾਦਿ ॥"
+                    placeholder="à©´ à¨¸à¨¤à¨¿à¨—à©à¨° à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿ à¥¥"
                     style={{
                       backgroundColor: "var(--bg-primary)",
                       borderColor: "var(--border-subtle)",
@@ -2423,7 +3148,7 @@ function SangatHubContent() {
                     onChange={(e) => setNewPinAvailable(e.target.checked)}
                     className="accent-[#C59B27]"
                   />
-                  Mark Original Artwork as &ldquo;Available — Coordinate with
+                  Mark Original Artwork as &ldquo;Available â€” Coordinate with
                   Artist&rdquo;
                 </label>
                 {newPinAvailable && (
@@ -2445,7 +3170,7 @@ function SangatHubContent() {
                 type="submit"
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
               >
-                Publish SikhInterest Pin →
+                Publish SikhInterest Pin â†’
               </button>
             </form>
           </div>
@@ -2516,14 +3241,14 @@ function SangatHubContent() {
           >
             <div className="flex items-center justify-between border-b border-[#C59B27]/25 pb-3">
               <h3 className="text-xl font-serif font-bold">
-                Dil Di Baat — Share Joy, Sorrow, Questions or Gratitude
+                Dil Di Baat â€” Share Joy, Sorrow, Questions or Gratitude
               </h3>
               <button
                 type="button"
                 onClick={() => setIsDilComposerOpen(false)}
                 className="px-3 py-1 rounded-xl border border-[#C59B27]/40 text-xs font-bold"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -2543,14 +3268,14 @@ function SangatHubContent() {
                   }}
                   className="w-full rounded-xl border px-3.5 py-2.5 text-xs sm:text-sm"
                 >
-                  <option value="🌱 Seeking Strength / In Pain">
-                    🌱 Seeking Strength / In Pain
+                  <option value="ðŸŒ± Seeking Strength / In Pain">
+                    ðŸŒ± Seeking Strength / In Pain
                   </option>
-                  <option value="✨ Sharing Happiness / Gratitude">
-                    ✨ Sharing Happiness / Gratitude
+                  <option value="âœ¨ Sharing Happiness / Gratitude">
+                    âœ¨ Sharing Happiness / Gratitude
                   </option>
-                  <option value="📚 Researcher Note">📚 Researcher Note</option>
-                  <option value="🤝 Sangat Advice">🤝 Sangat Advice</option>
+                  <option value="ðŸ“š Researcher Note">ðŸ“š Researcher Note</option>
+                  <option value="ðŸ¤ Sangat Advice">ðŸ¤ Sangat Advice</option>
                 </select>
               </div>
 
@@ -2615,7 +3340,7 @@ function SangatHubContent() {
                 type="submit"
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
               >
-                Share with the Sangat →
+                Share with the Sangat â†’
               </button>
             </form>
           </div>
@@ -2623,30 +3348,230 @@ function SangatHubContent() {
       )}
 
       {/* ================================================================
-          MODAL: CUSTOMIZABLE RESEARCHER PROFILE STUDIO & DASHBOARD
+          MODAL: MINIMAL EDIT PROFILE (DISPLAY NAME, ROLE, 6 EMBLEMS)
       ================================================================ */}
-      <ProfileStudioModal
-        isOpen={isStudioOpen}
-        onClose={() => setIsStudioOpen(false)}
-        profile={profile}
-        onSaveProfile={saveProfileToStorage}
-        userEmail={user?.email}
-        myBlogsCount={
-          blogs.filter((b) => b.isUserCreated || b.authorHandle === profile.handle)
-            .length
-        }
-        myPinsCount={
-          pins.filter((p) => p.isUserCreated || p.authorHandle === profile.handle)
-            .length
-        }
-        myDilPostsCount={
-          dilPosts.filter(
-            (d) => d.isUserCreated || d.authorHandle === profile.handle
-          ).length
-        }
-        savedPinsCount={savedPinIds.length}
-        publishedItems={publishedItems}
-      />
+      {isStudioOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit Profile"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsStudioOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
+        >
+          <div
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--accent-primary)",
+              color: "var(--text-primary)",
+            }}
+            className="w-full max-w-md max-h-[85vh] flex flex-col rounded-2xl border-2 shadow-2xl overflow-hidden"
+          >
+            <div
+              className="shrink-0 px-6 py-4 border-b flex items-center justify-between gap-4"
+              style={{ borderColor: "var(--border-subtle)" }}
+            >
+              <h2 className="text-xl font-serif font-bold">Edit Profile</h2>
+              <button
+                type="button"
+                onClick={() => setIsStudioOpen(false)}
+                className="px-3 py-1.5 rounded-xl border text-xs font-bold hover:border-[#C59B27]"
+                style={{ borderColor: "var(--border-subtle)" }}
+              >
+                âœ• Close
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveMinimalProfile}
+              className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5"
+            >
+              <div>
+                <label className="block text-xs font-bold mb-1.5">Display Name</label>
+                <input
+                  type="text"
+                  required
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  placeholder="Your name"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1.5">
+                  Account Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={draftEmail}
+                  onChange={(e) => setDraftEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1.5">
+                  Role / Focus Tag
+                </label>
+                <select
+                  value={draftRole}
+                  onChange={(e) => setDraftRole(e.target.value)}
+                  style={{
+                    backgroundColor: "var(--bg-primary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm"
+                >
+                  {PROFILE_ROLE_CHOICES.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                  {!PROFILE_ROLE_CHOICES.includes(
+                    draftRole as (typeof PROFILE_ROLE_CHOICES)[number]
+                  ) && <option value={draftRole}>{draftRole}</option>}
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-xs font-bold">Heritage Emblem</label>
+                <div className="grid grid-cols-6 gap-2">
+                  {SIKH_HERITAGE_AVATARS.slice(0, 6).map((av) => {
+                    const selected = !draftCustomAvatar && draftAvatar === av.id;
+                    return (
+                      <button
+                        key={av.id}
+                        type="button"
+                        title={av.name}
+                        onClick={() => {
+                          setDraftAvatar(av.id);
+                          setDraftCustomAvatar(null);
+                        }}
+                        className={`p-1.5 rounded-xl border flex items-center justify-center transition ${
+                          selected
+                            ? "border-2 border-[#C59B27] bg-[#C59B27]/15"
+                            : "border-transparent hover:border-[#C59B27]/50"
+                        }`}
+                      >
+                        <SikhHeritageAvatar preset={av.id} size="sm" />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Heritage Painting Crops & Uploaded Artwork */}
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold opacity-75">
+                    Puratan Heritage Paintings
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {HERITAGE_EMBLEM_ARTWORKS.map((art) => {
+                      const selected = draftCustomAvatar === art.src && draftAvatar === art.id;
+                      return (
+                        <button
+                          key={art.id}
+                          type="button"
+                          onClick={() => {
+                            setDraftAvatar(art.id as AvatarPresetId);
+                            setDraftCustomAvatar(art.src);
+                          }}
+                          className={`rounded-xl border p-1.5 text-left transition ${
+                            selected
+                              ? "border-2 border-[#C59B27] bg-[#C59B27]/15"
+                              : "border-[#C59B27]/25 hover:border-[#C59B27]/60"
+                          }`}
+                        >
+                          <div className="h-10 w-full overflow-hidden rounded-lg bg-[#111318]">
+                            <img
+                              src={art.src}
+                              alt={art.label}
+                              className={`w-full h-full object-cover ${art.objectPos}`}
+                            />
+                          </div>
+                          <span className="mt-1 block text-[10px] font-semibold truncate">
+                            {art.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {heroBannerUrl && heroBannerUrl !== DEFAULT_HERO_BANNER && (
+                      <button
+                        type="button"
+                        onClick={() => setDraftCustomAvatar(heroBannerUrl)}
+                        className={`rounded-xl border p-1.5 text-left transition ${
+                          draftCustomAvatar === heroBannerUrl
+                            ? "border-2 border-[#C59B27] bg-[#C59B27]/15"
+                            : "border-[#C59B27]/25 hover:border-[#C59B27]/60"
+                        }`}
+                      >
+                        <div className="h-10 w-full overflow-hidden rounded-lg bg-[#111318]">
+                          <img
+                            src={heroBannerUrl}
+                            alt="Uploaded Heritage Artwork"
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        <span className="mt-1 block text-[10px] font-semibold truncate">
+                          Uploaded Artwork
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomUpload((v) => !v)}
+                    className="text-xs text-[#C59B27] hover:underline font-medium"
+                  >
+                    {showCustomUpload
+                      ? "Hide custom photo upload"
+                      : "Upload custom photo instead"}
+                  </button>
+                  {showCustomUpload && (
+                    <div className="mt-2 space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleCustomAvatarFile(e.target.files?.[0])}
+                        className="w-full text-xs"
+                      />
+                      {draftCustomAvatar && (
+                        <button
+                          type="button"
+                          onClick={() => setDraftCustomAvatar(null)}
+                          className="text-xs underline opacity-75"
+                        >
+                          Remove custom photo
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
+              >
+                Save Profile
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ================================================================
           MODAL: PUBLIC RESEARCHER PROFILE CARD
@@ -2666,7 +3591,7 @@ export default function SangatPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center p-12 font-serif text-xl">
-          Opening SikhInterest &amp; Vichaar Sanctuary…
+          Opening SikhInterest &amp; Vichaar Sanctuaryâ€¦
         </div>
       }
     >

@@ -468,99 +468,108 @@ export default function MatriarchsPage() {
               role="dialog"
               aria-modal="true"
               aria-label={activeProfile.name}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm overflow-y-auto"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setActiveProfile(null);
+                }
+              }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
             >
-              <div className="relative w-full max-w-3xl rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-6 sm:p-8 shadow-2xl space-y-6 my-8">
-                <ChitrakariCardHeader
-                  artKey={activeProfile.id}
-                  variant={
-                    activeProfile.category === "Battlefield Commanders"
-                      ? "warrior"
-                      : "woman"
-                  }
-                  title={activeProfile.name}
-                  heightClass="h-52"
-                  editable
-                />
-
-              <div className="flex items-start justify-between gap-4 border-b border-[#C59B27]/30 pb-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27] px-2.5 py-0.5 rounded bg-[#121C15] border border-[#C59B27]/35">
-                      {activeProfile.category}
-                    </span>
-                    <span className="text-xs text-[#4A554E]">
-                      {activeProfile.era} • {activeProfile.region}
-                    </span>
+              <div className="w-full max-w-2xl max-h-[82vh] flex flex-col rounded-2xl bg-[#FAF7F0] text-[#18181B] shadow-2xl overflow-hidden border border-[#C59B27]/50">
+                {/* Sticky Top Header */}
+                <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex justify-between items-center gap-4 bg-[#FAF7F0]">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-800 px-2.5 py-0.5 rounded bg-amber-100 border border-amber-600/30">
+                        {activeProfile.category}
+                      </span>
+                      <span className="text-xs text-zinc-600">
+                        {activeProfile.era} • {activeProfile.region}
+                      </span>
+                    </div>
+                    <p
+                      lang="pa"
+                      className="font-gurmukhi text-lg font-semibold text-amber-700"
+                    >
+                      {activeProfile.gurmukhiName}
+                    </p>
+                    <h2 className="text-xl sm:text-2xl font-serif font-bold text-zinc-900 truncate">
+                      {activeProfile.name}
+                    </h2>
+                    <p className="text-xs sm:text-sm font-semibold text-amber-800 mt-0.5">
+                      {activeProfile.roleTitle}
+                    </p>
                   </div>
-                  <p
-                    lang="pa"
-                    className="font-gurmukhi text-xl font-semibold text-[#D97706]"
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveProfile(null)}
+                    aria-label="Close biography modal"
+                    className="shrink-0 px-3.5 py-2 rounded-xl border border-amber-700/35 bg-white text-zinc-900 text-xs font-bold hover:border-amber-700 transition"
                   >
-                    {activeProfile.gurmukhiName}
-                  </p>
-                  <h2 className="text-2xl sm:text-3xl font-serif font-bold">
-                    {activeProfile.name}
-                  </h2>
-                  <p className="text-sm font-semibold text-[#C59B27] mt-0.5">
-                    {activeProfile.roleTitle}
-                  </p>
+                    ✕ Close
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveProfile(null)}
-                  aria-label="Close biography modal"
-                  className="px-3.5 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold hover:border-[#C59B27]"
-                >
-                  ✕ Close
-                </button>
-              </div>
+                {/* Independently Scrollable Body */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
+                  <ChitrakariCardHeader
+                    artKey={activeProfile.id}
+                    variant={
+                      activeProfile.category === "Battlefield Commanders"
+                        ? "warrior"
+                        : "woman"
+                    }
+                    title={activeProfile.name}
+                    heightClass="h-48"
+                    editable
+                  />
 
-              <div className="space-y-4">
-                <div className="p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/35 space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
-                    ੧ · Historical Biography &amp; Sovereign Contributions
-                  </h3>
-                  <p className="text-sm sm:text-base leading-relaxed">
-                    {activeProfile.fullBiography}
-                  </p>
+                  <div className="space-y-4">
+                    <div className="p-5 rounded-2xl bg-[#F2E9D8] border border-amber-700/25 space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">
+                        ੧ · Historical Biography &amp; Sovereign Contributions
+                      </h3>
+                      <p className="text-sm sm:text-base leading-relaxed text-zinc-900">
+                        {activeProfile.fullBiography}
+                      </p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-[#F2E9D8] border border-amber-700/25 space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">
+                        ੨ · Confronting Historiographical Silence
+                      </h3>
+                      <p className="text-sm leading-relaxed text-zinc-800">
+                        {activeProfile.historiographicalNote}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#F2E9D8] border border-amber-700/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <span className="font-bold uppercase tracking-wider text-amber-800">
+                        Primary Historical &amp; Scriptural Citation:
+                      </span>
+                      <span className="font-semibold text-zinc-900">
+                        {activeProfile.primaryCitation}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-amber-700/20">
+                    <Link
+                      href="/ask"
+                      className="text-xs font-bold text-amber-800 hover:underline"
+                    >
+                      Research {activeProfile.name} in Scriptural Inquiry →
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setActiveProfile(null)}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
+                    >
+                      Done Reading
+                    </button>
+                  </div>
                 </div>
-
-                <div className="p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/35 space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#D97706]">
-                    ੨ · Confronting Historiographical Silence
-                  </h3>
-                  <p className="text-sm leading-relaxed text-[#4A554E]">
-                    {activeProfile.historiographicalNote}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <span className="font-bold uppercase tracking-wider text-[#C59B27]">
-                    Primary Historical &amp; Scriptural Citation:
-                  </span>
-                  <span className="font-semibold">
-                    {activeProfile.primaryCitation}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#C59B27]/25">
-                <Link
-                  href="/ask"
-                  className="text-xs font-bold text-[#C59B27] hover:underline"
-                >
-                  Research {activeProfile.name} in Scriptural Inquiry →
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setActiveProfile(null)}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
-                >
-                  Done Reading
-                </button>
-              </div>
               </div>
             </div>
           )}

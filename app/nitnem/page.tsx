@@ -439,14 +439,14 @@ function NitnemReaderContent() {
       <Header solid />
 
       {/* Top Hero Banner */}
-      <section className="border-b border-[#C59B27]/40 bg-gradient-to-b from-[#0A1F17] via-[#121C15] to-[#1B2A20] text-[#FAF6EE]">
+      <section className="border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2 max-w-3xl">
-              <div className="inline-flex items-center gap-2.5">
+              <div className="inline-flex flex-wrap items-center gap-2.5">
                 <span
                   lang="pa"
-                  className="font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded bg-[#1B2A20] text-[#E5C158] border border-[#C59B27]/45"
+                  className="font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded bg-[var(--theme-card-darker)] text-[#E5C158] border border-[#C59B27]/45"
                 >
                   ਨਿਤਨੇਮ ਅਤੇ ਬਾਣੀ ਪੋਥੀ
                 </span>
@@ -454,10 +454,10 @@ function NitnemReaderContent() {
                   Complete BaniDB Reader • Padchhed &amp; Larivaar
                 </span>
               </div>
-              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-[#FAF6EE]">
+              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-[var(--text-primary)]">
                 Nitnem, Sukhmani Sahib &amp; Sacred Bani Reader
               </h1>
-              <p className="text-sm sm:text-base text-[#F3ECE0]/85 leading-relaxed">
+              <p className="text-sm sm:text-base text-[var(--theme-text-muted)] leading-relaxed">
                 Read every Pauri, Chhand, and Ashtpadi with customizable Gurmukhi font size,
                 Padchhed/Larivaar script toggle, Punjabi Viakhia (Teeka), and English translation.
               </p>

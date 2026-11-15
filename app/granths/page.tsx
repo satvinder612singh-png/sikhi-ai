@@ -365,11 +365,66 @@ type LiveAngVerse = {
   englishTranslation: string;
 };
 
+interface RaagInfo {
+  order: number;
+  name: string;
+  gurmukhi: string;
+  angRange: string;
+  pehar: "Amrit Vela" | "Morning" | "Afternoon" | "Evening" | "Night";
+  timeWindow: string;
+  ras: string;
+  gurus: string;
+}
+
+const TANTI_SAAJ_LIST = [
+  { name: "Rabab (ਰਬਾਬ)", note: "Plucked lute of Bhai Mardana Ji & Guru Nanak Dev Ji." },
+  { name: "Saranda (ਸਰੰਦਾ)", note: "Deep bowed instrument tailored for meend & Vairaag." },
+  { name: "Taus (ਤਾਊਸ)", note: "Peacock-shaped bowed lute conceived by Guru Hargobind Sahib Ji." },
+  { name: "Dilruba (ਦਿਲਰੁਬਾ)", note: "Portable bowed lute designed by Guru Gobind Singh Ji." },
+  { name: "Jori–Pakhawaj (ਜੋੜੀ-ਪਖਾਵਜ)", note: "Classical Dhrupad & Partaal twin drums introduced by Guru Arjan Dev Ji." },
+];
+
+const SGGS_31_RAAGS: RaagInfo[] = [
+  { order: 1, name: "Sri Raag", gurmukhi: "ਸਿਰੀ ਰਾਗੁ", angRange: "14–93", pehar: "Evening", timeWindow: "6 PM – 9 PM", ras: "Detachment, humility & reverence", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev; Kabir, Trilochan, Beni, Ravidas" },
+  { order: 2, name: "Majh", gurmukhi: "ਮਾਝ", angRange: "94–150", pehar: "Afternoon", timeWindow: "3 PM – 6 PM", ras: "Tender longing & Barah Maha union", gurus: "Guru Nanak, Angad, Amar Das, Ram Das, Arjan Dev" },
+  { order: 3, name: "Gauri", gurmukhi: "ਗਉੜੀ", angRange: "151–346", pehar: "Evening", timeWindow: "6 PM – 9 PM", ras: "Serious contemplation & Sukhmani peace", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Ravidas" },
+  { order: 4, name: "Asa", gurmukhi: "ਆਸਾ", angRange: "347–488", pehar: "Amrit Vela", timeWindow: "3 AM – 6 AM", ras: "Dawn hope & Asa Di Vaar awakening", gurus: "Guru Nanak, Angad, Amar Das, Ram Das, Arjan Dev; Kabir, Namdev, Ravidas, Dhanna" },
+  { order: 5, name: "Gujri", gurmukhi: "ਗੂਜਰੀ", angRange: "489–526", pehar: "Morning", timeWindow: "9 AM – 12 PM", ras: "Quiet devotion & inner contentment", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev; Kabir, Namdev, Ravidas, Trilochan, Jaidev" },
+  { order: 6, name: "Devgandhari", gurmukhi: "ਦੇਵਗੰਧਾਰੀ", angRange: "527–536", pehar: "Morning", timeWindow: "9 AM – 12 PM", ras: "Humble plea & surrender of ego", gurus: "Guru Ram Das, Arjan Dev, Tegh Bahadur" },
+  { order: 7, name: "Bihagara", gurmukhi: "ਬਿਹਾਗੜਾ", angRange: "537–556", pehar: "Night", timeWindow: "9 PM – 12 AM", ras: "Nocturnal yearning & serene joy", gurus: "Guru Ram Das, Arjan Dev" },
+  { order: 8, name: "Wadahans", gurmukhi: "ਵਡਹੰਸੁ", angRange: "557–594", pehar: "Afternoon", timeWindow: "12 PM – 3 PM", ras: "Lavan & Alahnian: joy & cosmic acceptance", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev" },
+  { order: 9, name: "Sorath", gurmukhi: "ਸੋਰਠਿ", angRange: "595–659", pehar: "Night", timeWindow: "9 PM – 12 AM", ras: "Soothing trust & steady confidence", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Ravidas, Bhikhan" },
+  { order: 10, name: "Dhanasari", gurmukhi: "ਧਨਾਸਰੀ", angRange: "660–695", pehar: "Afternoon", timeWindow: "12 PM – 3 PM", ras: "Aarti (Gagan Mai Thaal): cosmic wonder", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Ravidas, Sain, Pipa, Dhanna" },
+  { order: 11, name: "Jaitsri", gurmukhi: "ਜੈਤਸਰੀ", angRange: "696–710", pehar: "Evening", timeWindow: "3 PM – 6 PM", ras: "Perseverance & humility over pride", gurus: "Guru Ram Das, Arjan Dev, Tegh Bahadur" },
+  { order: 12, name: "Todi", gurmukhi: "ਟੋਡੀ", angRange: "711–718", pehar: "Morning", timeWindow: "9 AM – 12 PM", ras: "Plaintive gentleness & refuge", gurus: "Guru Ram Das, Arjan Dev, Tegh Bahadur; Namdev" },
+  { order: 13, name: "Bairari", gurmukhi: "ਬੈਰਾੜੀ", angRange: "719–720", pehar: "Afternoon", timeWindow: "12 PM – 3 PM", ras: "Concentrated remembrance", gurus: "Guru Ram Das, Arjan Dev" },
+  { order: 14, name: "Tilang", gurmukhi: "ਤਿਲੰਗ", angRange: "721–727", pehar: "Afternoon", timeWindow: "3 PM – 6 PM", ras: "Compassion & Baburvani candour", gurus: "Guru Nanak, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev" },
+  { order: 15, name: "Suhi", gurmukhi: "ਸੂਹੀ", angRange: "728–794", pehar: "Morning", timeWindow: "9 AM – 12 PM", ras: "Anand Karaj (Lavan) bridal joy", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev; Kabir, Ravidas, Sheikh Farid" },
+  { order: 16, name: "Bilawal", gurmukhi: "ਬਿਲਾਵਲੁ", angRange: "795–858", pehar: "Morning", timeWindow: "6 AM – 9 AM", ras: "Morning radiance & grateful peace", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Ravidas, Sadhna" },
+  { order: 17, name: "Gaund", gurmukhi: "ਗੋਂਡ", angRange: "859–875", pehar: "Morning", timeWindow: "9 AM – 12 PM", ras: "Fortitude dispelling illusion", gurus: "Guru Ram Das, Arjan Dev; Kabir, Namdev, Ravidas" },
+  { order: 18, name: "Ramkali", gurmukhi: "ਰਾਮਕਲੀ", angRange: "876–974", pehar: "Amrit Vela", timeWindow: "5 AM – 8 AM", ras: "Anand Sahib & Sidh Gosht equipoise", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Ravidas, Beni, Satta & Balwand" },
+  { order: 19, name: "Nat Narayan", gurmukhi: "ਨਟ ਨਾਰਾਇਣ", angRange: "975–983", pehar: "Evening", timeWindow: "6 PM – 9 PM", ras: "Spirited focus on the Beloved", gurus: "Guru Ram Das, Arjan Dev" },
+  { order: 20, name: "Mali Gaura", gurmukhi: "ਮਾਲੀ ਗਉੜਾ", angRange: "984–988", pehar: "Afternoon", timeWindow: "3 PM – 6 PM", ras: "Cheerful contentment in Simran", gurus: "Guru Ram Das, Arjan Dev; Namdev" },
+  { order: 21, name: "Maru", gurmukhi: "ਮਾਰੂ", angRange: "989–1106", pehar: "Afternoon", timeWindow: "12 PM – 3 PM", ras: "Fearless detachment in solitude", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Jaidev, Ravidas" },
+  { order: 22, name: "Tukhari", gurmukhi: "ਤੁਖਾਰੀ", angRange: "1107–1117", pehar: "Night", timeWindow: "12 AM – 3 AM", ras: "Barah Maha seasonal yearning", gurus: "Guru Nanak, Ram Das, Arjan Dev" },
+  { order: 23, name: "Kedara", gurmukhi: "ਕੇਦਾਰਾ", angRange: "1118–1124", pehar: "Night", timeWindow: "9 PM – 12 AM", ras: "Solemn humility & sanctuary", gurus: "Guru Ram Das, Arjan Dev; Kabir, Ravidas" },
+  { order: 24, name: "Bhairao", gurmukhi: "ਭੈਰਉ", angRange: "1125–1167", pehar: "Amrit Vela", timeWindow: "3 AM – 6 AM", ras: "Sovereign gravity at dawn", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev; Kabir, Namdev, Ravidas" },
+  { order: 25, name: "Basant", gurmukhi: "ਬਸੰਤੁ", angRange: "1168–1196", pehar: "Morning", timeWindow: "Spring / Any Time", ras: "Vernal renewal of the soul", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Ramanand, Namdev, Ravidas" },
+  { order: 26, name: "Sarang", gurmukhi: "ਸਾਰੰਗ", angRange: "1197–1253", pehar: "Afternoon", timeWindow: "12 PM – 3 PM", ras: "Chatrik thirst for Divine Grace", gurus: "Guru Nanak, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Parmanand, Surdas" },
+  { order: 27, name: "Malar", gurmukhi: "ਮਲਾਰ", angRange: "1254–1293", pehar: "Night", timeWindow: "Monsoon / 9 PM – 12 AM", ras: "Cooling monsoon relief", gurus: "Guru Nanak, Angad, Amar Das, Ram Das, Arjan Dev; Namdev, Ravidas" },
+  { order: 28, name: "Kanara", gurmukhi: "ਕਾਨੜਾ", angRange: "1294–1318", pehar: "Night", timeWindow: "9 PM – 12 AM", ras: "Royal evening majesty & prayer", gurus: "Guru Ram Das, Arjan Dev; Namdev" },
+  { order: 29, name: "Kalyan", gurmukhi: "ਕਲਿਆਣ", angRange: "1319–1326", pehar: "Evening", timeWindow: "6 PM – 9 PM", ras: "Auspicious dusk tranquility", gurus: "Guru Ram Das, Arjan Dev" },
+  { order: 30, name: "Prabhati", gurmukhi: "ਪ੍ਰਭਾਤੀ", angRange: "1327–1351", pehar: "Amrit Vela", timeWindow: "4 AM – 7 AM", ras: "First light: pure illumination", gurus: "Guru Nanak, Amar Das, Ram Das, Arjan Dev, Tegh Bahadur; Kabir, Namdev, Beni" },
+  { order: 31, name: "Jaijawanti", gurmukhi: "ਜੈਜਾਵੰਤੀ", angRange: "1352–1353", pehar: "Night", timeWindow: "9 PM – 12 AM", ras: "Victorious composure (Guru Tegh Bahadur Ji)", gurus: "Guru Tegh Bahadur Ji" },
+];
+
 export default function GranthsAndKirtanPage() {
   const [activeTab, setActiveTab] = useState<"kirtan" | "granths">("kirtan");
   const [kirtanCollectionFilter, setKirtanCollectionFilter] = useState<string>("All");
   const [kirtanQuery, setKirtanQuery] = useState("");
-  const [showAdminQueue, setShowAdminQueue] = useState(true);
+  const [raagFilterPehar, setRaagFilterPehar] = useState<string>("All");
+  const [raagSearch, setRaagSearch] = useState("");
+  const localFileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [granthQuery, setGranthQuery] = useState("");
   const [granthCategory, setGranthCategory] = useState<string>("All");
   const [selectedGranth, setSelectedGranth] = useState<GranthVolume | null>(null);
@@ -408,11 +463,24 @@ export default function GranthsAndKirtanPage() {
     nextTrack,
     prevTrack,
     setIsCustomModalOpen,
-    submissions,
-    pendingSubmissionsCount,
-    approveSubmission,
-    rejectSubmission,
+    addLocalAudioFiles,
+    showRequestToast,
   } = useKirtanAudio();
+
+  const filteredRaags = useMemo(() => {
+    const q = raagSearch.trim().toLowerCase();
+    return SGGS_31_RAAGS.filter((r) => {
+      const matchesPehar = raagFilterPehar === "All" || r.pehar === raagFilterPehar;
+      if (!q) return matchesPehar;
+      return (
+        matchesPehar &&
+        (r.name.toLowerCase().includes(q) ||
+          r.gurmukhi.includes(raagSearch.trim()) ||
+          r.ras.toLowerCase().includes(q) ||
+          r.gurus.toLowerCase().includes(q))
+      );
+    });
+  }, [raagFilterPehar, raagSearch]);
 
   const filteredKirtanTracks = useMemo(() => {
     const sourceList =
@@ -563,9 +631,9 @@ export default function GranthsAndKirtanPage() {
             TAB A: PURATAN KIRTAN & RAAG DARBAR PLAYER
         ================================================================ */}
         {activeTab === "kirtan" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Column: Active Raag Console */}
-            <div className="lg:col-span-5 rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-6 sm:p-8 shadow-md space-y-6 sticky top-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+            {/* Left Column: Live 24/7 Sri Harmandir Sahib Broadcast & Active Player Card */}
+            <div className="lg:col-span-5 w-full min-w-0 rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-8 shadow-md space-y-6 lg:sticky lg:top-24">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27] px-3 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/40">
                   VERIFIED ARCHIVE.ORG KIRTAN
@@ -764,54 +832,71 @@ export default function GranthsAndKirtanPage() {
               </div>
             </div>
 
-            {/* Right Column: Curated Puratan Kirtan, Nitnem, Katha & Instrumental Repertoire */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-serif font-bold">
-                    Complete Puratan Kirtan, Nitnem, Katha &amp; Tanti Saaj Library
+            {/* Right Column: Educational Kirtan & 31 Ragas Hub + Verified / Local Tracks */}
+            <div className="lg:col-span-7 w-full min-w-0 space-y-6">
+              <div className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] text-[#FAF6EE] p-6 space-y-4 w-full min-w-0">
+                <div className="space-y-1.5 w-full min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
+                    VERIFIED BROADCASTS • LOCAL MP3 PLAYBACK • GURMAT SANGEET
+                  </span>
+                  <h2 className="text-2xl font-serif font-bold text-[#FAF6EE]">
+                    Puratan Kirtan, Local Audio &amp; 31 Ragas Hub
                   </h2>
-                  <p className="text-xs sm:text-sm text-[#4A554E]">
-                    {filteredKirtanTracks.length} verified tracks across Puratan Ragis, Nitnem,
-                    Katha, Background Reading Instrumentals (Sitar, Veena, Dilruba, Taus, Rabab),
-                    and Live Gurdwara Streams.
+                  <p className="text-xs sm:text-sm text-[#E2E8F0] leading-relaxed">
+                    Listen to the verified 24/7 Sri Darbar Sahib broadcast, play `.mp3` files
+                    directly from your computer (e.g., Bhai Avtar Singh Ji recordings), or explore
+                    all 31 Classical Raags of Sri Guru Granth Sahib Ji below.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 shrink-0">
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  <input
+                    ref={localFileInputRef}
+                    type="file"
+                    accept="audio/*,.mp3,.wav,.m4a,.ogg"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        const added = addLocalAudioFiles(e.target.files);
+                        showRequestToast(
+                          `Loaded ${added.length} local track${added.length > 1 ? "s" : ""} — now playing "${added[0].title}".`
+                        );
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => localFileInputRef.current?.click()}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold shadow-sm hover:brightness-105 transition"
+                  >
+                    📂 Play / Upload Local MP3 Files (e.g., Bhai Avtar Singh)
+                  </button>
                   <button
                     type="button"
                     onClick={() => startReadingInstrumental()}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold shadow-sm hover:brightness-105 transition"
+                    className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-[#C59B27] transition"
                   >
-                    🎻 Start 25% Reading Mode
+                    🎻 25% Reading Mode
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsCustomModalOpen(true)}
-                    className="px-3.5 py-2 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#C59B27] hover:border-[#C59B27] transition"
+                    className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-[#C59B27] transition"
                   >
-                    + Suggest a Kirtan / Bani for Review
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminQueue((v) => !v)}
-                    className="px-3.5 py-2 rounded-xl border border-[#C59B27] bg-[#121C15] text-xs font-bold text-[#C59B27] hover:brightness-105 transition"
-                  >
-                    {showAdminQueue ? "Hide" : "Open"} Admin Review Queue ({pendingSubmissionsCount} Pending)
+                    + Suggest a Shabad
                   </button>
                 </div>
               </div>
 
-              {/* Collection Filter Tabs + Track Search */}
-              <div className="p-4 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/40 space-y-3">
+              {/* Track Search & Playable Tracks (Live Darbar Sahib + Local / Approved) */}
+              <div className="p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/40 space-y-3">
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { id: "All", label: "All Tracks" },
-                    { id: "Puratan Kirtan Masters", label: "੧ · Puratan Kirtan Masters" },
-                    { id: "Background Raag Instrumentals", label: "੨ · Sitar, Veena, Dilruba & Taus (Reading Mode)" },
-                    { id: "Complete Nitnem & Sacred Bani", label: "੩ · Complete Nitnem & Bani" },
-                    { id: "Puratan Katha & Vichaar", label: "੪ · Puratan Katha & Vichaar" },
-                    { id: "Live 24/7 Gurdwara Broadcasts", label: "🔴 Live 24/7 Gurdwara Streams" },
+                    { id: "All", label: "All Playable Tracks" },
+                    { id: "Live 24/7 Gurdwara Broadcasts", label: "🔴 Live 24/7 Darbar Sahib" },
+                    { id: "Verified Local & Approved Audio", label: "📂 Local & Approved Tracks" },
                   ].map((col) => (
                     <button
                       key={col.id}
@@ -820,7 +905,7 @@ export default function GranthsAndKirtanPage() {
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                         kirtanCollectionFilter === col.id
                           ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                          : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E] hover:border-[#C59B27]"
+                          : "bg-[#121C15] border border-[#C59B27]/35 text-[#E2E8F0] hover:border-[#C59B27]"
                       }`}
                     >
                       {col.label}
@@ -832,9 +917,9 @@ export default function GranthsAndKirtanPage() {
                   type="search"
                   value={kirtanQuery}
                   onChange={(e) => setKirtanQuery(e.target.value)}
-                  placeholder="Search Shabad, Ragi (Bhai Avtar Singh, Sant Singh Maskeen), Raag, or Instrument (Sitar, Veena, Dilruba, Taus)..."
-                  aria-label="Search Kirtan, Nitnem, Katha, or Instrumental tracks"
-                  className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
+                  placeholder="Search live broadcast or your loaded local .mp3 files..."
+                  aria-label="Search playable Kirtan tracks"
+                  className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-2.5 text-xs sm:text-sm text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#C59B27]"
                 />
               </div>
 
@@ -853,26 +938,26 @@ export default function GranthsAndKirtanPage() {
                           handleTrackClick(track);
                         }
                       }}
-                      className={`p-6 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-4 ${
+                      className={`p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-3 ${
                         active
-                          ? "bg-[#1B2A20] border-2 border-[#C59B27] shadow-md"
-                          : "bg-[#F3ECE0] border-[#C59B27]/35 hover:border-[#C59B27]"
+                          ? "bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-md"
+                          : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <span
                             lang="pa"
                             className="h-10 w-10 rounded-xl bg-[#121C15] border border-[#C59B27]/45 font-gurmukhi text-base font-bold text-[#C59B27] flex items-center justify-center shrink-0"
                           >
                             {track.numeral}
                           </span>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
                                 {track.raag}
                               </span>
-                              <span className="text-xs text-[#4A554E]">
+                              <span className={`text-xs ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
                                 • {track.durationLabel}
                               </span>
                             </div>
@@ -882,10 +967,10 @@ export default function GranthsAndKirtanPage() {
                             >
                               {track.gurmukhiTitle}
                             </p>
-                            <h3 className="text-lg font-serif font-bold">
+                            <h3 className="text-lg font-serif font-bold truncate">
                               {track.title}
                             </h3>
-                            <p className="text-xs font-medium text-[#4A554E]">
+                            <p className={`text-xs font-medium ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
                               {track.ragi}
                             </p>
                           </div>
@@ -903,161 +988,142 @@ export default function GranthsAndKirtanPage() {
                               : "bg-[#121C15] border border-[#C59B27]/50 text-[#C59B27] hover:border-[#C59B27]"
                           }`}
                         >
-                          {active && isPlaying ? "⏸ Playing" : "▶ Play Shabad"}
+                          {active && isPlaying ? "⏸ Playing" : "▶ Play"}
                         </button>
                       </div>
 
-                      <p className="text-xs sm:text-sm text-[#4A554E] leading-relaxed">
+                      <p className={`text-xs sm:text-sm leading-relaxed ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
                         {track.raagNotes}
                       </p>
-
-                      <div className="pt-3 border-t border-[#C59B27]/20 flex flex-wrap items-center justify-between gap-2 text-xs text-[#4A554E]">
-                        <span>Instruments: {track.tantiSaaj}</span>
-                        <a
-                          href={track.directArchiveMp3Url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="font-bold text-[#C59B27] hover:underline"
-                        >
-                          Direct Stream / Source Link ↗
-                        </a>
-                      </div>
                     </div>
                   );
                 })}
 
                 {filteredKirtanTracks.length === 0 && (
-                  <div className="p-8 rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] text-center space-y-3">
+                  <div className="p-6 rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] text-[#FAF6EE] text-center space-y-3">
                     <p className="text-sm font-serif font-bold">
-                      No verified tracks in this category yet.
+                      No tracks in this filter yet.
                     </p>
-                    <p className="text-xs text-[#4A554E] max-w-md mx-auto leading-relaxed">
-                      We only list verified working streams and local MP3 files in{" "}
-                      <code>public/audio/</code>. Submit a track for review or approve a
-                      pending track in the Admin Review Queue below.
+                    <p className="text-xs text-[#E2E8F0] max-w-md mx-auto leading-relaxed">
+                      Load `.mp3` files directly from your computer for instant playback or switch back to All Playable Tracks.
                     </p>
                     <button
                       type="button"
-                      onClick={() => setIsCustomModalOpen(true)}
+                      onClick={() => localFileInputRef.current?.click()}
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
                     >
-                      + Suggest a Kirtan / Bani for Review
+                      📂 Play / Upload Local MP3 Files
                     </button>
                   </div>
                 )}
               </div>
 
               {/* ============================================================
-                  COLLAPSIBLE ADMIN REVIEW QUEUE (VERIFY & PROMOTE TRACKS)
+                  INTERACTIVE "WHAT IS GURMAT SANGEET & THE 31 RAGAS?" GUIDE
               ============================================================ */}
-              <div className="rounded-2xl border-2 border-[#C59B27]/60 bg-[#1B2A20] p-6 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
-                      MANUAL AUDIO VERIFICATION • PUBLIC.KIRTAN_SUBMISSIONS
-                    </span>
-                    <h3 className="text-lg sm:text-xl font-serif font-bold mt-0.5">
-                      Admin Review Queue ({pendingSubmissionsCount} Pending Verification)
-                    </h3>
-                    <p className="text-xs text-[#4A554E]">
-                      Inspect submitted tracks, verify that the audio matches the Kirtaniye
-                      and Shabad, and click Approve to promote to the live player.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomModalOpen(true)}
-                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold"
-                    >
-                      + Submit New Track
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminQueue((v) => !v)}
-                      className="px-3 py-2 rounded-xl border border-[#C59B27]/45 text-xs font-bold"
-                    >
-                      {showAdminQueue ? "Collapse ↑" : "Expand Queue ↓"}
-                    </button>
-                  </div>
+              <div className="rounded-3xl border border-[#C59B27]/45 bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-7 space-y-6 w-full min-w-0">
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
+                    EDUCATIONAL GUIDE • GURMAT SANGEET &amp; 31 RAAG-PRAKAAR
+                  </span>
+                  <h3 className="text-2xl font-serif font-bold text-[#FAF6EE]">
+                    What is Puratan Gurmat Sangeet &amp; The 31 Classical Ragas?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#E2E8F0] leading-relaxed">
+                    In Sri Guru Granth Sahib Ji (Ang 14–1353), Gurbani is arranged not by topic or
+                    chronology, but by <strong className="text-[#E5C158]">31 Main Classical Raags</strong>,
+                    each specifying the exact <strong className="text-[#E5C158]">Raag, Taal, and Ghar</strong>{" "}
+                    so melody elevates the Shabad&apos;s emotional truth (<em>Ras</em>) into spiritual equipoise.
+                  </p>
                 </div>
 
-                {showAdminQueue && (
-                  <div className="space-y-3 pt-2 border-t border-[#C59B27]/25">
-                    {submissions.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="p-4 rounded-xl bg-[#121C15] border border-[#C59B27]/35 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                {/* 5 Tanti Saaj String Instruments */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {TANTI_SAAJ_LIST.map((inst) => (
+                    <div
+                      key={inst.name}
+                      className="p-3.5 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-1"
+                    >
+                      <p className="text-xs font-bold text-[#E5C158]">{inst.name}</p>
+                      <p className="text-xs text-[#E2E8F0] leading-relaxed">{inst.note}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Search & Pehar Filter for the 31 Ragas */}
+                <div className="space-y-3 pt-2 border-t border-[#C59B27]/25">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-lg font-serif font-bold text-[#FAF6EE]">
+                        All 31 Main Ragas of Sri Guru Granth Sahib Ji
+                      </h4>
+                      <p className="text-xs text-[#E2E8F0]">
+                        Showing {filteredRaags.length} of 31 Raags • Ang 14 (Sri Raag) to Ang 1353 (Jaijawanti)
+                      </p>
+                    </div>
+                    <input
+                      type="search"
+                      value={raagSearch}
+                      onChange={(e) => setRaagSearch(e.target.value)}
+                      placeholder="Search Raag, Guru, or Ras..."
+                      aria-label="Search 31 classical Ragas"
+                      className="w-full sm:w-64 rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-3.5 py-2 text-xs text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#C59B27]"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {(["All", "Amrit Vela", "Morning", "Afternoon", "Evening", "Night"] as const).map(
+                      (pehar) => (
+                        <button
+                          key={pehar}
+                          type="button"
+                          onClick={() => setRaagFilterPehar(pehar)}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+                            raagFilterPehar === pehar
+                              ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
+                              : "bg-[#121C15] border border-[#C59B27]/35 text-[#E2E8F0] hover:border-[#C59B27]"
+                          }`}
+                        >
+                          {pehar === "All" ? "All 31 Ragas" : pehar}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[30rem] overflow-y-auto pr-1">
+                    {filteredRaags.map((raag) => (
+                      <article
+                        key={raag.order}
+                        className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-1.5 flex flex-col justify-between"
                       >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                sub.status === "approved"
-                                  ? "bg-emerald-600/20 text-emerald-700 border border-emerald-600/40"
-                                  : sub.status === "rejected"
-                                  ? "bg-red-600/20 text-red-700 border border-red-600/40"
-                                  : "bg-amber-500/20 text-[#C59B27] border border-[#C59B27]/50"
-                              }`}
-                            >
-                              {sub.status}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#C59B27]/20 text-[#E5C158] border border-[#C59B27]/40">
+                              #{raag.order} • Ang {raag.angRange}
                             </span>
-                            <span className="text-[11px] font-bold text-[#C59B27]">
-                              {sub.category} • {sub.raag}
-                            </span>
-                            <span className="text-[11px] text-[#4A554E]">
-                              by {sub.submittedBy}
+                            <span className="text-[11px] font-semibold text-[#E2E8F0]">
+                              {raag.pehar} ({raag.timeWindow})
                             </span>
                           </div>
-                          {sub.gurmukhiTitle && (
-                            <p
-                              lang="pa"
-                              className="font-gurmukhi text-sm font-medium text-[#D97706]"
-                            >
-                              {sub.gurmukhiTitle}
-                            </p>
-                          )}
-                          <h4 className="text-base font-serif font-bold">
-                            {sub.title} — <span className="font-sans font-normal text-xs">{sub.ragi}</span>
-                          </h4>
-                          <p className="text-xs text-[#4A554E] leading-relaxed">
-                            {sub.authenticityNotes}
+                          <div className="flex items-baseline justify-between gap-2 pt-0.5">
+                            <h5 className="text-base font-serif font-bold text-[#FAF6EE]">
+                              {raag.name}
+                            </h5>
+                            <span lang="pa" className="font-gurmukhi text-sm font-semibold text-[#E5C158]">
+                              {raag.gurmukhi}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#E2E8F0] leading-relaxed">
+                            <strong className="text-[#C59B27]">Ras / Mood:</strong> {raag.ras}
                           </p>
-                          <a
-                            href={sub.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block text-xs font-bold text-[#C59B27] hover:underline break-all"
-                          >
-                            Verify Source Audio Link: {sub.sourceUrl} ↗
-                          </a>
                         </div>
-
-                        <div className="flex sm:flex-col gap-2 shrink-0">
-                          {sub.status !== "approved" && (
-                            <button
-                              type="button"
-                              onClick={() => approveSubmission(sub.id)}
-                              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
-                            >
-                              ✓ Approve
-                            </button>
-                          )}
-                          {sub.status !== "rejected" && (
-                            <button
-                              type="button"
-                              onClick={() => rejectSubmission(sub.id)}
-                              className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-bold text-[#4A554E] hover:border-red-500 hover:text-red-600 transition"
-                            >
-                              ✕ Reject
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                        <p className="text-[11px] text-[#E2E8F0]/90 pt-1.5 border-t border-[#C59B27]/20">
+                          <strong className="text-[#C59B27]">Voices:</strong> {raag.gurus}
+                        </p>
+                      </article>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
