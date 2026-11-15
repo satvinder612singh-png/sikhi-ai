@@ -7,6 +7,7 @@ import {
   ChitrakariCardHeader,
   type ChitrakariVariant,
 } from "@/components/chitrakari-card-header";
+import { EditableHeritageImage } from "@/components/editable-heritage-image";
 import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
 import {
   FIVE_KS,
@@ -59,42 +60,92 @@ function SlideBannerArtwork({
   variant: ChitrakariVariant;
   title: string;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
   const commons = COMMONS_ART[artKey];
   const src = commons
     ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(commons.file)}?width=1200`
-    : null;
+    : "";
 
-  if (!src || imgFailed) {
+  if (!src) {
     return (
-      <ChitrakariCardHeader
-        artKey={artKey}
-        variant={variant}
-        title={title}
-        heightClass="h-52 sm:h-64"
-        editable
+      <>
+        <EditableHeritageImage
+          imageKey={`foundations-slide-${artKey}`}
+          defaultSrc=""
+          alt={title}
+          defaultFit="contain-museum"
+        />
+        <ChitrakariCardHeader
+          artKey={artKey}
+          variant={variant}
+          title={title}
+          heightClass="h-52 sm:h-64"
+          editable
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <EditableHeritageImage
+        imageKey={`foundations-slide-${artKey}`}
+        defaultSrc={src}
+        alt={commons?.caption || title}
+        defaultFit="contain-museum"
+      />
+      {commons?.caption && (
+        <p className="text-[11px] font-medium opacity-75 px-1">{commons.caption}</p>
+      )}
+    </div>
+  );
+}
+
+function FoundationCardArtwork({
+  artKey,
+  variant,
+  title,
+  heightClass,
+  compact = false,
+}: {
+  artKey: string;
+  variant: ChitrakariVariant;
+  title: string;
+  heightClass: string;
+  compact?: boolean;
+}) {
+  const commons = COMMONS_ART[artKey];
+  const src = commons
+    ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(commons.file)}?width=1200`
+    : "";
+
+  if (src) {
+    return (
+      <EditableHeritageImage
+        imageKey={`foundations-card-${artKey}`}
+        defaultSrc={src}
+        alt={title}
+        defaultFit="contain-museum"
       />
     );
   }
 
   return (
-    <div className="h-52 sm:h-64 w-full overflow-hidden rounded-2xl bg-[#111318] relative flex items-center justify-center border border-[#C59B27]/40 shadow-sm">
-      <img
-        src={src}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-35 pointer-events-none select-none"
-      />
-      <img
-        src={src}
+    <>
+      <EditableHeritageImage
+        imageKey={`foundations-card-${artKey}`}
+        defaultSrc=""
         alt={title}
-        onError={() => setImgFailed(true)}
-        className="relative z-10 h-full w-full object-contain object-[center_20%] p-1.5"
+        defaultFit="contain-museum"
       />
-      <span className="absolute bottom-2.5 left-3 z-20 rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-medium text-[#FAF7F0] backdrop-blur-sm">
-        {commons.caption || title}
-      </span>
-    </div>
+      <ChitrakariCardHeader
+        artKey={artKey}
+        variant={variant}
+        title={title}
+        heightClass={heightClass}
+        editable
+        compact={compact}
+      />
+    </>
   );
 }
 
@@ -548,7 +599,7 @@ function SlideFiveKs({ onOpenModal }: { onOpenModal: (item: FoundationModalItem)
           style={card}
         >
           <div className="space-y-4">
-            <ChitrakariCardHeader artKey={k.art.artKey} variant={k.art.variant} title={k.name} heightClass="h-32" editable compact />
+            <FoundationCardArtwork artKey={k.art.artKey} variant={k.art.variant} title={k.name} heightClass="h-32" compact />
             <div>
               <p lang="pa" className="font-gurmukhi text-2xl font-bold text-[#C59B27]">{k.gurmukhi}</p>
               <h3 className="font-serif text-2xl font-bold">{k.name} — {k.meaning}</h3>
@@ -644,7 +695,7 @@ function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
 
       <div key={g.n} className="grid gap-6 lg:grid-cols-5 animate-fade-in-up">
         <div className="lg:col-span-2">
-          <ChitrakariCardHeader artKey={g.art.artKey} variant={g.art.variant} title={g.name} heightClass="h-64 lg:h-full min-h-64" editable />
+          <FoundationCardArtwork artKey={g.art.artKey} variant={g.art.variant} title={g.name} heightClass="h-64 lg:h-full min-h-64" />
         </div>
         <article
           role="button"
@@ -720,7 +771,7 @@ function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
         style={card}
       >
         <div className="md:col-span-2">
-          <ChitrakariCardHeader artKey="sggs-eternal" variant="manuscript" title="Sri Guru Granth Sahib Ji" heightClass="h-40" editable compact />
+          <FoundationCardArtwork artKey="sggs-eternal" variant="manuscript" title="Sri Guru Granth Sahib Ji" heightClass="h-40" compact />
         </div>
         <div className="md:col-span-3 space-y-2">
           <Eyebrow>The Eternal Guru</Eyebrow>
@@ -800,7 +851,7 @@ function SlidePyare({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
             style={card}
           >
             <div className="space-y-2.5">
-              <ChitrakariCardHeader artKey={p.art.artKey} variant={p.art.variant} title={p.name} heightClass="h-32" editable compact />
+              <FoundationCardArtwork artKey={p.art.artKey} variant={p.art.variant} title={p.name} heightClass="h-32" compact />
               <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{p.gurmukhi}</p>
               <h4 className="font-serif text-lg font-bold">{p.name}</h4>
               <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">From {p.from}</p>
@@ -881,7 +932,7 @@ function SlideSahibzaade({ onOpenModal }: { onOpenModal: (item: FoundationModalI
             style={card}
           >
             <div className="space-y-2.5">
-              <ChitrakariCardHeader artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" editable compact />
+              <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
               <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{s.gurmukhi}</p>
               <h4 className="font-serif text-xl font-bold">{s.name}</h4>
               <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.age} • {s.place}</p>
@@ -907,7 +958,7 @@ function SlideSahibzaade({ onOpenModal }: { onOpenModal: (item: FoundationModalI
         style={card}
       >
         <div className="md:col-span-2">
-          <ChitrakariCardHeader artKey={MATA_GUJRI.art.artKey} variant={MATA_GUJRI.art.variant} title={MATA_GUJRI.name} heightClass="h-40" editable compact />
+          <FoundationCardArtwork artKey={MATA_GUJRI.art.artKey} variant={MATA_GUJRI.art.variant} title={MATA_GUJRI.name} heightClass="h-40" compact />
         </div>
         <div className="md:col-span-3 space-y-2">
           <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{MATA_GUJRI.gurmukhi}</p>
@@ -973,7 +1024,7 @@ function SlideShaheeds({ onOpenModal }: { onOpenModal: (item: FoundationModalIte
             style={card}
           >
             <div className="space-y-2.5">
-              <ChitrakariCardHeader artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" editable compact />
+              <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
               <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{s.gurmukhi}</p>
               <h4 className="font-serif text-lg font-bold">{s.name}</h4>
               <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.year}</p>

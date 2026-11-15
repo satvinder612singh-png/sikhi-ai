@@ -10,6 +10,9 @@ import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
   compressImageFile,
+  saveAndSyncFrame,
+  type FrameOrientation,
+  type FrameFitMode as HeritageFitMode,
 } from "@/components/editable-heritage-image";
 import {
   SikhHeritageAvatar,
@@ -764,6 +767,18 @@ function SangatHubContent() {
   const [writeGurmukhi, setWriteGurmukhi] = useState("");
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [shareFocalPoint, setShareFocalPoint] = useState<FocalPoint>("center");
+  const [shareOrientation, setShareOrientation] = useState<FrameOrientation>("auto");
+  const [shareFitMode, setShareFitMode] = useState<HeritageFitMode>("contain-museum");
+  const [sharePosX, setSharePosX] = useState<number>(50);
+  const [sharePosY, setSharePosY] = useState<number>(35);
+  const [shareZoom, setShareZoom] = useState<number>(100);
+  const [sharePreviewRatio, setSharePreviewRatio] = useState<number | null>(null);
+  const [sharePreviewDrag, setSharePreviewDrag] = useState<{
+    x: number;
+    y: number;
+    posX: number;
+    posY: number;
+  } | null>(null);
 
   // Stealth Admin, Hero Banner, Overrides & Vichaar Comments
   const [isStealthAdmin, setIsStealthAdmin] = useState(false);
@@ -1113,6 +1128,12 @@ function SangatHubContent() {
     setWriteGurmukhi("");
     setShareImageUrl(null);
     setShareFocalPoint("center");
+    setShareOrientation("auto");
+    setShareFitMode("contain-museum");
+    setSharePosX(50);
+    setSharePosY(35);
+    setShareZoom(100);
+    setSharePreviewRatio(null);
     setShareError(null);
   };
 
@@ -1163,6 +1184,17 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
+      if (cleanImage) {
+        saveAndSyncFrame(`sangat-feed-link-${created.id}`, {
+          src: cleanImage,
+          orientation: shareOrientation,
+          fitMode: shareFitMode,
+          posX: sharePosX,
+          posY: sharePosY,
+          zoom: shareZoom,
+          hidden: false,
+        });
+      }
       pushSiteSync({
         customPosts: {
           links: userLinks,
@@ -1209,6 +1241,17 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
+      if (cleanImage) {
+        saveAndSyncFrame(`sangat-feed-essay-${created.id}`, {
+          src: cleanImage,
+          orientation: shareOrientation,
+          fitMode: shareFitMode,
+          posX: sharePosX,
+          posY: sharePosY,
+          zoom: shareZoom,
+          hidden: false,
+        });
+      }
       pushSiteSync({
         customPosts: {
           links: curatedLinks.filter((l) => l.isUserCreated),
@@ -1251,6 +1294,17 @@ function SangatHubContent() {
         window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(next));
       } catch {
         // Ignore quota errors
+      }
+      if (cleanImage) {
+        saveAndSyncFrame(`sangat-feed-visual-${created.id}`, {
+          src: cleanImage,
+          orientation: shareOrientation,
+          fitMode: shareFitMode,
+          posX: sharePosX,
+          posY: sharePosY,
+          zoom: shareZoom,
+          hidden: false,
+        });
       }
       pushSiteSync({
         customPosts: {
@@ -2278,6 +2332,13 @@ function SangatHubContent() {
                                 imageKey={`sangat-feed-${item.kind}-${item.id}`}
                                 defaultSrc={imgSrc}
                                 alt={item.title}
+                                allowUserEdit={
+                                  item.kind === "link"
+                                    ? Boolean(item.link.isUserCreated)
+                                    : item.kind === "essay"
+                                      ? Boolean(item.blog.isUserCreated)
+                                      : Boolean(item.pin.isUserCreated)
+                                }
                               />
                             )}
 
@@ -2450,6 +2511,13 @@ function SangatHubContent() {
                   defaultSrc={getItemImage(readingItem) || ""}
                   alt={readingItem.title}
                   defaultFit="contain-museum"
+                  allowUserEdit={
+                    readingItem.kind === "link"
+                      ? Boolean(readingItem.link.isUserCreated)
+                      : readingItem.kind === "essay"
+                        ? Boolean(readingItem.blog.isUserCreated)
+                        : Boolean(readingItem.pin.isUserCreated)
+                  }
                 />
               )}
 
@@ -2839,32 +2907,212 @@ function SangatHubContent() {
                   />
                 </div>
 
-                {shareImageUrl && (
-                  <div className="space-y-2">
-                    <SmartHeritageFrame
-                      src={shareImageUrl}
-                      alt="Artwork preview"
-                      focalPoint={shareFocalPoint}
-                    />
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="font-semibold opacity-75">Focal point:</span>
-                      {(["center", "top", "bottom"] as FocalPoint[]).map((fp) => (
-                        <button
-                          key={fp}
-                          type="button"
-                          onClick={() => setShareFocalPoint(fp)}
-                          className={`px-2 py-0.5 rounded-md border capitalize ${
-                            shareFocalPoint === fp
-                              ? "border-[#C59B27] bg-[#C59B27]/15 font-bold"
-                              : "border-[#C59B27]/25 opacity-75"
-                          }`}
-                        >
-                          {fp}
-                        </button>
-                      ))}
+                {shareImageUrl && (() => {
+                  const isAutoPort =
+                    shareOrientation === "auto" &&
+                    sharePreviewRatio !== null &&
+                    sharePreviewRatio < 1.05;
+                  const resolvedOri =
+                    shareOrientation === "auto"
+                      ? isAutoPort
+                        ? "portrait"
+                        : "landscape"
+                      : shareOrientation;
+                  const resolvedFit: HeritageFitMode =
+                    shareOrientation === "auto" && isAutoPort
+                      ? "contain-museum"
+                      : shareFitMode;
+                  const aspectCls =
+                    resolvedOri === "portrait"
+                      ? "aspect-[3/4] sm:aspect-[4/5] max-h-[340px] mx-auto"
+                      : resolvedOri === "square"
+                        ? "aspect-square max-h-[300px] mx-auto"
+                        : "aspect-[16/10] sm:aspect-[16/9]";
+                  const zScale = Math.max(100, Math.min(150, shareZoom)) / 100;
+
+                  return (
+                    <div className="space-y-3 pt-1">
+                      <div
+                        className={`relative w-full overflow-hidden rounded-xl bg-[#111318] flex items-center justify-center ${aspectCls}`}
+                      >
+                        {resolvedFit === "contain-museum" ? (
+                          <>
+                            <img
+                              src={shareImageUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-35 pointer-events-none select-none"
+                            />
+                            <img
+                              src={shareImageUrl}
+                              alt="Artwork preview"
+                              onLoad={(e) => {
+                                const img = e.currentTarget;
+                                if (img.naturalWidth && img.naturalHeight) {
+                                  setSharePreviewRatio(img.naturalWidth / img.naturalHeight);
+                                }
+                              }}
+                              style={{
+                                objectPosition: `${sharePosX}% ${sharePosY}%`,
+                                transform: `scale(${zScale})`,
+                              }}
+                              className="relative z-10 w-full h-full object-contain"
+                            />
+                          </>
+                        ) : (
+                          <img
+                            src={shareImageUrl}
+                            alt="Artwork preview"
+                            draggable={false}
+                            onLoad={(e) => {
+                              const img = e.currentTarget;
+                              if (img.naturalWidth && img.naturalHeight) {
+                                setSharePreviewRatio(img.naturalWidth / img.naturalHeight);
+                              }
+                            }}
+                            onPointerDown={(e) => {
+                              e.currentTarget.setPointerCapture(e.pointerId);
+                              setSharePreviewDrag({
+                                x: e.clientX,
+                                y: e.clientY,
+                                posX: sharePosX,
+                                posY: sharePosY,
+                              });
+                            }}
+                            onPointerMove={(e) => {
+                              if (!sharePreviewDrag) return;
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const dx =
+                                ((e.clientX - sharePreviewDrag.x) / Math.max(1, rect.width)) * 100;
+                              const dy =
+                                ((e.clientY - sharePreviewDrag.y) / Math.max(1, rect.height)) * 100;
+                              setSharePosX(
+                                Math.round(Math.max(0, Math.min(100, sharePreviewDrag.posX - dx)))
+                              );
+                              setSharePosY(
+                                Math.round(Math.max(0, Math.min(100, sharePreviewDrag.posY - dy)))
+                              );
+                            }}
+                            onPointerUp={() => setSharePreviewDrag(null)}
+                            onPointerCancel={() => setSharePreviewDrag(null)}
+                            style={{
+                              objectPosition: `${sharePosX}% ${sharePosY}%`,
+                              transform: `scale(${zScale})`,
+                            }}
+                            className="w-full h-full object-cover cursor-grab active:cursor-grabbing select-none"
+                          />
+                        )}
+                      </div>
+
+                      {/* Orientation Selector */}
+                      <div className="space-y-1">
+                        <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
+                          Orientation
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          {(
+                            [
+                              { id: "auto", label: "Auto" },
+                              { id: "landscape", label: "Landscape (16:9)" },
+                              { id: "portrait", label: "Portrait (3:4)" },
+                              { id: "square", label: "Square (1:1)" },
+                            ] as const
+                          ).map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setShareOrientation(opt.id)}
+                              className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
+                                shareOrientation === opt.id
+                                  ? "border-[#C59B27] bg-[#C59B27]/20 text-[#9A7418] dark:text-[#E5C158]"
+                                  : "border-[#C59B27]/25 opacity-80 hover:opacity-100"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Fit Mode Toggle */}
+                      <div className="space-y-1">
+                        <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
+                          Fit Mode
+                        </span>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setShareFitMode("contain-museum")}
+                            className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
+                              shareFitMode === "contain-museum"
+                                ? "border-[#C59B27] bg-[#C59B27]/20 text-[#9A7418] dark:text-[#E5C158]"
+                                : "border-[#C59B27]/25 opacity-80 hover:opacity-100"
+                            }`}
+                          >
+                            Full Painting (Zero Crop / Museum Blur)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShareFitMode("cover")}
+                            className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
+                              shareFitMode === "cover"
+                                ? "border-[#C59B27] bg-[#C59B27]/20 text-[#9A7418] dark:text-[#E5C158]"
+                                : "border-[#C59B27]/25 opacity-80 hover:opacity-100"
+                            }`}
+                          >
+                            Fill Frame (Cover{shareFitMode === "cover" ? " — Drag to pan" : ""})
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Position & Zoom Sliders */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px]">
+                        <label className="block">
+                          <span className="flex justify-between opacity-80 mb-0.5">
+                            <span>Horizontal (X)</span>
+                            <span>{sharePosX}%</span>
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={sharePosX}
+                            onChange={(e) => setSharePosX(Number(e.target.value))}
+                            className="w-full accent-[#C59B27]"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="flex justify-between opacity-80 mb-0.5">
+                            <span>Vertical (Y)</span>
+                            <span>{sharePosY}%</span>
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={sharePosY}
+                            onChange={(e) => setSharePosY(Number(e.target.value))}
+                            className="w-full accent-[#C59B27]"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="flex justify-between opacity-80 mb-0.5">
+                            <span>Zoom</span>
+                            <span>{shareZoom}%</span>
+                          </span>
+                          <input
+                            type="range"
+                            min={100}
+                            max={150}
+                            value={shareZoom}
+                            onChange={(e) => setShareZoom(Number(e.target.value))}
+                            className="w-full accent-[#C59B27]"
+                          />
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">

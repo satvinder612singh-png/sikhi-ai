@@ -4,7 +4,8 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
+import { COMMONS_ART, ChitrakariCardHeader } from "@/components/chitrakari-card-header";
+import { EditableHeritageImage } from "@/components/editable-heritage-image";
 import { AnimatedModal } from "@/components/animated-modal";
 import { SikhiIcon } from "@/components/sikhi-icons";
 
@@ -28,6 +29,7 @@ type MatriarchProfile = {
   historiographicalNote: string;
   primaryCitation: string;
   keyQuoteOrEmblem: string;
+  image?: string;
 };
 
 const MATRIARCH_PROFILES: MatriarchProfile[] = [
@@ -384,6 +386,18 @@ export default function MatriarchsPage() {
               className="rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
             >
               <div className="space-y-3">
+                <EditableHeritageImage
+                  imageKey={`matriarch-${profile.id}`}
+                  defaultSrc={
+                    profile.image ||
+                    (COMMONS_ART[profile.id]?.file
+                      ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(COMMONS_ART[profile.id].file)}?width=1200`
+                      : "")
+                  }
+                  alt={profile.name}
+                  defaultOrientation="portrait"
+                  defaultFit="contain-museum"
+                />
                 <ChitrakariCardHeader
                   artKey={profile.id}
                   variant={
@@ -513,6 +527,18 @@ export default function MatriarchsPage() {
 
                 {/* Independently Scrollable Body */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
+                  <EditableHeritageImage
+                    imageKey={`matriarch-${activeProfile.id}`}
+                    defaultSrc={
+                      activeProfile.image ||
+                      (COMMONS_ART[activeProfile.id]?.file
+                        ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(COMMONS_ART[activeProfile.id].file)}?width=1200`
+                        : "")
+                    }
+                    alt={activeProfile.name}
+                    defaultOrientation="portrait"
+                    defaultFit="contain-museum"
+                  />
                   <ChitrakariCardHeader
                     artKey={activeProfile.id}
                     variant={

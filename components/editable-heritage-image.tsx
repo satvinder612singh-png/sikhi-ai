@@ -23,6 +23,7 @@ export interface EditableHeritageImageProps {
   defaultOrientation?: FrameOrientation;
   defaultFit?: FrameFitMode;
   className?: string;
+  allowUserEdit?: boolean;
   onImageChange?: (newSrc: string) => void;
 }
 
@@ -122,6 +123,15 @@ function pushFrameToServer(
   }, 220);
 }
 
+export function saveAndSyncFrame(
+  imageKey: string,
+  settings: HeritageFrameSettings
+) {
+  if (typeof window === "undefined") return;
+  writeFrame(imageKey, settings);
+  pushFrameToServer(imageKey, settings);
+}
+
 function isStealthAdminEmail(email?: string | null): boolean {
   return Boolean(email && email.trim().toLowerCase().endsWith("student1313@learnsikhi.com"));
 }
@@ -161,6 +171,7 @@ export function EditableHeritageImage({
   defaultOrientation = "auto",
   defaultFit = "contain-museum",
   className = "",
+  allowUserEdit = false,
   onImageChange,
 }: EditableHeritageImageProps) {
   const { user } = useAuth();
@@ -179,6 +190,13 @@ export function EditableHeritageImage({
   const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
   const [isStealthAdmin, setIsStealthAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [dragOrigin, setDragOrigin] = useState<{
+    x: number;
+    y: number;
+    posX: number;
+    posY: number;
+  } | null>(null);
+  const canEdit = isStealthAdmin || allowUserEdit;
 
   // Sync stealth admin status
   useEffect(() => {
@@ -258,7 +276,7 @@ export function EditableHeritageImage({
     const next: HeritageFrameSettings = { ...settings, ...patch };
     setSettings(next);
     writeFrame(imageKey, next);
-    if (isStealthAdmin) {
+    if (canEdit) {
       pushFrameToServer(imageKey, next);
     }
     if (patch.src !== undefined && onImageChange) {
@@ -270,7 +288,7 @@ export function EditableHeritageImage({
     const fresh = buildDefaults();
     setSettings(fresh);
     writeFrame(imageKey, null);
-    if (isStealthAdmin) {
+    if (canEdit) {
       pushFrameToServer(imageKey, null);
     }
     setNaturalRatio(null);
@@ -349,17 +367,42 @@ export function EditableHeritageImage({
             <img
               src={effectiveSrc}
               alt={alt}
+              draggable={false}
               onLoad={(e) => {
                 const img = e.currentTarget;
                 if (img.naturalWidth && img.naturalHeight) {
                   setNaturalRatio(img.naturalWidth / img.naturalHeight);
                 }
               }}
+              onPointerDown={(e) => {
+                if (!canEdit || !isEditing) return;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setDragOrigin({
+                  x: e.clientX,
+                  y: e.clientY,
+                  posX: settings.posX,
+                  posY: settings.posY,
+                });
+              }}
+              onPointerMove={(e) => {
+                if (!dragOrigin) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const dx = ((e.clientX - dragOrigin.x) / Math.max(1, rect.width)) * 100;
+                const dy = ((e.clientY - dragOrigin.y) / Math.max(1, rect.height)) * 100;
+                updateSettings({
+                  posX: Math.round(Math.max(0, Math.min(100, dragOrigin.posX - dx))),
+                  posY: Math.round(Math.max(0, Math.min(100, dragOrigin.posY - dy))),
+                });
+              }}
+              onPointerUp={() => setDragOrigin(null)}
+              onPointerCancel={() => setDragOrigin(null)}
               style={{
                 objectPosition: `${settings.posX}% ${settings.posY}%`,
                 transform: `scale(${zoomScale})`,
               }}
-              className="w-full h-full object-cover transition-transform duration-150"
+              className={`w-full h-full object-cover transition-transform duration-150 ${
+                canEdit && isEditing ? "cursor-grab active:cursor-grabbing select-none" : ""
+              }`}
             />
           )
         ) : (
@@ -368,8 +411,8 @@ export function EditableHeritageImage({
           </div>
         )}
 
-        {/* Stealth Admin Pill Button */}
-        {isStealthAdmin && (
+        {/* Frame / Reposition Pill Button */}
+        {canEdit && (
           <button
             type="button"
             onClick={(e) => {
@@ -378,13 +421,13 @@ export function EditableHeritageImage({
             }}
             className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-black/80 text-[#E5C158] border border-[#C59B27]/60 text-[11px] font-bold shadow-md hover:bg-black transition"
           >
-            ⚙️ Frame / Edit Painting
+            ⚙️ Frame / Reposition
           </button>
         )}
       </div>
 
-      {/* Stealth Admin Inline Frame Editor Popover */}
-      {isStealthAdmin && isEditing && (
+      {/* Inline Frame Editor Popover */}
+      {canEdit && isEditing && (
         <div
           onClick={(e) => e.stopPropagation()}
           className="absolute top-11 right-2 z-30 w-72 sm:w-80 max-h-[75vh] overflow-y-auto rounded-2xl border border-[#C59B27]/50 bg-[#111318] text-[#FAF7F0] p-4 shadow-2xl space-y-3.5 text-xs"
@@ -501,7 +544,7 @@ export function EditableHeritageImage({
               <input
                 type="range"
                 min={100}
-                max={140}
+                max={150}
                 value={settings.zoom}
                 onChange={(e) => updateSettings({ zoom: Number(e.target.value) })}
                 className="w-full accent-[#C59B27]"
