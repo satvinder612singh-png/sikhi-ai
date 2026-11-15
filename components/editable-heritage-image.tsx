@@ -34,23 +34,34 @@ const FRAME_UPDATED_EVENT = "learnsikhi-frame-updated";
 
 export function compressImageFile(
   file: File,
-  maxWidth = 1400,
-  quality = 0.82
+  maxDim = 1000,
+  quality = 0.72
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    if (!file || (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(file.name))) {
+      reject(new Error("Unsupported file type. Please select an image (JPG, PNG, or WebP)."));
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.onerror = () => reject(new Error("Failed to read image file from device."));
     reader.onload = () => {
       const rawUrl = typeof reader.result === "string" ? reader.result : "";
       if (!rawUrl) {
-        reject(new Error("Empty file"));
+        reject(new Error("Image file was empty."));
         return;
       }
       const img = new Image();
-      img.onerror = () => resolve(rawUrl);
+      img.onerror = () =>
+        reject(
+          new Error(
+            "Could not decode this image format (e.g. HEIC). Please convert to JPG, PNG, or WebP."
+          )
+        );
       img.onload = () => {
         try {
-          const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+          const largest = Math.max(img.width || 1, img.height || 1);
+          const scale = largest > maxDim ? maxDim / largest : 1;
           const targetW = Math.max(1, Math.round(img.width * scale));
           const targetH = Math.max(1, Math.round(img.height * scale));
           const canvas = document.createElement("canvas");
@@ -58,14 +69,22 @@ export function compressImageFile(
           canvas.height = targetH;
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            resolve(rawUrl);
+            reject(new Error("Canvas 2D context is unavailable in this browser."));
             return;
           }
           ctx.drawImage(img, 0, 0, targetW, targetH);
           const compressed = canvas.toDataURL("image/jpeg", quality);
-          resolve(compressed.length < rawUrl.length ? compressed : rawUrl);
-        } catch {
-          resolve(rawUrl);
+          if (!compressed || compressed === "data:,") {
+            reject(new Error("Image compression produced an empty result."));
+            return;
+          }
+          resolve(compressed);
+        } catch (err) {
+          reject(
+            err instanceof Error
+              ? err
+              : new Error("Failed to compress image on canvas.")
+          );
         }
       };
       img.src = rawUrl;
@@ -74,6 +93,7 @@ export function compressImageFile(
   });
 }
 
+let memoryFramesCache: Record<string, HeritageFrameSettings> = {};
 let remoteSyncPromise: Promise<void> | null = null;
 
 function syncRemoteFramesOnce(): Promise<void> {
@@ -86,10 +106,11 @@ function syncRemoteFramesOnce(): Promise<void> {
       if (!data || typeof data !== "object" || !data.frames) return;
       const remoteFrames = data.frames as Record<string, HeritageFrameSettings>;
       const merged = { ...readAllFrames(), ...remoteFrames };
+      memoryFramesCache = merged;
       try {
         window.localStorage.setItem(FRAMES_STORAGE_KEY, JSON.stringify(merged));
       } catch {
-        // ignore quota errors
+        // QuotaExceededError must not abort state sync
       }
       window.dispatchEvent(new CustomEvent(FRAME_UPDATED_EVENT, { detail: {} }));
     })
@@ -104,12 +125,14 @@ const framePushTimers: Record<string, number> = {};
 
 function pushFrameToServer(
   imageKey: string,
-  next: HeritageFrameSettings | null
+  next: HeritageFrameSettings | null,
+  onStatus?: (status: "syncing" | "synced" | "error", msg?: string) => void
 ) {
   if (typeof window === "undefined") return;
   if (framePushTimers[imageKey]) {
     window.clearTimeout(framePushTimers[imageKey]);
   }
+  onStatus?.("syncing");
   framePushTimers[imageKey] = window.setTimeout(() => {
     void fetch("/api/site-frames", {
       method: "POST",
@@ -117,9 +140,20 @@ function pushFrameToServer(
       body: JSON.stringify({
         frameUpdate: { imageKey, settings: next },
       }),
-    }).catch(() => {
-      // ignore offline errors
-    });
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          throw new Error(errData?.error || `Sync failed (${res.status})`);
+        }
+        onStatus?.("synced");
+      })
+      .catch((err) => {
+        onStatus?.(
+          "error",
+          err instanceof Error ? err.message : "Failed to sync image globally."
+        );
+      });
   }, 220);
 }
 
@@ -139,28 +173,35 @@ function isStealthAdminEmail(email?: string | null): boolean {
 function readAllFrames(): Record<string, HeritageFrameSettings> {
   try {
     const raw = window.localStorage.getItem(FRAMES_STORAGE_KEY);
-    if (!raw) return {};
+    if (!raw) return { ...memoryFramesCache };
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
+    return parsed && typeof parsed === "object"
+      ? { ...(parsed as Record<string, HeritageFrameSettings>), ...memoryFramesCache }
+      : { ...memoryFramesCache };
   } catch {
-    return {};
+    return { ...memoryFramesCache };
   }
 }
 
 function writeFrame(imageKey: string, next: HeritageFrameSettings | null) {
+  const all = readAllFrames();
+  if (next === null) {
+    delete all[imageKey];
+  } else {
+    all[imageKey] = next;
+  }
+  memoryFramesCache = all;
   try {
-    const all = readAllFrames();
-    if (next === null) {
-      delete all[imageKey];
-    } else {
-      all[imageKey] = next;
-    }
     window.localStorage.setItem(FRAMES_STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // QuotaExceededError must not abort React state or server POST
+  }
+  try {
     window.dispatchEvent(
       new CustomEvent(FRAME_UPDATED_EVENT, { detail: { imageKey } })
     );
   } catch {
-    // ignore storage quota errors
+    // ignore
   }
 }
 
@@ -196,6 +237,8 @@ export function EditableHeritageImage({
     posX: number;
     posY: number;
   } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const canEdit = isStealthAdmin || allowUserEdit;
 
   // Sync stealth admin status
@@ -272,12 +315,26 @@ export function EditableHeritageImage({
     return null;
   }
 
+  const handleSyncFeedback = (status: "syncing" | "synced" | "error", msg?: string) => {
+    setSyncStatus(status);
+    if (status === "syncing") {
+      setSyncMessage("Uploading & syncing image...");
+    } else if (status === "synced") {
+      setSyncMessage("✓ Image saved & synced globally");
+      window.setTimeout(() => {
+        setSyncStatus((curr) => (curr === "synced" ? "idle" : curr));
+      }, 3500);
+    } else {
+      setSyncMessage(msg || "Failed to sync image globally.");
+    }
+  };
+
   const updateSettings = (patch: Partial<HeritageFrameSettings>) => {
     const next: HeritageFrameSettings = { ...settings, ...patch };
     setSettings(next);
     writeFrame(imageKey, next);
     if (canEdit) {
-      pushFrameToServer(imageKey, next);
+      pushFrameToServer(imageKey, next, handleSyncFeedback);
     }
     if (patch.src !== undefined && onImageChange) {
       onImageChange(patch.src);
@@ -289,7 +346,7 @@ export function EditableHeritageImage({
     setSettings(fresh);
     writeFrame(imageKey, null);
     if (canEdit) {
-      pushFrameToServer(imageKey, null);
+      pushFrameToServer(imageKey, null, handleSyncFeedback);
     }
     setNaturalRatio(null);
     if (onImageChange) {
@@ -298,13 +355,18 @@ export function EditableHeritageImage({
   };
 
   const handleFileUpload = async (file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    setSyncStatus("syncing");
+    setSyncMessage("Uploading & syncing image...");
     try {
-      const compressed = await compressImageFile(file, 1400, 0.82);
+      const compressed = await compressImageFile(file, 1000, 0.72);
       setNaturalRatio(null);
       updateSettings({ src: compressed, hidden: false });
-    } catch {
-      // ignore read errors
+    } catch (err) {
+      setSyncStatus("error");
+      setSyncMessage(
+        err instanceof Error ? err.message : "Failed to process uploaded image."
+      );
     }
   };
 
@@ -442,6 +504,20 @@ export function EditableHeritageImage({
               Done ✕
             </button>
           </div>
+
+          {syncStatus !== "idle" && syncMessage && (
+            <div
+              className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${
+                syncStatus === "error"
+                  ? "bg-red-500/20 text-red-300 border border-red-500/40"
+                  : syncStatus === "synced"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : "bg-[#C59B27]/20 text-[#E5C158] border border-[#C59B27]/40"
+              }`}
+            >
+              {syncMessage}
+            </div>
+          )}
 
           {/* Orientation Toggle */}
           <div className="space-y-1.5">

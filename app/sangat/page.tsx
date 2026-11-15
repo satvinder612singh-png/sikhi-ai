@@ -779,6 +779,10 @@ function SangatHubContent() {
     posX: number;
     posY: number;
   } | null>(null);
+  const [shareUploadStatus, setShareUploadStatus] = useState<
+    "idle" | "uploading" | "synced" | "error"
+  >("idle");
+  const [shareUploadMsg, setShareUploadMsg] = useState<string | null>(null);
 
   // Stealth Admin, Hero Banner, Overrides & Vichaar Comments
   const [isStealthAdmin, setIsStealthAdmin] = useState(false);
@@ -972,14 +976,14 @@ function SangatHubContent() {
       });
   }, []);
 
-  const pushSiteSync = (payload: Record<string, unknown>) => {
-    void fetch("/api/site-frames", {
+  const pushSiteSync = (payload: Record<string, unknown>): Promise<boolean> => {
+    return fetch("/api/site-frames", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }).catch(() => {
-      // ignore offline errors
-    });
+    })
+      .then((res) => res.ok)
+      .catch(() => false);
   };
 
   const saveProfileToStorage = (updated: SangatUserProfile) => {
@@ -1134,6 +1138,8 @@ function SangatHubContent() {
     setSharePosY(35);
     setShareZoom(100);
     setSharePreviewRatio(null);
+    setShareUploadStatus("idle");
+    setShareUploadMsg(null);
     setShareError(null);
   };
 
@@ -1398,42 +1404,55 @@ function SangatHubContent() {
   };
 
   const handleHeroBannerFile = async (file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    setShareToast("Uploading & syncing image...");
     try {
-      const compressed = await compressImageFile(file, 1400, 0.82);
+      const compressed = await compressImageFile(file, 1000, 0.72);
       setHeroBannerUrl(compressed);
       try {
         window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, compressed);
       } catch {
-        // ignore quota errors
+        // QuotaExceededError must not abort state or server sync
       }
-      pushSiteSync({ heroBannerUrl: compressed });
-    } catch {
-      // ignore read errors
+      const ok = await pushSiteSync({ heroBannerUrl: compressed });
+      setShareToast(ok ? "✓ Image saved & synced globally" : "Saved locally (server sync failed)");
+      window.setTimeout(() => setShareToast(null), 3500);
+    } catch (err) {
+      setShareToast(err instanceof Error ? err.message : "Failed to process image.");
+      window.setTimeout(() => setShareToast(null), 4000);
     }
   };
 
   const handleShareImageFile = async (file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    setShareUploadStatus("uploading");
+    setShareUploadMsg("Uploading & syncing image...");
     try {
-      const compressed = await compressImageFile(file, 1400, 0.82);
+      const compressed = await compressImageFile(file, 1000, 0.72);
       setShareImageUrl(compressed);
-    } catch {
-      // ignore read errors
+      setSharePreviewRatio(null);
+      setShareUploadStatus("synced");
+      setShareUploadMsg("✓ Image saved & synced globally");
+    } catch (err) {
+      setShareUploadStatus("error");
+      setShareUploadMsg(
+        err instanceof Error ? err.message : "Failed to process uploaded image."
+      );
     }
   };
 
   const handleAdminReplaceImage = async (item: FeedItem, file: File | undefined) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    setShareToast("Uploading & syncing image...");
     try {
-      const compressed = await compressImageFile(file, 1400, 0.82);
+      const compressed = await compressImageFile(file, 1000, 0.72);
       const key = getItemKey(item);
       const prev = imageOverrides[key] ?? {};
       persistOverrides({
         ...imageOverrides,
         [key]: { ...prev, imageUrl: compressed },
       });
-      pushSiteSync({
+      const ok = await pushSiteSync({
         frameUpdate: {
           imageKey: `sangat-feed-${item.kind}-${item.id}`,
           settings: {
@@ -1447,8 +1466,11 @@ function SangatHubContent() {
           },
         },
       });
-    } catch {
-      // ignore read errors
+      setShareToast(ok ? "✓ Image saved & synced globally" : "Saved locally (server sync failed)");
+      window.setTimeout(() => setShareToast(null), 3500);
+    } catch (err) {
+      setShareToast(err instanceof Error ? err.message : "Failed to process image.");
+      window.setTimeout(() => setShareToast(null), 4000);
     }
   };
 
@@ -2332,13 +2354,7 @@ function SangatHubContent() {
                                 imageKey={`sangat-feed-${item.kind}-${item.id}`}
                                 defaultSrc={imgSrc}
                                 alt={item.title}
-                                allowUserEdit={
-                                  item.kind === "link"
-                                    ? Boolean(item.link.isUserCreated)
-                                    : item.kind === "essay"
-                                      ? Boolean(item.blog.isUserCreated)
-                                      : Boolean(item.pin.isUserCreated)
-                                }
+                                allowUserEdit={true}
                               />
                             )}
 
@@ -2511,13 +2527,7 @@ function SangatHubContent() {
                   defaultSrc={getItemImage(readingItem) || ""}
                   alt={readingItem.title}
                   defaultFit="contain-museum"
-                  allowUserEdit={
-                    readingItem.kind === "link"
-                      ? Boolean(readingItem.link.isUserCreated)
-                      : readingItem.kind === "essay"
-                        ? Boolean(readingItem.blog.isUserCreated)
-                        : Boolean(readingItem.pin.isUserCreated)
-                  }
+                  allowUserEdit={true}
                 />
               )}
 
@@ -2906,6 +2916,20 @@ function SangatHubContent() {
                     className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs focus:outline-none focus:border-[#C59B27]"
                   />
                 </div>
+
+                {shareUploadStatus !== "idle" && shareUploadMsg && (
+                  <div
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                      shareUploadStatus === "error"
+                        ? "border border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300"
+                        : shareUploadStatus === "synced"
+                          ? "border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "border border-[#C59B27]/40 bg-[#C59B27]/10 text-[#9A7418] dark:text-[#E5C158]"
+                    }`}
+                  >
+                    {shareUploadMsg}
+                  </div>
+                )}
 
                 {shareImageUrl && (() => {
                   const isAutoPort =

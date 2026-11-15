@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export interface FrameRecord {
   src: string;
@@ -159,14 +160,35 @@ async function writeGlobalState(state: SiteFramesPayload): Promise<"supabase" | 
 
 export async function GET() {
   const { state, source } = await readGlobalState();
+  const storageMode = source === "supabase" ? "supabase" : "fallback";
   return NextResponse.json(
-    { ok: true, source, ...state },
+    { ok: true, source, storageMode, ...state },
     {
       headers: {
-        "Cache-Control": "no-store, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     }
   );
+}
+
+function mergePostsById(existing: unknown[], incoming?: unknown[]): unknown[] {
+  if (!Array.isArray(incoming) || incoming.length === 0) return existing;
+  const map = new Map<string, unknown>();
+  for (const item of incoming) {
+    const id =
+      item && typeof item === "object" && "id" in item
+        ? String((item as { id: unknown }).id)
+        : "";
+    if (id) map.set(id, item);
+  }
+  for (const item of existing) {
+    const id =
+      item && typeof item === "object" && "id" in item
+        ? String((item as { id: unknown }).id)
+        : "";
+    if (id && !map.has(id)) map.set(id, item);
+  }
+  return Array.from(map.values());
 }
 
 export async function POST(req: Request) {
@@ -210,18 +232,17 @@ export async function POST(req: Request) {
     const nextState: SiteFramesPayload = {
       frames: nextFrames,
       customPosts: {
-        links: Array.isArray(incomingPosts?.links)
-          ? incomingPosts!.links
-          : current.customPosts.links,
-        blogs: Array.isArray(incomingPosts?.blogs)
-          ? incomingPosts!.blogs
-          : current.customPosts.blogs,
-        pins: Array.isArray(incomingPosts?.pins)
-          ? incomingPosts!.pins
-          : current.customPosts.pins,
+        links: mergePostsById(current.customPosts.links, incomingPosts?.links),
+        blogs: mergePostsById(current.customPosts.blogs, incomingPosts?.blogs),
+        pins: mergePostsById(current.customPosts.pins, incomingPosts?.pins),
       },
       deletedIds: Array.isArray(body.deletedIds)
-        ? body.deletedIds.filter((id): id is string => typeof id === "string")
+        ? Array.from(
+            new Set([
+              ...current.deletedIds,
+              ...body.deletedIds.filter((id): id is string => typeof id === "string"),
+            ])
+          )
         : current.deletedIds,
       heroBannerUrl:
         body.heroBannerUrl !== undefined
@@ -233,7 +254,8 @@ export async function POST(req: Request) {
     };
 
     const source = await writeGlobalState(nextState);
-    return NextResponse.json({ ok: true, source, ...nextState });
+    const storageMode = source === "supabase" ? "supabase" : "fallback";
+    return NextResponse.json({ ok: true, source, storageMode, ...nextState });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "Invalid payload" },
