@@ -8,6 +8,10 @@ import { Footer } from "@/components/footer";
 import { useAuth } from "@/components/auth-provider";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
+  EditableHeritageImage,
+  compressImageFile,
+} from "@/components/editable-heritage-image";
+import {
   SikhHeritageAvatar,
   PublicResearcherProfileModal,
   DEFAULT_SANGAT_PROFILE,
@@ -873,7 +877,95 @@ function SangatHubContent() {
     } catch {
       // Ignore storage read errors
     }
+
+    // Fetch shared global banners, custom posts, and deleted IDs from /api/site-frames
+    void fetch("/api/site-frames", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || typeof data !== "object") return;
+        if (typeof data.heroBannerUrl === "string" && data.heroBannerUrl.trim()) {
+          setHeroBannerUrl(data.heroBannerUrl);
+          try {
+            window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, data.heroBannerUrl);
+          } catch {
+            // ignore quota errors
+          }
+        }
+        if (Array.isArray(data.deletedIds) && data.deletedIds.length > 0) {
+          setDeletedIds((prev) => {
+            const merged = Array.from(new Set([...prev, ...data.deletedIds]));
+            try {
+              window.localStorage.setItem(STORAGE_KEYS.DELETED_IDS, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+            return merged;
+          });
+        }
+        if (data.customPosts && typeof data.customPosts === "object") {
+          const cp = data.customPosts as {
+            links?: CuratedLink[];
+            blogs?: SangatBlogArticle[];
+            pins?: SangatVisualPin[];
+          };
+          if (Array.isArray(cp.links) && cp.links.length > 0) {
+            setCuratedLinks((prev) => {
+              const seen = new Set(prev.map((l) => l.id));
+              const fresh = cp.links!.filter((l) => l && !seen.has(l.id));
+              const merged = [...fresh, ...prev];
+              try {
+                window.localStorage.setItem(
+                  STORAGE_KEYS.CURATED_LINKS,
+                  JSON.stringify(merged.filter((l) => l.isUserCreated))
+                );
+              } catch {
+                // ignore
+              }
+              return merged;
+            });
+          }
+          if (Array.isArray(cp.blogs) && cp.blogs.length > 0) {
+            setBlogs((prev) => {
+              const seen = new Set(prev.map((b) => b.id));
+              const fresh = cp.blogs!.filter((b) => b && !seen.has(b.id));
+              const merged = [...fresh, ...prev];
+              try {
+                window.localStorage.setItem(STORAGE_KEYS.BLOGS, JSON.stringify(merged));
+              } catch {
+                // ignore
+              }
+              return merged;
+            });
+          }
+          if (Array.isArray(cp.pins) && cp.pins.length > 0) {
+            setPins((prev) => {
+              const seen = new Set(prev.map((p) => p.id));
+              const fresh = cp.pins!.filter((p) => p && !seen.has(p.id));
+              const merged = [...fresh, ...prev];
+              try {
+                window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(merged));
+              } catch {
+                // ignore
+              }
+              return merged;
+            });
+          }
+        }
+      })
+      .catch(() => {
+        // ignore offline errors
+      });
   }, []);
+
+  const pushSiteSync = (payload: Record<string, unknown>) => {
+    void fetch("/api/site-frames", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {
+      // ignore offline errors
+    });
+  };
 
   const saveProfileToStorage = (updated: SangatUserProfile) => {
     setProfile(updated);
@@ -1071,6 +1163,13 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
+      pushSiteSync({
+        customPosts: {
+          links: userLinks,
+          blogs: blogs.filter((b) => b.isUserCreated),
+          pins: pins.filter((p) => p.isUserCreated),
+        },
+      });
       setFeedTab(curateCategory);
       setShareToast(`Published "${created.title}" with a link to its original source.`);
     } else if (writeKind === "essay") {
@@ -1110,6 +1209,13 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
+      pushSiteSync({
+        customPosts: {
+          links: curatedLinks.filter((l) => l.isUserCreated),
+          blogs: next.filter((b) => b.isUserCreated),
+          pins: pins.filter((p) => p.isUserCreated),
+        },
+      });
       setFeedTab("essays");
       setShareToast(`Published your SikhStack essay "${created.title}".`);
     } else {
@@ -1146,6 +1252,13 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
+      pushSiteSync({
+        customPosts: {
+          links: curatedLinks.filter((l) => l.isUserCreated),
+          blogs: blogs.filter((b) => b.isUserCreated),
+          pins: next.filter((p) => p.isUserCreated),
+        },
+      });
       setFeedTab("visuals");
       setShareToast(`Published your SikhInterest pin "${created.title}".`);
     }
@@ -1230,45 +1343,59 @@ function SangatHubContent() {
     }
   };
 
-  const handleHeroBannerFile = (file: File | undefined) => {
+  const handleHeroBannerFile = async (file: File | undefined) => {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setHeroBannerUrl(reader.result);
-        try {
-          window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, reader.result);
-        } catch {
-          // ignore quota errors
-        }
+    try {
+      const compressed = await compressImageFile(file, 1400, 0.82);
+      setHeroBannerUrl(compressed);
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, compressed);
+      } catch {
+        // ignore quota errors
       }
-    };
-    reader.readAsDataURL(file);
+      pushSiteSync({ heroBannerUrl: compressed });
+    } catch {
+      // ignore read errors
+    }
   };
 
-  const handleShareImageFile = (file: File | undefined) => {
+  const handleShareImageFile = async (file: File | undefined) => {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") setShareImageUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1400, 0.82);
+      setShareImageUrl(compressed);
+    } catch {
+      // ignore read errors
+    }
   };
 
-  const handleAdminReplaceImage = (item: FeedItem, file: File | undefined) => {
+  const handleAdminReplaceImage = async (item: FeedItem, file: File | undefined) => {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        const key = getItemKey(item);
-        const prev = imageOverrides[key] ?? {};
-        persistOverrides({
-          ...imageOverrides,
-          [key]: { ...prev, imageUrl: reader.result },
-        });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1400, 0.82);
+      const key = getItemKey(item);
+      const prev = imageOverrides[key] ?? {};
+      persistOverrides({
+        ...imageOverrides,
+        [key]: { ...prev, imageUrl: compressed },
+      });
+      pushSiteSync({
+        frameUpdate: {
+          imageKey: `sangat-feed-${item.kind}-${item.id}`,
+          settings: {
+            src: compressed,
+            orientation: "auto",
+            fitMode: "contain-museum",
+            posX: 50,
+            posY: 35,
+            zoom: 100,
+            hidden: false,
+          },
+        },
+      });
+    } catch {
+      // ignore read errors
+    }
   };
 
   const handleAdminRemoveImage = (item: FeedItem) => {
@@ -1301,6 +1428,7 @@ function SangatHubContent() {
     } catch {
       // ignore quota errors
     }
+    pushSiteSync({ deletedIds: nextDeleted });
     if (readingItem && getItemKey(readingItem) === key) {
       setReadingItem(null);
     }
@@ -1714,18 +1842,21 @@ function SangatHubContent() {
         >
           {/* Ambient Heritage Hero Backdrop */}
           {heroBannerUrl && (
-            <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
-              <img
-                src={heroBannerUrl}
-                alt=""
-                aria-hidden="true"
-                className="w-full h-full object-cover object-center opacity-15 dark:opacity-20"
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(90deg, var(--bg-surface) 20%, transparent 100%)",
+            <div className="mb-2">
+              <EditableHeritageImage
+                imageKey="sangat-hero-banner"
+                defaultSrc={heroBannerUrl}
+                alt="Puratan Darbar Sahib — SikhStack & SikhInterest Heritage Banner"
+                defaultOrientation="landscape"
+                defaultFit="contain-museum"
+                onImageChange={(newSrc) => {
+                  setHeroBannerUrl(newSrc);
+                  try {
+                    window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, newSrc);
+                  } catch {
+                    // ignore quota errors
+                  }
+                  pushSiteSync({ heroBannerUrl: newSrc });
                 }}
               />
             </div>
@@ -2142,11 +2273,13 @@ function SangatHubContent() {
                           className="group flex flex-col justify-between rounded-2xl border border-[#C59B27]/25 bg-[var(--bg-surface)] p-5 shadow-sm hover:border-[#C59B27]/65 transition"
                         >
                           <div className="space-y-3 flex-1">
-                            <SmartHeritageFrame
-                              src={imgSrc}
-                              alt={item.title}
-                              focalPoint={focal}
-                            />
+                            {imgSrc && (
+                              <EditableHeritageImage
+                                imageKey={`sangat-feed-${item.kind}-${item.id}`}
+                                defaultSrc={imgSrc}
+                                alt={item.title}
+                              />
+                            )}
 
                             <button
                               type="button"
@@ -2311,12 +2444,14 @@ function SangatHubContent() {
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5 text-sm leading-relaxed">
-              <SmartHeritageFrame
-                src={getItemImage(readingItem)}
-                alt={readingItem.title}
-                focalPoint={getItemFocal(readingItem)}
-                fitMode="contain"
-              />
+              {getItemImage(readingItem) && (
+                <EditableHeritageImage
+                  imageKey={`sangat-feed-${readingItem.kind}-${readingItem.id}`}
+                  defaultSrc={getItemImage(readingItem) || ""}
+                  alt={readingItem.title}
+                  defaultFit="contain-museum"
+                />
+              )}
 
               {readingItem.kind === "link" && (
                 <>
