@@ -5,6 +5,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import {
   EditableHeritageImage,
+  useAdminEditMode,
   writeCmsCache,
   type CmsCustomTopic,
   type CmsSecurityConfig,
@@ -160,6 +161,7 @@ function resolveStreamPreviewUrl(rawUrl: string): string {
 }
 
 export default function AdminControlCenterPage() {
+  const [liveEditMode, setLiveEditMode] = useAdminEditMode();
   const [unlocked, setUnlocked] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [emailInput, setEmailInput] = useState("");
@@ -672,9 +674,17 @@ export default function AdminControlCenterPage() {
                   <code>Live On-Page Edit Mode</code>).
                 </span>
               </div>
-              <span className="shrink-0 font-bold text-[#9A7418] dark:text-[#E5C158]">
-                Backend Operations Hub →
-              </span>
+              <button
+                type="button"
+                onClick={() => setLiveEditMode(!liveEditMode)}
+                className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-extrabold border transition ${
+                  liveEditMode
+                    ? "bg-emerald-600 text-white border-emerald-500 shadow-sm"
+                    : "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
+                }`}
+              >
+                ✏️ Live Page Edit Mode: {liveEditMode ? "ON" : "OFF"}
+              </button>
             </div>
 
             {/* Header & 3 Streamlined Tabs */}

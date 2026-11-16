@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth-provider";
 import {
   useAdminEditMode,
   useCmsSiteState,
   checkVerifiedAdminStatus,
+  isStealthAdminEmail,
   pushAdminCmsPatch,
   resolveCmsFontFamily,
   type CmsCustomTopic,
@@ -22,12 +24,17 @@ type SectionLayoutInfo = {
 };
 
 function useVerifiedLiveEdit(): boolean {
+  const { user } = useAuth();
   const [liveEditMode] = useAdminEditMode();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let active = true;
     const sync = async () => {
+      if (isStealthAdminEmail(user?.email)) {
+        if (active) setIsAdmin(true);
+        return;
+      }
       const ok = await checkVerifiedAdminStatus();
       if (active) setIsAdmin(ok);
     };
@@ -42,7 +49,7 @@ function useVerifiedLiveEdit(): boolean {
       window.removeEventListener("focus", onChange);
       window.removeEventListener("learnsikhi-admin-change", onChange);
     };
-  }, []);
+  }, [user?.email]);
 
   return isAdmin && liveEditMode;
 }

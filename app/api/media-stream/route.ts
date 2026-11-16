@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export function extractGoogleDriveFileId(input: string): string | null {
+function extractGoogleDriveFileId(input: string): string | null {
   const trimmed = (input || "").trim();
   if (!trimmed) return null;
 
@@ -31,7 +31,7 @@ export function extractGoogleDriveFileId(input: string): string | null {
   return null;
 }
 
-export function resolvePlayableAudioUrl(rawUrl: string): string {
+function resolvePlayableAudioUrl(rawUrl: string): string {
   const trimmed = (rawUrl || "").trim();
   if (!trimmed) return "";
 

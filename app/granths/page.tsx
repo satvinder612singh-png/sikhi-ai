@@ -10,6 +10,7 @@ import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
   useCmsSiteState,
+  applyCmsOrder,
   checkVerifiedAdminStatus,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
@@ -19,6 +20,8 @@ import {
 } from "@/components/editable-heritage-image";
 import {
   InlineTopicEditor,
+  InlineOrderControls,
+  InlineSectionBanner,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
@@ -510,6 +513,9 @@ export default function GranthsAndKirtanPage() {
   const [loadingAng, setLoadingAng] = useState(false);
   const [larivaarMode, setLarivaarMode] = useState(false);
 
+  const { user } = useAuth();
+  const cms = useCmsSiteState();
+
   // Remote Kirtan Vault, Edits, Frames & Approval Queue Submission State
   const [remoteKirtanTracks, setRemoteKirtanTracks] = useState<RemoteKirtanTrack[]>([]);
   const [remoteKirtanEdits, setRemoteKirtanEdits] = useState<Record<string, RemoteKirtanEdit>>({});
@@ -645,15 +651,17 @@ export default function GranthsAndKirtanPage() {
       });
 
     const q = kirtanQuery.trim().toLowerCase();
-    if (!q) return editedSource;
-    return editedSource.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.ragi.toLowerCase().includes(q) ||
-        t.raag.toLowerCase().includes(q) ||
-        t.tantiSaaj.toLowerCase().includes(q) ||
-        t.gurmukhiTitle.includes(q)
-    );
+    const matched = !q
+      ? editedSource
+      : editedSource.filter(
+          (t) =>
+            t.title.toLowerCase().includes(q) ||
+            t.ragi.toLowerCase().includes(q) ||
+            t.raag.toLowerCase().includes(q) ||
+            t.tantiSaaj.toLowerCase().includes(q) ||
+            t.gurmukhiTitle.includes(q)
+        );
+    return applyCmsOrder(matched, (t) => t.id, "granths", cms);
   }, [
     kirtanCollectionFilter,
     kirtanQuery,
@@ -661,6 +669,7 @@ export default function GranthsAndKirtanPage() {
     tracks,
     remoteKirtanTracks,
     remoteKirtanEdits,
+    cms,
   ]);
 
   const fetchLiveAng = useCallback(async (angNumber: number) => {
@@ -716,8 +725,6 @@ export default function GranthsAndKirtanPage() {
     }
   };
 
-  const { user } = useAuth();
-  const cms = useCmsSiteState();
   const layoutCfg = cms.layoutConfig || {};
   const secCfg = cms.securityConfig || {};
   const [isAdmin, setIsAdmin] = useState(false);
@@ -803,9 +810,20 @@ export default function GranthsAndKirtanPage() {
       <Header solid />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
+        <InlineSectionBanner
+          sectionId="granths-kirtan-hub"
+          pageKey="granths"
+          defaultTitle="Puratan Raag Darbar & Interactive Granths"
+        />
+
         {/* Page Header */}
         {(() => {
-          const hubSec = sectionLayoutMap["granths-kirtan-hub"] || {};
+          const liveHubSec = (cms.sectionLayoutMap?.["granths-kirtan-hub"] ||
+            {}) as RemoteSectionLayout;
+          const hubSec = {
+            ...(sectionLayoutMap["granths-kirtan-hub"] || {}),
+            ...liveHubSec,
+          };
           if (hubSec.hidden) return null;
           const heroOv = cms.topicEdits?.["granths-hero-header"] as
             | InlineTopicEditData
@@ -822,6 +840,12 @@ export default function GranthsAndKirtanPage() {
               : hubSec.titleAlign === "right"
                 ? "text-right items-end"
                 : "text-left items-start";
+          const widthCls =
+            hubSec.widthMode === "compact"
+              ? "max-w-3xl mx-auto"
+              : hubSec.widthMode === "contained"
+                ? "max-w-5xl mx-auto"
+                : "w-full";
           return (
             <section
               style={{
@@ -832,7 +856,7 @@ export default function GranthsAndKirtanPage() {
                   ? resolveCmsFontFamily(heroOv.fontFamily)
                   : undefined,
               }}
-              className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm"
+              className={`rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm ${widthCls}`}
             >
               <div className="flex justify-end mb-2">
                 <InlineTopicEditor
@@ -1279,7 +1303,12 @@ export default function GranthsAndKirtanPage() {
                           : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
                       }`}
                     >
-                      <div className="flex justify-end">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <InlineOrderControls
+                          pageKey="granths"
+                          itemId={track.id}
+                          allIds={filteredKirtanTracks.map((t) => t.id)}
+                        />
                         <InlineTopicEditor
                           itemId={track.id}
                           label="Edit Shabad"
