@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/components/auth-provider";
 import {
   useAdminEditMode,
@@ -977,6 +978,692 @@ export function InlineSectionBanner({
             </form>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================================
+   GOD MODE: UNIVERSAL TEXT & CANVAS BOX WRAPPERS
+   ============================================================================ */
+
+export type GodModeScope = "element" | "page" | "global";
+export type GodModeTextSize = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+
+interface GodModeTextRecord {
+  text?: string;
+  fontFamily?: CmsFontFamily;
+  textSize?: GodModeTextSize;
+  textColor?: string;
+  bgColor?: string;
+}
+
+interface GodModePageScopeRecord {
+  fontFamily?: CmsFontFamily;
+  textSize?: GodModeTextSize;
+  textColor?: string;
+  bgColor?: string;
+}
+
+interface GodModeBoxRecord {
+  widthPreset?: "1/3" | "1/2" | "3/4" | "full" | "custom";
+  customWidthPx?: number;
+  minHeightPx?: number;
+  offsetX?: number;
+  offsetY?: number;
+  alignSelf?: "left" | "center" | "right";
+}
+
+function resolveGodModeSizeClass(sz?: GodModeTextSize): string {
+  switch (sz) {
+    case "sm":
+      return "!text-xs sm:!text-sm";
+    case "md":
+      return "!text-sm sm:!text-base";
+    case "lg":
+      return "!text-base sm:!text-lg";
+    case "xl":
+      return "!text-lg sm:!text-xl";
+    case "2xl":
+      return "!text-2xl sm:!text-3xl";
+    case "3xl":
+      return "!text-3xl sm:!text-5xl";
+    default:
+      return "";
+  }
+}
+
+export function useGodModeTextValue(id: string, defaultText: string): string {
+  const cms = useCmsSiteState();
+  const rec = cms.topicEdits?.[id] as (CmsTopicEdit & GodModeTextRecord) | undefined;
+  return rec?.text ?? rec?.title ?? defaultText;
+}
+
+export interface GodModeTextProps {
+  id: string;
+  defaultText: string;
+  tag?: "h1" | "h2" | "h3" | "h4" | "p" | "span" | "div";
+  pageKey?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  lang?: string;
+}
+
+export function GodModeText({
+  id,
+  defaultText,
+  tag = "span",
+  pageKey = "global",
+  className = "",
+  style,
+  lang,
+}: GodModeTextProps) {
+  const cms = useCmsSiteState();
+  const canEdit = useVerifiedLiveEdit();
+  const elRef = useRef<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 80, left: 24 });
+
+  const elRecord = (cms.topicEdits?.[id] || {}) as CmsTopicEdit & GodModeTextRecord;
+  const pageScope = (
+    (cms.sectionLayoutMap || {})[`__god_page_${pageKey}`] || {}
+  ) as GodModePageScopeRecord;
+
+  const resolvedText = elRecord.text ?? elRecord.title ?? defaultText;
+  const resolvedFont = elRecord.fontFamily || pageScope.fontFamily;
+  const resolvedSize = elRecord.textSize || pageScope.textSize;
+  const resolvedTextColor = elRecord.textColor || pageScope.textColor;
+  const resolvedBgColor = elRecord.bgColor || pageScope.bgColor;
+
+  const [draftText, setDraftText] = useState(resolvedText);
+  const [draftFont, setDraftFont] = useState<CmsFontFamily | "">("");
+  const [draftSize, setDraftSize] = useState<GodModeTextSize | "">("");
+  const [draftTextColor, setDraftTextColor] = useState("");
+  const [draftBgColor, setDraftBgColor] = useState("");
+  const [scope, setScope] = useState<GodModeScope>("element");
+
+  useEffect(() => {
+    if (!open) return;
+    setDraftText(resolvedText);
+    setDraftFont(resolvedFont || "");
+    setDraftSize(resolvedSize || "");
+    setDraftTextColor(resolvedTextColor || "");
+    setDraftBgColor(resolvedBgColor || "");
+    setScope("element");
+  }, [open, resolvedText, resolvedFont, resolvedSize, resolvedTextColor, resolvedBgColor]);
+
+  const openToolbar = (e: React.MouseEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const target = elRef.current || (e.currentTarget as HTMLElement);
+    const rect = target.getBoundingClientRect();
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 768;
+    const desiredLeft = Math.max(12, Math.min(rect.left, vw - 372));
+    const desiredTop =
+      rect.bottom + 340 < vh ? rect.bottom + 8 : Math.max(12, rect.top - 340);
+    setPos({ top: desiredTop, left: desiredLeft });
+    setOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSaving(true);
+
+    const textPayload = {
+      text: draftText,
+      title: draftText,
+    };
+    const stylePayload: Partial<GodModePageScopeRecord> = {
+      fontFamily: draftFont || undefined,
+      textSize: draftSize || undefined,
+      textColor: draftTextColor.trim() || undefined,
+      bgColor: draftBgColor.trim() || undefined,
+    };
+
+    if (scope === "element") {
+      await pushAdminCmsPatch({
+        topicEdits: {
+          [id]: {
+            ...textPayload,
+            ...stylePayload,
+          } as CmsTopicEdit,
+        },
+      });
+    } else if (scope === "page") {
+      await pushAdminCmsPatch({
+        topicEdits: {
+          [id]: {
+            ...textPayload,
+          } as CmsTopicEdit,
+        },
+        sectionLayoutMap: {
+          ...(cms.sectionLayoutMap || {}),
+          [`__god_page_${pageKey}`]: stylePayload,
+        },
+      });
+    } else {
+      const mappedScale: CmsFontScale =
+        draftSize === "sm"
+          ? "sm"
+          : draftSize === "lg"
+            ? "lg"
+            : draftSize === "xl" || draftSize === "2xl" || draftSize === "3xl"
+              ? "xl"
+              : "md";
+      await pushAdminCmsPatch({
+        topicEdits: {
+          [id]: {
+            ...textPayload,
+          } as CmsTopicEdit,
+        },
+        layoutConfig: {
+          ...(cms.layoutConfig || {}),
+          ...(draftFont ? { fontFamily: draftFont } : {}),
+          ...(draftSize ? { headingScale: mappedScale, bodyScale: mappedScale } : {}),
+          ...(draftTextColor.trim()
+            ? tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4"
+              ? { headingTextColor: draftTextColor.trim() }
+              : { bodyTextColor: draftTextColor.trim() }
+            : {}),
+          ...(draftBgColor.trim() ? { cardBgColor: draftBgColor.trim() } : {}),
+        },
+      });
+    }
+
+    setSaving(false);
+    setOpen(false);
+  };
+
+  const handleReset = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSaving(true);
+    await pushAdminCmsPatch({
+      topicEdits: {
+        [id]: {
+          text: undefined,
+          title: undefined,
+          fontFamily: undefined,
+          textSize: undefined,
+          textColor: undefined,
+          bgColor: undefined,
+        } as CmsTopicEdit,
+      },
+    });
+    setSaving(false);
+    setOpen(false);
+  };
+
+  const mergedClassName = [
+    className,
+    resolveGodModeSizeClass(resolvedSize),
+    canEdit ? "god-mode-text-editable" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const mergedStyle: React.CSSProperties = {
+    ...style,
+    ...(resolvedFont ? { fontFamily: resolveCmsFontFamily(resolvedFont) } : {}),
+    ...(resolvedTextColor ? { color: resolvedTextColor } : {}),
+    ...(resolvedBgColor
+      ? {
+          backgroundColor: resolvedBgColor,
+          paddingLeft: style?.paddingLeft ?? "0.35em",
+          paddingRight: style?.paddingRight ?? "0.35em",
+          borderRadius: style?.borderRadius ?? "0.35rem",
+        }
+      : {}),
+  };
+
+  const Tag = tag;
+
+  return (
+    <>
+      <Tag
+        ref={elRef as React.RefObject<never>}
+        lang={lang}
+        style={mergedStyle}
+        className={mergedClassName}
+        onClick={canEdit ? openToolbar : undefined}
+        title={canEdit ? `Click to edit "${id}" (God Mode)` : undefined}
+      >
+        {resolvedText}
+      </Tag>
+
+      {canEdit &&
+        open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[90]"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+              className="fixed w-[355px] max-w-[calc(100vw-24px)] rounded-2xl border-2 border-[#d4af37] bg-[#111318]/98 text-[#FAF7F0] p-4 shadow-2xl shadow-black/50 backdrop-blur-md space-y-3 text-xs z-[95]"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                <span className="font-extrabold text-[#E5C158] truncate">
+                  ⚡ God Mode Text: {id}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="px-2 py-0.5 rounded border border-white/20 text-[11px] hover:border-[#d4af37]"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSave} className="space-y-2.5">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider opacity-75 mb-1">
+                    Text Content
+                  </label>
+                  <textarea
+                    rows={2}
+                    autoFocus
+                    value={draftText}
+                    onChange={(e) => setDraftText(e.target.value)}
+                    className="w-full rounded-lg border border-white/25 bg-black/50 px-2.5 py-1.5 text-xs text-[#FAF7F0] focus:border-[#d4af37] focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider opacity-75 mb-1">
+                      Font Family
+                    </label>
+                    <select
+                      value={draftFont}
+                      onChange={(e) => setDraftFont(e.target.value as CmsFontFamily | "")}
+                      className="w-full rounded-lg border border-white/20 bg-black/60 px-2 py-1.5 text-xs text-[#FAF7F0]"
+                    >
+                      <option value="">Default</option>
+                      <option value="serif-heritage">Heritage Serif</option>
+                      <option value="sans-modern">Modern Sans</option>
+                      <option value="manuscript">Manuscript</option>
+                      <option value="mono-clean">Mono</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="block text-[10px] font-bold opacity-75 mb-1">
+                        Color
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="color"
+                          value={
+                            /^#[0-9a-f]{6}$/i.test(draftTextColor)
+                              ? draftTextColor
+                              : "#FAF7F0"
+                          }
+                          onChange={(e) => setDraftTextColor(e.target.value)}
+                          className="w-7 h-7 rounded border-0 bg-transparent p-0 cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDraftTextColor("")}
+                          className="text-[10px] underline opacity-70"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold opacity-75 mb-1">
+                        Highlight
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="color"
+                          value={
+                            /^#[0-9a-f]{6}$/i.test(draftBgColor)
+                              ? draftBgColor
+                              : "#141B2D"
+                          }
+                          onChange={(e) => setDraftBgColor(e.target.value)}
+                          className="w-7 h-7 rounded border-0 bg-transparent p-0 cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDraftBgColor("")}
+                          className="text-[10px] underline opacity-70"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider opacity-75 mb-1">
+                    Text Size
+                  </label>
+                  <div className="grid grid-cols-6 gap-1">
+                    {(["sm", "md", "lg", "xl", "2xl", "3xl"] as const).map((sz) => (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => setDraftSize(draftSize === sz ? "" : sz)}
+                        className={`py-1 rounded border uppercase text-[10px] font-bold transition ${
+                          draftSize === sz
+                            ? "border-[#d4af37] bg-[#d4af37] text-[#18181B]"
+                            : "border-white/20 opacity-80 hover:opacity-100"
+                        }`}
+                      >
+                        {sz}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider opacity-75 mb-1">
+                    Apply Style Scope
+                  </label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(
+                      [
+                        { id: "element", label: "This Element" },
+                        { id: "page", label: "This Page" },
+                        { id: "global", label: "Whole Website" },
+                      ] as { id: GodModeScope; label: string }[]
+                    ).map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setScope(s.id)}
+                        className={`py-1.5 px-1.5 rounded-lg border text-[10px] font-bold transition ${
+                          scope === s.id
+                            ? "border-[#d4af37] bg-[#d4af37]/25 text-[#E5C158]"
+                            : "border-white/15 opacity-75 hover:opacity-100"
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={handleReset}
+                    className="px-2.5 py-1.5 rounded-lg border border-red-500/40 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
+                  >
+                    Reset Default
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-[11px] font-extrabold"
+                  >
+                    {saving ? "Saving..." : "Apply & Save"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
+export interface GodModeBoxProps {
+  id: string;
+  pageKey?: string;
+  label?: string;
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+export function GodModeBox({
+  id,
+  label,
+  children,
+  className = "",
+  style,
+}: GodModeBoxProps) {
+  const cms = useCmsSiteState();
+  const canEdit = useVerifiedLiveEdit();
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const [liveDrag, setLiveDrag] = useState<{ x: number; y: number } | null>(null);
+  const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
+
+  const saved = (
+    (cms.sectionLayoutMap || {})[`__god_box_${id}`] || {}
+  ) as GodModeBoxRecord;
+
+  const persistBox = async (patch: Partial<GodModeBoxRecord>) => {
+    await pushAdminCmsPatch({
+      sectionLayoutMap: {
+        ...(cms.sectionLayoutMap || {}),
+        [`__god_box_${id}`]: {
+          ...saved,
+          ...patch,
+        },
+      },
+    });
+  };
+
+  const handleDragStart = (e: React.PointerEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const baseX = saved.offsetX || 0;
+    const baseY = saved.offsetY || 0;
+    let latestX = baseX;
+    let latestY = baseY;
+    setDragging(true);
+
+    const onMove = (ev: PointerEvent) => {
+      latestX = Math.round(baseX + (ev.clientX - startX));
+      latestY = Math.round(baseY + (ev.clientY - startY));
+      setLiveDrag({ x: latestX, y: latestY });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setDragging(false);
+      setLiveDrag(null);
+      void persistBox({ offsetX: latestX, offsetY: latestY });
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const handleResizeStart = (e: React.PointerEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = boxRef.current;
+    const rect = el ? el.getBoundingClientRect() : { width: 400, height: 120 };
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const baseW = saved.customWidthPx || Math.round(rect.width);
+    const baseH = saved.minHeightPx || Math.round(rect.height);
+    let latestW = baseW;
+    let latestH = baseH;
+    setResizing(true);
+
+    const onMove = (ev: PointerEvent) => {
+      latestW = Math.max(180, Math.round(baseW + (ev.clientX - startX)));
+      latestH = Math.max(48, Math.round(baseH + (ev.clientY - startY)));
+      setLiveSize({ w: latestW, h: latestH });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setResizing(false);
+      setLiveSize(null);
+      void persistBox({
+        widthPreset: "custom",
+        customWidthPx: latestW,
+        minHeightPx: latestH,
+      });
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const ox = liveDrag ? liveDrag.x : saved.offsetX || 0;
+  const oy = liveDrag ? liveDrag.y : saved.offsetY || 0;
+
+  const presetWidthCls =
+    saved.widthPreset === "1/3"
+      ? "w-full md:w-1/3"
+      : saved.widthPreset === "1/2"
+        ? "w-full md:w-1/2"
+        : saved.widthPreset === "3/4"
+          ? "w-full md:w-3/4"
+          : saved.widthPreset === "full"
+            ? "w-full"
+            : "";
+
+  const alignCls =
+    saved.alignSelf === "center"
+      ? "mx-auto"
+      : saved.alignSelf === "right"
+        ? "ml-auto"
+        : saved.alignSelf === "left"
+          ? "mr-auto"
+          : "";
+
+  const customW =
+    liveSize?.w ?? (saved.widthPreset === "custom" ? saved.customWidthPx : undefined);
+  const customH = liveSize?.h ?? saved.minHeightPx;
+
+  const boxStyle: React.CSSProperties = {
+    ...style,
+    ...(customW ? { width: `${customW}px`, maxWidth: "100%" } : {}),
+    ...(customH ? { minHeight: `${customH}px` } : {}),
+    ...(ox !== 0 || oy !== 0
+      ? { transform: `translate3d(${ox}px, ${oy}px, 0)` }
+      : {}),
+  };
+
+  return (
+    <div
+      ref={boxRef}
+      style={boxStyle}
+      className={[
+        "god-mode-box",
+        presetWidthCls,
+        alignCls,
+        canEdit ? "god-mode-box-active" : "",
+        dragging || resizing ? "god-mode-box-dragging" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {canEdit && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-black/85 border border-[#d4af37]/55 px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-md"
+        >
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onPointerDown={handleDragStart}
+              title="Drag to move anywhere on screen"
+              className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#d4af37]/20 text-[#E5C158] border border-[#d4af37]/40 select-none"
+            >
+              ⋮⋮ Drag {label || id}
+            </button>
+            {(["1/3", "1/2", "3/4", "full"] as const).map((wp) => (
+              <button
+                key={wp}
+                type="button"
+                onClick={() =>
+                  void persistBox({ widthPreset: wp, customWidthPx: undefined })
+                }
+                className={`px-1.5 py-0.5 rounded ${
+                  saved.widthPreset === wp
+                    ? "bg-[#d4af37] text-[#18181B]"
+                    : "hover:bg-white/15 opacity-80"
+                }`}
+              >
+                {wp === "full" ? "w-full" : `w-${wp}`}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1">
+            {(["left", "center", "right"] as const).map((al) => (
+              <button
+                key={al}
+                type="button"
+                onClick={() => void persistBox({ alignSelf: al })}
+                className={`px-1.5 py-0.5 rounded capitalize ${
+                  saved.alignSelf === al
+                    ? "bg-[#d4af37] text-[#18181B]"
+                    : "hover:bg-white/15 opacity-80"
+                }`}
+              >
+                {al}
+              </button>
+            ))}
+            {(ox !== 0 || oy !== 0 || saved.widthPreset || saved.minHeightPx) && (
+              <button
+                type="button"
+                onClick={() =>
+                  void persistBox({
+                    offsetX: 0,
+                    offsetY: 0,
+                    widthPreset: undefined,
+                    customWidthPx: undefined,
+                    minHeightPx: undefined,
+                    alignSelf: undefined,
+                  })
+                }
+                className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
+              >
+                ↺ Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {children}
+
+      {canEdit && (
+        <span
+          role="slider"
+          aria-label={`Resize ${label || id}`}
+          aria-valuenow={customW || 100}
+          tabIndex={0}
+          onPointerDown={handleResizeStart}
+          title="Drag corner to resize box"
+          className="god-mode-resize-handle"
+        >
+          ↘
+        </span>
       )}
     </div>
   );

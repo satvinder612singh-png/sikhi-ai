@@ -482,6 +482,65 @@ a.from-\[\#C59B27\] {
     transition: all 300ms ease-out;
   }
 
+  /* ============================================================================
+     GOD MODE CANVAS FREE-FORM POSITIONING & TEXT EDITING
+     ============================================================================ */
+  .god-mode-text-editable {
+    outline: 1.5px dashed rgba(212, 175, 55, 0.55);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+    cursor: text;
+    transition: outline-color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .god-mode-text-editable:hover {
+    outline-color: #d4af37;
+    background-color: rgba(212, 175, 55, 0.1);
+  }
+
+  .god-mode-box {
+    position: relative;
+    max-width: 100%;
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      width 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 220ms ease,
+      border-color 220ms ease;
+  }
+
+  .god-mode-box-active {
+    border: 1.5px dashed rgba(212, 175, 55, 0.72);
+    border-radius: 1rem;
+    padding: 0.35rem;
+    will-change: transform;
+  }
+
+  .god-mode-box-dragging {
+    transition: none !important;
+    z-index: 45;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    outline: 2px solid #d4af37;
+  }
+
+  .god-mode-resize-handle {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    background: rgba(17, 19, 24, 0.9);
+    border: 1px solid rgba(212, 175, 55, 0.75);
+    color: #e5c158;
+    font-size: 10px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: nwse-resize;
+    z-index: 35;
+    user-select: none;
+  }
+
   .gold-divider-rule {
     background: linear-gradient(
       90deg,

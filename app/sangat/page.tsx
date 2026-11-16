@@ -28,6 +28,9 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  GodModeText,
+  GodModeBox,
+  useGodModeTextValue,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import {
@@ -1067,6 +1070,10 @@ function SangatHubContent() {
     }
   };
 
+  const vichaarPlaceholder = useGodModeTextValue(
+    "sangat-vichaar-placeholder",
+    "Share a reflection or question on this dispatch..."
+  );
   const secCfg = cms.securityConfig || {};
   const isIdentityHidden = Boolean(secCfg.hideSubmitterIdentity);
   const isMaintenancePaused =
@@ -2183,6 +2190,7 @@ function SangatHubContent() {
             | InlineTopicEditData
             | undefined;
           return (
+        <GodModeBox id="sangat-hero-box" pageKey="sangat" label="Hero Section">
         <section
           style={{
             backgroundColor:
@@ -2194,7 +2202,7 @@ function SangatHubContent() {
               : undefined,
             color: heroInline?.textColor || undefined,
           }}
-          className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6 ${widthCls}`}
+          className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-6 ${widthCls}`}
         >
           {/* Ambient Heritage Hero Backdrop */}
           {heroBannerUrl && (
@@ -2221,12 +2229,14 @@ function SangatHubContent() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div className={`space-y-2 max-w-2xl ${alignCls}`}>
               <div className="flex flex-wrap items-center gap-2">
-                <p
+                <GodModeText
+                  id="sangat-hero-badge"
+                  pageKey="sangat"
+                  tag="p"
+                  defaultText={heroInline?.badge || "SIKHSTACK & SIKHINTEREST"}
                   style={{ color: layoutCfg.accentColor || undefined }}
                   className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
-                >
-                  {heroInline?.badge || "SIKHSTACK & SIKHINTEREST"}
-                </p>
+                />
                 <InlineTopicEditor
                   itemId="sangat-hero-header"
                   defaults={{
@@ -2238,15 +2248,25 @@ function SangatHubContent() {
                   }}
                 />
               </div>
-              <h1
+              <GodModeText
+                id="sangat-hero-title"
+                pageKey="sangat"
+                tag="h1"
+                defaultText={heroInline?.title || heroSec?.customTitle || "SikhStack & SikhInterest"}
                 style={{
                   color: heroInline?.textColor || layoutCfg.headingTextColor || undefined,
                 }}
                 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight"
-              >
-                {heroInline?.title || heroSec?.customTitle || "SikhStack & SikhInterest"}
-              </h1>
-              <p
+              />
+              <GodModeText
+                id="sangat-hero-desc"
+                pageKey="sangat"
+                tag="p"
+                defaultText={
+                  heroInline?.description ||
+                  heroSec?.customSubtitle ||
+                  "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage."
+                }
                 style={{
                   color:
                     heroInline?.textColor ||
@@ -2254,11 +2274,7 @@ function SangatHubContent() {
                     "var(--theme-text-muted)",
                 }}
                 className="text-sm sm:text-base leading-relaxed"
-              >
-                {heroInline?.description ||
-                  heroSec?.customSubtitle ||
-                  "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage."}
-              </p>
+              />
               {isStealthAdmin && (
                 <div className="pt-1">
                   <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border border-[#C59B27]/50 bg-[#C59B27]/10 text-[11px] font-bold text-[#9A7418] dark:text-[#E5C158] hover:border-[#C59B27] transition">
@@ -2297,7 +2313,12 @@ function SangatHubContent() {
                   }}
                   className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
                 >
-                  + Share Article or Link
+                  <GodModeText
+                    id="sangat-share-cta"
+                    pageKey="sangat"
+                    tag="span"
+                    defaultText="+ Share Article or Link"
+                  />
                 </button>
               )}
 
@@ -2349,12 +2370,19 @@ function SangatHubContent() {
                       : "font-medium opacity-75 hover:opacity-100 border border-transparent"
                   }`}
                 >
-                  {tab.label} ({feedCounts[tab.id]})
+                  <GodModeText
+                    id={`sangat-tab-label-${tab.id}`}
+                    pageKey="sangat"
+                    tag="span"
+                    defaultText={tab.label}
+                  />{" "}
+                  ({feedCounts[tab.id]})
                 </button>
               );
             })}
           </nav>
         </section>
+        </GodModeBox>
           );
         })()}
 
@@ -2833,31 +2861,52 @@ function SangatHubContent() {
                 )}
 
                 {/* Compact secondary exploration strip */}
-                <section className="rounded-2xl border border-[#C59B27]/25 bg-[var(--bg-surface)] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider opacity-70">
-                    Explore Core Pillars
-                  </span>
+                <GodModeBox id="sangat-pillars-box" pageKey="sangat" label="Explore Core Pillars Bar">
+                <section className="rounded-2xl border border-[#d4af37]/30 bg-[var(--bg-surface)] px-5 py-4 flex flex-wrap items-center justify-between gap-3 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30">
+                  <GodModeText
+                    id="sangat-pillars-heading"
+                    pageKey="sangat"
+                    tag="span"
+                    defaultText="Explore Core Pillars"
+                    className="text-xs font-semibold uppercase tracking-wider opacity-70"
+                  />
                   <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                     <a
                       href="/foundations"
                       className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
                     >
-                      Foundations →
+                      <GodModeText
+                        id="sangat-pillar-foundations"
+                        pageKey="sangat"
+                        tag="span"
+                        defaultText="Foundations →"
+                      />
                     </a>
                     <a
                       href="/nitnem"
                       className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
                     >
-                      Daily Bani →
+                      <GodModeText
+                        id="sangat-pillar-nitnem"
+                        pageKey="sangat"
+                        tag="span"
+                        defaultText="Daily Bani →"
+                      />
                     </a>
                     <a
                       href="/granths"
                       className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
                     >
-                      Granths &amp; Kirtan →
+                      <GodModeText
+                        id="sangat-pillar-granths"
+                        pageKey="sangat"
+                        tag="span"
+                        defaultText="Granths & Kirtan →"
+                      />
                     </a>
                   </div>
                 </section>
+                </GodModeBox>
               </div>
             )}
           </div>
@@ -2988,7 +3037,7 @@ function SangatHubContent() {
                     type="text"
                     value={vichaarInput}
                     onChange={(e) => setVichaarInput(e.target.value)}
-                    placeholder="Share a reflection or question on this dispatch..."
+                    placeholder={vichaarPlaceholder}
                     className="flex-1 min-w-0 rounded-xl border border-[#C59B27]/35 bg-transparent px-3.5 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
                   />
                   <button
@@ -4380,7 +4429,18 @@ function SangatHubContent() {
         onClose={() => setInspectedAuthor(null)}
       />
 
-      <Footer />
+      <GodModeBox id="sangat-footer-box" pageKey="sangat" label="Page Footer">
+        <div className="max-w-7xl mx-auto px-4 pt-4 text-center">
+          <GodModeText
+            id="sangat-footer-caption"
+            pageKey="sangat"
+            tag="p"
+            defaultText="Learn Sikhi • Independent Gurbani, History & Visual Heritage Sanctuary"
+            className="text-xs font-semibold opacity-70"
+          />
+        </div>
+        <Footer />
+      </GodModeBox>
     </div>
   );
 }

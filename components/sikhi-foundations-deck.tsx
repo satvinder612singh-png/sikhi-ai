@@ -24,6 +24,8 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  GodModeText,
+  GodModeBox,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
@@ -439,23 +441,43 @@ function SlideWho() {
         title="Guru Nanak Dev Ji with Bhai Mardana & Bhai Bala"
       />
 
-      <div className="rounded-3xl border-2 p-6 sm:p-8 space-y-4" style={card}>
-        <Eyebrow>Puratan Foundations • Who is a Sikh?</Eyebrow>
-        <blockquote className="font-serif text-xl sm:text-2xl leading-relaxed">
-          &ldquo;A Sikh (<em>Sishya</em> / Seeker-Disciple) is any human being who turns toward the
-          Light of Ik Onkar revealed in the Ten Guru Sahibs and enshrined eternally in Sri Guru Granth
-          Sahib Ji—growing daily through Truthful Living, Seva, and Love.&rdquo;
-        </blockquote>
-        <p className="text-sm leading-relaxed" style={muted}>
-          Classical 17th–19th century Puratan Granths honour the full continuum of Guru Nanak&apos;s
-          Sangat: from seekers taking their first steps in Gurbani (<em>Sehajdhari</em>) to those
-          who embrace the Khalsa covenant of Amrit and the Panj Kakaar.
-        </p>
+      <GodModeBox id="foundations-who-intro" pageKey="foundations" label="Who is a Sikh Intro">
+      <div className="rounded-3xl border border-[#d4af37]/30 p-6 sm:p-8 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30" style={card}>
+        <GodModeText
+          id="foundations-who-eyebrow"
+          pageKey="foundations"
+          tag="p"
+          defaultText="Puratan Foundations • Who is a Sikh?"
+          className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+        />
+        <GodModeText
+          id="foundations-who-quote"
+          pageKey="foundations"
+          tag="div"
+          defaultText="“A Sikh (Sishya / Seeker-Disciple) is any human being who turns toward the Light of Ik Onkar revealed in the Ten Guru Sahibs and enshrined eternally in Sri Guru Granth Sahib Ji—growing daily through Truthful Living, Seva, and Love.”"
+          className="font-serif text-xl sm:text-2xl leading-relaxed"
+        />
+        <GodModeText
+          id="foundations-who-sub"
+          pageKey="foundations"
+          tag="p"
+          defaultText="Classical 17th–19th century Puratan Granths honour the full continuum of Guru Nanak's Sangat: from seekers taking their first steps in Gurbani (Sehajdhari) to those who embrace the Khalsa covenant of Amrit and the Panj Kakaar."
+          className="text-sm leading-relaxed"
+          style={muted}
+        />
       </div>
+      </GodModeBox>
 
       {/* Enriched 3 Pillars */}
+      <GodModeBox id="foundations-pillars-box" pageKey="foundations" label="Three Pillars Section">
       <div className="space-y-3">
-        <Eyebrow>Guru Nanak Dev Ji&apos;s Three Pillars (Gurbani &amp; Varaan Citations)</Eyebrow>
+        <GodModeText
+          id="foundations-pillars-eyebrow"
+          pageKey="foundations"
+          tag="p"
+          defaultText="Guru Nanak Dev Ji's Three Pillars (Gurbani & Varaan Citations)"
+          className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+        />
         <div className="grid gap-5 md:grid-cols-3">
           {pillars.map((p) => (
             <div key={p.name} className="rounded-2xl border p-5 space-y-3 flex flex-col justify-between" style={card}>
@@ -486,10 +508,17 @@ function SlideWho() {
           ))}
         </div>
       </div>
+      </GodModeBox>
 
       {/* 17th–19th Century Puratan Scholars Accordion Grid (items-start prevents sibling stretch!) */}
       <div className="space-y-3">
-        <Eyebrow>17th–19th Century Puratan Scholarship • Click to Expand</Eyebrow>
+        <GodModeText
+          id="foundations-scholars-eyebrow"
+          pageKey="foundations"
+          tag="p"
+          defaultText="17th–19th Century Puratan Scholarship • Click to Expand"
+          className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+        />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 items-start">
           {PURATAN_SCHOLARS.map((sch) => {
             const isOpen = expandedScholarIds.includes(sch.id);
@@ -1403,9 +1432,16 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
         pageKey="foundations"
         defaultTitle="Who is a Sikh? & Foundations of Sikhi"
       />
+      <GodModeBox id="foundations-header-box" pageKey="foundations" label="Header Section">
       <div className={`space-y-2 ${deckAlignCls}`}>
         <div className="flex flex-wrap items-center gap-2">
-          <Eyebrow>{deckInline?.badge || "Sikhi 101 • Start here"}</Eyebrow>
+          <GodModeText
+            id="foundations-deck-eyebrow"
+            pageKey="foundations"
+            tag="p"
+            defaultText={deckInline?.badge || "Sikhi 101 • Start here"}
+            className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+          />
           <InlineTopicEditor
             itemId="foundations-deck-header"
             defaults={{
@@ -1423,16 +1459,31 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
           }}
           className="font-serif text-3xl sm:text-5xl font-bold tracking-tight"
         >
-          {deckInline?.title ||
-            deckSec?.customTitle ||
-            "Who is a Sikh? & Foundations of Sikhi"}
+          <GodModeText
+            id="foundations-deck-title"
+            pageKey="foundations"
+            tag="span"
+            defaultText={
+              deckInline?.title ||
+              deckSec?.customTitle ||
+              "Who is a Sikh? & Foundations of Sikhi"
+            }
+          />
         </Heading>
-        <p className={`max-w-3xl text-base ${deckSec?.titleAlign === "center" ? "mx-auto" : ""}`} style={muted}>
-          {deckInline?.description ||
+        <GodModeText
+          id="foundations-deck-subtitle"
+          pageKey="foundations"
+          tag="p"
+          defaultText={
+            deckInline?.description ||
             deckSec?.customSubtitle ||
-            "Seven short slides, each with a painting, to understand the heart of Sikhi. Swipe, tap or use the arrow keys."}
-        </p>
+            "Seven short slides, each with a painting, to understand the heart of Sikhi. Swipe, tap or use the arrow keys."
+          }
+          className={`max-w-3xl text-base ${deckSec?.titleAlign === "center" ? "mx-auto" : ""}`}
+          style={muted}
+        />
       </div>
+      </GodModeBox>
 
       <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Foundations slides">
         {SLIDES.map((s, i) => (
@@ -1468,7 +1519,7 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
 
       <div className="flex items-center justify-between gap-3">
         <button type="button" disabled={index === 0} onClick={() => go(index - 1)} className="rounded-xl border px-5 py-2.5 text-sm font-bold disabled:opacity-40" style={card}>
-          ← Previous
+          <GodModeText id="foundations-prev-btn" pageKey="foundations" tag="span" defaultText="← Previous" />
         </button>
         <div className="flex items-center gap-2" aria-hidden="true">
           {SLIDES.map((s, i) => (
@@ -1476,13 +1527,19 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
           ))}
         </div>
         <button type="button" disabled={index === SLIDES.length - 1} onClick={() => go(index + 1)} className="rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] px-5 py-2.5 text-sm font-bold disabled:opacity-40">
-          Next →
+          <GodModeText id="foundations-next-btn" pageKey="foundations" tag="span" defaultText="Next →" />
         </button>
       </div>
 
       {customFoundations.length > 0 && (
         <div className="space-y-4 pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-          <Eyebrow>Admin Curated Additions</Eyebrow>
+          <GodModeText
+            id="foundations-curated-heading"
+            pageKey="foundations"
+            tag="p"
+            defaultText="Admin Curated Additions"
+            className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+          />
           <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
             {customFoundations.map((ct) => {
               const customIds = customFoundations.map((x) => x.id);

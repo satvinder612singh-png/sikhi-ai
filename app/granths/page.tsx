@@ -23,6 +23,9 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  GodModeText,
+  GodModeBox,
+  useGodModeTextValue,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
@@ -784,6 +787,18 @@ export default function GranthsAndKirtanPage() {
     !isAdmin && Boolean(secCfg.requireEmailVerification) && Boolean(user) && !emailVerified;
   const hideIdentity = Boolean(secCfg.hideSubmitterIdentity);
 
+  const kirtanSearchPlaceholder = useGodModeTextValue(
+    "granths-kirtan-search-placeholder",
+    "Search live broadcast or your loaded local .mp3 files..."
+  );
+  const raagSearchPlaceholder = useGodModeTextValue(
+    "granths-raag-search-placeholder",
+    "Search Raag, Guru, or Ras..."
+  );
+  const granthSearchPlaceholder = useGodModeTextValue(
+    "granths-books-search-placeholder",
+    "Search Granth, author, or topic..."
+  );
   const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
   const headingSizeCls = resolveCmsHeadingClass(layoutCfg.headingScale);
   const bodySizeCls = resolveCmsBodyClass(layoutCfg.bodyScale);
@@ -848,6 +863,7 @@ export default function GranthsAndKirtanPage() {
                 ? "max-w-5xl mx-auto"
                 : "w-full";
           return (
+            <GodModeBox id="granths-hero-box" pageKey="granths" label="Hero Section">
             <section
               style={{
                 backgroundColor: heroOv?.bgColor || layoutCfg.cardBgColor || undefined,
@@ -857,7 +873,7 @@ export default function GranthsAndKirtanPage() {
                   ? resolveCmsFontFamily(heroOv.fontFamily)
                   : undefined,
               }}
-              className={`rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm ${widthCls}`}
+              className={`rounded-3xl border border-[#d4af37]/30 bg-[#1B2A20] p-8 md:p-10 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 ${widthCls}`}
             >
               <div className="flex justify-end mb-2">
                 <InlineTopicEditor
@@ -879,30 +895,51 @@ export default function GranthsAndKirtanPage() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div className={`space-y-3 max-w-3xl flex flex-col ${alignCls}`}>
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
-                      {heroOv?.badge ||
-                        "SANCTUARY ARCHIVE • PURATAN KIRTAN & GRANTH BOOKREADER"}
-                    </span>
-                    <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
-                      {heroOv?.gurmukhi || "ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ"}
-                    </span>
+                    <GodModeText
+                      id="granths-hero-badge"
+                      pageKey="granths"
+                      tag="span"
+                      defaultText={
+                        heroOv?.badge ||
+                        "SANCTUARY ARCHIVE • PURATAN KIRTAN & GRANTH BOOKREADER"
+                      }
+                      className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]"
+                    />
+                    <GodModeText
+                      id="granths-hero-gurmukhi"
+                      pageKey="granths"
+                      tag="span"
+                      lang="pa"
+                      defaultText={heroOv?.gurmukhi || "ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ"}
+                      className="font-gurmukhi text-sm text-[#D97706]"
+                    />
                   </div>
-                  <h1
+                  <GodModeText
+                    id="granths-hero-title"
+                    pageKey="granths"
+                    tag="h1"
+                    defaultText={
+                      heroOv?.title ||
+                      hubSec.customTitle ||
+                      "Puratan Raag Darbar & Interactive Granths"
+                    }
                     style={{
                       color: heroOv?.textColor || layoutCfg.headingTextColor || undefined,
                     }}
                     className={`text-3xl sm:text-5xl ${heroHeadingCls} font-serif font-bold tracking-tight`}
-                  >
-                    {heroOv?.title ||
-                      hubSec.customTitle ||
-                      "Puratan Raag Darbar & Interactive Granths"}
-                  </h1>
-                  <p className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}>
-                    {heroOv?.subtitle ||
+                  />
+                  <GodModeText
+                    id="granths-hero-subtitle"
+                    pageKey="granths"
+                    tag="p"
+                    defaultText={
+                      heroOv?.subtitle ||
                       heroOv?.description ||
                       hubSec.customSubtitle ||
-                      "Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi (proxied directly from Archive.org or our 5TB Drive Vault) or open our Dual-Mode Interactive BookReader & Live Ang 1–1430 Darpan Viewer."}
-                  </p>
+                      "Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi (proxied directly from Archive.org or our 5TB Drive Vault) or open our Dual-Mode Interactive BookReader & Live Ang 1–1430 Darpan Viewer."
+                    }
+                    className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}
+                  />
                 </div>
 
             {/* Tab Switcher */}
@@ -916,7 +953,12 @@ export default function GranthsAndKirtanPage() {
                     : "text-[#4A554E] hover:text-[#171917]"
                 }`}
               >
-                ੧ · Puratan Kirtan &amp; Raag Player
+                <GodModeText
+                  id="granths-tab-kirtan"
+                  pageKey="granths"
+                  tag="span"
+                  defaultText="੧ · Puratan Kirtan & Raag Player"
+                />
               </button>
               <button
                 type="button"
@@ -927,7 +969,12 @@ export default function GranthsAndKirtanPage() {
                     : "text-[#4A554E] hover:text-[#171917]"
                 }`}
               >
-                ੨ · Interactive Granth BookReader
+                <GodModeText
+                  id="granths-tab-bookreader"
+                  pageKey="granths"
+                  tag="span"
+                  defaultText="੨ · Interactive Granth BookReader"
+                />
               </button>
               <Link
                 href="/live-kirtan"
@@ -939,6 +986,7 @@ export default function GranthsAndKirtanPage() {
             </div>
           </div>
         </section>
+        </GodModeBox>
           );
         })()}
 
@@ -1223,7 +1271,8 @@ export default function GranthsAndKirtanPage() {
               </div>
 
               {/* Track Search & Playable Tracks (Live Darbar Sahib + Local / Approved) */}
-              <div className="p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#C59B27]/40 space-y-3">
+              <GodModeBox id="granths-kirtan-search-box" pageKey="granths" label="Kirtan Search Box">
+              <div className="p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-3">
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "All", label: "All Playable Tracks" },
@@ -1245,15 +1294,23 @@ export default function GranthsAndKirtanPage() {
                   ))}
                 </div>
 
+                <GodModeText
+                  id="granths-kirtan-search-placeholder"
+                  pageKey="granths"
+                  tag="span"
+                  defaultText="Search live broadcast or your loaded local .mp3 files..."
+                  className="block text-[10px] font-bold uppercase tracking-wider opacity-65"
+                />
                 <input
                   type="search"
                   value={kirtanQuery}
                   onChange={(e) => setKirtanQuery(e.target.value)}
-                  placeholder="Search live broadcast or your loaded local .mp3 files..."
+                  placeholder={kirtanSearchPlaceholder}
                   aria-label="Search playable Kirtan tracks"
                   className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-2.5 text-xs sm:text-sm text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#C59B27]"
                 />
               </div>
+              </GodModeBox>
 
               <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
                 {filteredKirtanTracks.map((track) => {
@@ -1447,24 +1504,43 @@ export default function GranthsAndKirtanPage() {
 
                 {/* Search & Pehar Filter for the 31 Ragas */}
                 <div className="space-y-3 pt-2 border-t border-[#C59B27]/25">
+                  <GodModeBox id="granths-raag-search-box" pageKey="granths" label="31 Ragas Section & Search">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-lg font-serif font-bold text-[#FAF6EE]">
-                        All 31 Main Ragas of Sri Guru Granth Sahib Ji
-                      </h4>
-                      <p className="text-xs text-[#E2E8F0]">
-                        Showing {filteredRaags.length} of 31 Raags • Ang 14 (Sri Raag) to Ang 1353 (Jaijawanti)
-                      </p>
+                      <GodModeText
+                        id="granths-ragas-heading"
+                        pageKey="granths"
+                        tag="h4"
+                        defaultText="All 31 Main Ragas of Sri Guru Granth Sahib Ji"
+                        className="text-lg font-serif font-bold text-[#FAF6EE]"
+                      />
+                      <GodModeText
+                        id="granths-ragas-subheading"
+                        pageKey="granths"
+                        tag="p"
+                        defaultText={`Showing ${filteredRaags.length} of 31 Raags • Ang 14 (Sri Raag) to Ang 1353 (Jaijawanti)`}
+                        className="text-xs text-[#E2E8F0]"
+                      />
                     </div>
-                    <input
-                      type="search"
-                      value={raagSearch}
-                      onChange={(e) => setRaagSearch(e.target.value)}
-                      placeholder="Search Raag, Guru, or Ras..."
-                      aria-label="Search 31 classical Ragas"
-                      className="w-full sm:w-64 rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-3.5 py-2 text-xs text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#C59B27]"
-                    />
+                    <div className="w-full sm:w-64">
+                      <GodModeText
+                        id="granths-raag-search-placeholder"
+                        pageKey="granths"
+                        tag="span"
+                        defaultText="Search Raag, Guru, or Ras..."
+                        className="block text-[10px] font-bold uppercase tracking-wider opacity-65 mb-1"
+                      />
+                      <input
+                        type="search"
+                        value={raagSearch}
+                        onChange={(e) => setRaagSearch(e.target.value)}
+                        placeholder={raagSearchPlaceholder}
+                        aria-label="Search 31 classical Ragas"
+                        className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-3.5 py-2 text-xs text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#C59B27]"
+                      />
+                    </div>
                   </div>
+                </GodModeBox>
 
                   <div className="flex flex-wrap gap-1.5">
                     {(["All", "Amrit Vela", "Morning", "Afternoon", "Evening", "Night"] as const).map(
@@ -1530,7 +1606,8 @@ export default function GranthsAndKirtanPage() {
         {activeTab === "granths" && (
           <div className="space-y-8">
             {/* Search & Category Filter Bar */}
-            <div className="p-6 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <GodModeBox id="granths-books-search-box" pageKey="granths" label="Granths Search & Filter Bar">
+            <div className="p-6 rounded-2xl bg-[#1B2A20] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-wrap gap-2">
                 {[
                   "All",
@@ -1548,22 +1625,35 @@ export default function GranthsAndKirtanPage() {
                         : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E] hover:border-[#C59B27]"
                     }`}
                   >
-                    {cat}
+                    <GodModeText
+                      id={`granths-cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                      pageKey="granths"
+                      tag="span"
+                      defaultText={cat}
+                    />
                   </button>
                 ))}
               </div>
 
               <div className="w-full md:w-80">
+                <GodModeText
+                  id="granths-books-search-placeholder"
+                  pageKey="granths"
+                  tag="span"
+                  defaultText="Search Granth, author, or topic..."
+                  className="block text-[10px] font-bold uppercase tracking-wider opacity-65 mb-1"
+                />
                 <input
                   type="search"
                   value={granthQuery}
                   onChange={(e) => setGranthQuery(e.target.value)}
-                  placeholder="Search Granth, author, or topic..."
+                  placeholder={granthSearchPlaceholder}
                   aria-label="Search Historical Granths"
                   className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
                 />
               </div>
             </div>
+            </GodModeBox>
 
             {/* Granth Cards Grid (Max 3 per row) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -2194,7 +2284,18 @@ export default function GranthsAndKirtanPage() {
         )}
       </main>
 
-      <Footer />
+      <GodModeBox id="granths-footer-box" pageKey="granths" label="Page Footer">
+        <div className="max-w-7xl mx-auto px-4 pt-4 text-center">
+          <GodModeText
+            id="granths-footer-caption"
+            pageKey="granths"
+            tag="p"
+            defaultText="Puratan Raag Darbar & Historical Granth Library • Learn Sikhi Sanctuary"
+            className="text-xs font-semibold opacity-70"
+          />
+        </div>
+        <Footer />
+      </GodModeBox>
     </div>
   );
 }

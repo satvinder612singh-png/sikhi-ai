@@ -21,6 +21,9 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  GodModeText,
+  GodModeBox,
+  useGodModeTextValue,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
@@ -356,6 +359,10 @@ export default function MatriarchsPage() {
   }, [selectedCategory, searchQuery, cms]);
 
   const layoutCfg = cms.layoutConfig || {};
+  const searchPlaceholder = useGodModeTextValue(
+    "matriarchs-search-placeholder",
+    "Search by name, battle, or era..."
+  );
   const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
   const headingSizeCls = resolveCmsHeadingClass(layoutCfg.headingScale);
   const bodySizeCls = resolveCmsBodyClass(layoutCfg.bodyScale);
@@ -418,6 +425,7 @@ export default function MatriarchsPage() {
                 ? "max-w-5xl mx-auto"
                 : "w-full";
           return (
+        <GodModeBox id="matriarchs-hero-box" pageKey="matriarchs" label="Hero Section">
         <section
           style={{
             backgroundColor: heroOv?.bgColor || layoutCfg.cardBgColor || undefined,
@@ -427,7 +435,7 @@ export default function MatriarchsPage() {
               ? resolveCmsFontFamily(heroOv.fontFamily)
               : undefined,
           }}
-          className={`rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm ${widthCls}`}
+          className={`rounded-3xl border border-[#d4af37]/30 bg-[#1B2A20] p-8 md:p-10 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 ${widthCls}`}
         >
           <div className="flex justify-end mb-2">
             <InlineTopicEditor
@@ -448,52 +456,85 @@ export default function MatriarchsPage() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             <div className={`space-y-3 max-w-3xl ${alignCls}`}>
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
-                  {heroOv?.badge || "SOVEREIGN EQUALITY ARCHIVE • ANG 473 & ANG 967"}
-                </span>
-                <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
-                  {heroOv?.gurmukhi || "ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ"}
-                </span>
+                <GodModeText
+                  id="matriarchs-hero-badge"
+                  pageKey="matriarchs"
+                  tag="span"
+                  defaultText={heroOv?.badge || "SOVEREIGN EQUALITY ARCHIVE • ANG 473 & ANG 967"}
+                  className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]"
+                />
+                <GodModeText
+                  id="matriarchs-hero-gurmukhi"
+                  pageKey="matriarchs"
+                  tag="span"
+                  lang="pa"
+                  defaultText={heroOv?.gurmukhi || "ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ"}
+                  className="font-gurmukhi text-sm text-[#D97706]"
+                />
               </div>
-              <h1
+              <GodModeText
+                id="matriarchs-hero-title"
+                pageKey="matriarchs"
+                tag="h1"
+                defaultText={
+                  heroOv?.title ||
+                  matSec?.customTitle ||
+                  "The Unsung Matriarchs & Warriors of the Panth"
+                }
                 style={{
                   color: heroOv?.textColor || layoutCfg.headingTextColor || undefined,
                 }}
                 className={`text-3xl sm:text-5xl ${heroHeadingCls} font-serif font-bold tracking-tight`}
-              >
-                {heroOv?.title ||
-                  matSec?.customTitle ||
-                  "The Unsung Matriarchs & Warriors of the Panth"}
-              </h1>
-              <p className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}>
-                {heroOv?.subtitle ||
+              />
+              <GodModeText
+                id="matriarchs-hero-subtitle"
+                pageKey="matriarchs"
+                tag="p"
+                defaultText={
+                  heroOv?.subtitle ||
                   heroOv?.description ||
                   matSec?.customSubtitle ||
-                  "Over five centuries before modern gender movements, Guru Nanak Dev Ji declared the sovereign dignity of women on Ang 473. Explore 13 foundational Sikh women—spiritual pioneers, battlefield commanders, scriptural scholars, and martyrs from 1469 to 1984—with primary historical citations."}
-              </p>
+                  "Over five centuries before modern gender movements, Guru Nanak Dev Ji declared the sovereign dignity of women on Ang 473. Explore 13 foundational Sikh women—spiritual pioneers, battlefield commanders, scriptural scholars, and martyrs from 1469 to 1984—with primary historical citations."
+                }
+                className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}
+              />
             </div>
 
-            <div className="shrink-0 p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/40 text-center max-w-xs">
-              <p
+            <GodModeBox id="matriarchs-quote-box" pageKey="matriarchs" label="Ang 473 Quote Box">
+            <div className="shrink-0 p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/40 text-center max-w-xs space-y-1.5">
+              <GodModeText
+                id="matriarchs-quote-gurmukhi"
+                pageKey="matriarchs"
+                tag="p"
                 lang="pa"
+                defaultText="ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ ॥"
                 className="font-gurmukhi text-xl font-semibold text-[#C59B27]"
-              >
-                ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ ॥
-              </p>
-              <p className="text-xs text-[#4A554E] mt-1.5 italic">
-                &ldquo;Why call her inferior, from whom sovereigns are born?&rdquo;
-              </p>
-              <span className="text-[11px] font-bold text-[#D97706] block mt-1">
-                — Sri Guru Granth Sahib Ji, Ang 473
-              </span>
+              />
+              <GodModeText
+                id="matriarchs-quote-translation"
+                pageKey="matriarchs"
+                tag="p"
+                defaultText="“Why call her inferior, from whom sovereigns are born?”"
+                className="text-xs text-[#4A554E] italic"
+              />
+              <GodModeText
+                id="matriarchs-quote-citation"
+                pageKey="matriarchs"
+                tag="span"
+                defaultText="— Sri Guru Granth Sahib Ji, Ang 473"
+                className="text-[11px] font-bold text-[#D97706] block"
+              />
             </div>
+            </GodModeBox>
           </div>
         </section>
+        </GodModeBox>
           );
         })()}
 
         {/* Category Filter Pills & Search Bar */}
-        <section className="p-6 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/35 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <GodModeBox id="matriarchs-filter-search-bar" pageKey="matriarchs" label="Filter & Search Bar">
+        <section className="p-6 rounded-2xl bg-[#1B2A20] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => (
               <button
@@ -506,22 +547,35 @@ export default function MatriarchsPage() {
                     : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E] hover:border-[#C59B27]"
                 }`}
               >
-                {cat}
+                <GodModeText
+                  id={`matriarchs-cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  pageKey="matriarchs"
+                  tag="span"
+                  defaultText={cat}
+                />
               </button>
             ))}
           </div>
 
-          <div className="w-full lg:w-80">
+          <GodModeBox id="matriarchs-search-input-box" pageKey="matriarchs" label="Search Box" className="w-full lg:w-80">
+            <GodModeText
+              id="matriarchs-search-placeholder"
+              pageKey="matriarchs"
+              tag="span"
+              defaultText="Search by name, battle, or era..."
+              className="block text-[10px] font-bold uppercase tracking-wider opacity-65 mb-1"
+            />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, battle, or era..."
+              placeholder={searchPlaceholder}
               aria-label="Search Matriarchs and Warriors"
               className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
             />
-          </div>
+          </GodModeBox>
         </section>
+        </GodModeBox>
 
         {/* 13 Matriarchs & Warriors Grid */}
         <section className={resolveCmsGridClass(layoutCfg.feedLayout)}>
@@ -809,7 +863,18 @@ export default function MatriarchsPage() {
         </AnimatedModal>
       </main>
 
-      <Footer />
+      <GodModeBox id="matriarchs-footer-box" pageKey="matriarchs" label="Page Footer">
+        <div className="max-w-7xl mx-auto px-4 pt-4 text-center">
+          <GodModeText
+            id="matriarchs-footer-caption"
+            pageKey="matriarchs"
+            tag="p"
+            defaultText="Sovereign Equality Archive • Sri Guru Granth Sahib Ji, Ang 473"
+            className="text-xs font-semibold opacity-70"
+          />
+        </div>
+        <Footer />
+      </GodModeBox>
     </div>
   );
 }
