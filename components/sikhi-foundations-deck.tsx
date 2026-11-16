@@ -7,7 +7,17 @@ import {
   ChitrakariCardHeader,
   type ChitrakariVariant,
 } from "@/components/chitrakari-card-header";
-import { EditableHeritageImage } from "@/components/editable-heritage-image";
+import {
+  EditableHeritageImage,
+  useCmsSiteState,
+  applyCmsOrder,
+  resolveCmsFontFamily,
+  resolveCmsHeadingClass,
+  resolveCmsBodyClass,
+  resolveCmsGurmukhiClass,
+  resolveCmsGridClass,
+  type CmsSiteState,
+} from "@/components/editable-heritage-image";
 import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
 import {
   FIVE_KS,
@@ -528,9 +538,28 @@ function SlideWho() {
 }
 
 /* ----------------------------- SLIDE 2 ----------------------------------- */
-function SlideFiveKs({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) => void }) {
+function SlideFiveKs({
+  onOpenModal,
+  cms,
+}: {
+  onOpenModal: (item: FoundationModalItem) => void;
+  cms: CmsSiteState;
+}) {
+  const orderedKs = applyCmsOrder(FIVE_KS, (item) => item.art.artKey, "foundations", cms);
   const [sel, setSel] = useState(0);
-  const k = FIVE_KS[sel];
+  const rawK = orderedKs[Math.min(sel, Math.max(0, orderedKs.length - 1))] || FIVE_KS[0];
+  const kEdit = cms.topicEdits?.[rawK.art.artKey];
+  const k = {
+    ...rawK,
+    name: kEdit?.title || rawK.name,
+    gurmukhi: kEdit?.gurmukhi || rawK.gurmukhi,
+    meaning: kEdit?.subtitle || rawK.meaning,
+    symbolism: kEdit?.description || rawK.symbolism,
+  };
+  const layoutCfg = cms.layoutConfig || {};
+  const gurmukhiCls = resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale);
+  const headingCls = resolveCmsHeadingClass(layoutCfg.headingScale);
+  const bodyCls = resolveCmsBodyClass(layoutCfg.bodyScale);
 
   const openKakaarModal = (item: (typeof FIVE_KS)[number]) => {
     onOpenModal({
@@ -553,20 +582,23 @@ function SlideFiveKs({ onOpenModal }: { onOpenModal: (item: FoundationModalItem)
     <div className="space-y-6">
       <SlideBannerArtwork artKey="fiveks-hero" variant="khanda" title="The Five Ks (Panj Kakaar)" />
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="The five Ks">
-        {FIVE_KS.map((x, i) => (
-          <button
-            key={x.id}
-            role="tab"
-            aria-selected={i === sel}
-            type="button"
-            onClick={() => setSel(i)}
-            className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${i === sel ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]" : ""}`}
-            style={i === sel ? undefined : { ...card, color: "var(--text-primary)" }}
-          >
-            <span lang="pa" className="font-gurmukhi mr-1.5">{x.gurmukhi}</span>
-            {x.name}
-          </button>
-        ))}
+        {orderedKs.map((x, i) => {
+          const ov = cms.topicEdits?.[x.art.artKey];
+          return (
+            <button
+              key={x.id}
+              role="tab"
+              aria-selected={i === sel}
+              type="button"
+              onClick={() => setSel(i)}
+              className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${i === sel ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]" : ""}`}
+              style={i === sel ? undefined : { ...card, color: "var(--text-primary)" }}
+            >
+              <span lang="pa" className="font-gurmukhi mr-1.5">{ov?.gurmukhi || x.gurmukhi}</span>
+              {ov?.title || x.name}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -582,15 +614,20 @@ function SlideFiveKs({ onOpenModal }: { onOpenModal: (item: FoundationModalItem)
             }
           }}
           className="rounded-3xl border-2 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
-          style={card}
+          style={{
+            ...card,
+            backgroundColor: kEdit?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
+            borderColor: kEdit?.borderColor || layoutCfg.accentColor || card.borderColor,
+            color: kEdit?.textColor || layoutCfg.bodyTextColor || card.color,
+          }}
         >
           <div className="space-y-4">
             <FoundationCardArtwork artKey={k.art.artKey} variant={k.art.variant} title={k.name} heightClass="h-32" compact />
             <div>
-              <p lang="pa" className="font-gurmukhi text-2xl font-bold text-[#C59B27]">{k.gurmukhi}</p>
-              <h3 className="font-serif text-2xl font-bold">{k.name} — {k.meaning}</h3>
+              <p lang="pa" className={`font-gurmukhi ${gurmukhiCls} font-bold text-[#C59B27]`}>{k.gurmukhi}</p>
+              <h3 style={{ color: kEdit?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${headingCls} font-bold`}>{k.name} — {k.meaning}</h3>
             </div>
-            <p className="text-sm leading-relaxed" style={muted}>{k.symbolism}</p>
+            <p className={`${bodyCls} leading-relaxed`} style={muted}>{k.symbolism}</p>
           </div>
           <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
             Read Historical Sakhi &amp; Citations →
@@ -600,19 +637,34 @@ function SlideFiveKs({ onOpenModal }: { onOpenModal: (item: FoundationModalItem)
         <div className="rounded-3xl border-2 p-6 space-y-4" style={card}>
           <Eyebrow>All 5 Articles • Click Any Card for Sakhi</Eyebrow>
           <div className="grid gap-2.5 sm:grid-cols-2">
-            {FIVE_KS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => openKakaarModal(item)}
-                className="rounded-2xl border p-3.5 text-left cursor-pointer hover:border-[#C59B27] transition-all space-y-1"
-                style={{ borderColor: "var(--border-subtle)" }}
-              >
-                <p lang="pa" className="font-gurmukhi text-sm font-bold text-[#C59B27]">{item.gurmukhi}</p>
-                <p className="font-serif text-base font-bold">{item.name}</p>
-                <p className="text-[11px] font-bold text-[#D97706]">Read Historical Sakhi &amp; Citations →</p>
-              </button>
-            ))}
+            {orderedKs.map((item) => {
+              const ov = cms.topicEdits?.[item.art.artKey];
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() =>
+                    openKakaarModal({
+                      ...item,
+                      name: ov?.title || item.name,
+                      gurmukhi: ov?.gurmukhi || item.gurmukhi,
+                      meaning: ov?.subtitle || item.meaning,
+                      symbolism: ov?.description || item.symbolism,
+                    })
+                  }
+                  className="rounded-2xl border p-3.5 text-left cursor-pointer hover:border-[#C59B27] transition-all space-y-1"
+                  style={{
+                    backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || undefined,
+                    borderColor: ov?.borderColor || "var(--border-subtle)",
+                    color: ov?.textColor || undefined,
+                  }}
+                >
+                  <p lang="pa" className="font-gurmukhi text-sm font-bold text-[#C59B27]">{ov?.gurmukhi || item.gurmukhi}</p>
+                  <p className="font-serif text-base font-bold">{ov?.title || item.name}</p>
+                  <p className="text-[11px] font-bold text-[#D97706]">Read Historical Sakhi &amp; Citations →</p>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -786,7 +838,15 @@ function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
 }
 
 /* ----------------------------- SLIDE 4 ----------------------------------- */
-function SlidePyare({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) => void }) {
+function SlidePyare({
+  onOpenModal,
+  cms,
+}: {
+  onOpenModal: (item: FoundationModalItem) => void;
+  cms: CmsSiteState;
+}) {
+  const orderedPyare = applyCmsOrder(PANJ_PYARE, (p) => p.art.artKey, "foundations", cms);
+  const layoutCfg = cms.layoutConfig || {};
   const openPyareModal = (p: (typeof PANJ_PYARE)[number]) => {
     onOpenModal({
       title: p.name,
@@ -820,41 +880,64 @@ function SlidePyare({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
           adding sweet crystals (patasha), and initiated the Panj Pyare before bowing to receive Amrit from them.
         </p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {PANJ_PYARE.map((p) => (
-          <article
-            key={p.name}
-            role="button"
-            tabIndex={0}
-            onClick={() => openPyareModal(p)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openPyareModal(p);
-              }
-            }}
-            className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
-            style={card}
-          >
-            <div className="space-y-2.5">
-              <FoundationCardArtwork artKey={p.art.artKey} variant={p.art.variant} title={p.name} heightClass="h-32" compact />
-              <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{p.gurmukhi}</p>
-              <h4 className="font-serif text-lg font-bold">{p.name}</h4>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">From {p.from}</p>
-              <p className="text-sm" style={muted}>{p.note}</p>
-            </div>
-            <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-              Read Historical Sakhi &amp; Citations →
-            </span>
-          </article>
-        ))}
+      <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
+        {orderedPyare.map((rawP) => {
+          const ov = cms.topicEdits?.[rawP.art.artKey];
+          const p = {
+            ...rawP,
+            name: ov?.title || rawP.name,
+            gurmukhi: ov?.gurmukhi || rawP.gurmukhi,
+            from: ov?.subtitle || rawP.from,
+            note: ov?.description || rawP.note,
+          };
+          return (
+            <article
+              key={p.art.artKey}
+              role="button"
+              tabIndex={0}
+              onClick={() => openPyareModal(p)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openPyareModal(p);
+                }
+              }}
+              className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+              style={{
+                ...card,
+                backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
+                borderColor: ov?.borderColor || layoutCfg.accentColor || card.borderColor,
+                color: ov?.textColor || layoutCfg.bodyTextColor || card.color,
+              }}
+            >
+              <div className="space-y-2.5">
+                <FoundationCardArtwork artKey={p.art.artKey} variant={p.art.variant} title={p.name} heightClass="h-32" compact />
+                <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{p.gurmukhi}</p>
+                <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{p.name}</h4>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{p.from}</p>
+                <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{p.note}</p>
+              </div>
+              <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+                Read Historical Sakhi &amp; Citations →
+              </span>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 /* ----------------------------- SLIDE 5 ----------------------------------- */
-function SlideSahibzaade({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) => void }) {
+function SlideSahibzaade({
+  onOpenModal,
+  cms,
+}: {
+  onOpenModal: (item: FoundationModalItem) => void;
+  cms: CmsSiteState;
+}) {
+  const orderedSahibzaade = applyCmsOrder(SAHIBZAADE, (s) => s.art.artKey, "foundations", cms);
+  const layoutCfg = cms.layoutConfig || {};
   const openSahibzaadaModal = (s: (typeof SAHIBZAADE)[number]) => {
     onOpenModal({
       title: s.name,
@@ -902,33 +985,47 @@ function SlideSahibzaade({ onOpenModal }: { onOpenModal: (item: FoundationModalI
         </p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        {SAHIBZAADE.map((s) => (
-          <article
-            key={s.name}
-            role="button"
-            tabIndex={0}
-            onClick={() => openSahibzaadaModal(s)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openSahibzaadaModal(s);
-              }
-            }}
-            className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
-            style={card}
-          >
-            <div className="space-y-2.5">
-              <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
-              <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{s.gurmukhi}</p>
-              <h4 className="font-serif text-xl font-bold">{s.name}</h4>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.age} • {s.place}</p>
-              <p className="text-sm" style={muted}>{s.note}</p>
-            </div>
-            <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-              Read Historical Sakhi &amp; Citations →
-            </span>
-          </article>
-        ))}
+        {orderedSahibzaade.map((rawS) => {
+          const ov = cms.topicEdits?.[rawS.art.artKey];
+          const s = {
+            ...rawS,
+            name: ov?.title || rawS.name,
+            gurmukhi: ov?.gurmukhi || rawS.gurmukhi,
+            note: ov?.description || rawS.note,
+          };
+          return (
+            <article
+              key={s.art.artKey}
+              role="button"
+              tabIndex={0}
+              onClick={() => openSahibzaadaModal(s)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openSahibzaadaModal(s);
+                }
+              }}
+              className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+              style={{
+                ...card,
+                backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
+                borderColor: ov?.borderColor || layoutCfg.accentColor || card.borderColor,
+                color: ov?.textColor || layoutCfg.bodyTextColor || card.color,
+              }}
+            >
+              <div className="space-y-2.5">
+                <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
+                <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
+                <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{ov?.subtitle || `${s.age} • ${s.place}`}</p>
+                <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{s.note}</p>
+              </div>
+              <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+                Read Historical Sakhi &amp; Citations →
+              </span>
+            </article>
+          );
+        })}
       </div>
       <article
         role="button"
@@ -969,7 +1066,15 @@ function SlideSahibzaade({ onOpenModal }: { onOpenModal: (item: FoundationModalI
 }
 
 /* ----------------------------- SLIDE 6 ----------------------------------- */
-function SlideShaheeds({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) => void }) {
+function SlideShaheeds({
+  onOpenModal,
+  cms,
+}: {
+  onOpenModal: (item: FoundationModalItem) => void;
+  cms: CmsSiteState;
+}) {
+  const orderedShaheeds = applyCmsOrder(SHAHEEDS, (s) => s.art.artKey, "foundations", cms);
+  const layoutCfg = cms.layoutConfig || {};
   const openShaheedModal = (s: (typeof SHAHEEDS)[number]) => {
     onOpenModal({
       title: s.name,
@@ -993,34 +1098,49 @@ function SlideShaheeds({ onOpenModal }: { onOpenModal: (item: FoundationModalIte
         <Eyebrow>Martyrs of the Panth • Click Any Card</Eyebrow>
         <h3 className="font-serif text-2xl sm:text-3xl font-bold mt-1">They chose conscience over comfort</h3>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {SHAHEEDS.map((s) => (
-          <article
-            key={s.name}
-            role="button"
-            tabIndex={0}
-            onClick={() => openShaheedModal(s)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openShaheedModal(s);
-              }
-            }}
-            className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
-            style={card}
-          >
-            <div className="space-y-2.5">
-              <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
-              <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">{s.gurmukhi}</p>
-              <h4 className="font-serif text-lg font-bold">{s.name}</h4>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.year}</p>
-              <p className="text-sm" style={muted}>{s.note}</p>
-            </div>
-            <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-              Read Historical Sakhi &amp; Citations →
-            </span>
-          </article>
-        ))}
+      <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
+        {orderedShaheeds.map((rawS) => {
+          const ov = cms.topicEdits?.[rawS.art.artKey];
+          const s = {
+            ...rawS,
+            name: ov?.title || rawS.name,
+            gurmukhi: ov?.gurmukhi || rawS.gurmukhi,
+            year: ov?.subtitle || rawS.year,
+            note: ov?.description || rawS.note,
+          };
+          return (
+            <article
+              key={s.art.artKey}
+              role="button"
+              tabIndex={0}
+              onClick={() => openShaheedModal(s)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openShaheedModal(s);
+                }
+              }}
+              className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+              style={{
+                ...card,
+                backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
+                borderColor: ov?.borderColor || layoutCfg.accentColor || card.borderColor,
+                color: ov?.textColor || layoutCfg.bodyTextColor || card.color,
+              }}
+            >
+              <div className="space-y-2.5">
+                <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
+                <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
+                <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.year}</p>
+                <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{s.note}</p>
+              </div>
+              <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+                Read Historical Sakhi &amp; Citations →
+              </span>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -1108,6 +1228,7 @@ function NS_NAME(i: number) {
 
 /* ------------------------------- DECK ------------------------------------ */
 export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
+  const cms = useCmsSiteState();
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [modalItem, setModalItem] = useState<FoundationModalItem | null>(null);
@@ -1124,14 +1245,22 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
   const body = (() => {
     switch (SLIDES[index].id) {
       case "who": return <SlideWho />;
-      case "fiveks": return <SlideFiveKs onOpenModal={setModalItem} />;
+      case "fiveks": return <SlideFiveKs onOpenModal={setModalItem} cms={cms} />;
       case "gurus": return <SlideGurus onOpenModal={setModalItem} />;
-      case "pyare": return <SlidePyare onOpenModal={setModalItem} />;
-      case "sahibzaade": return <SlideSahibzaade onOpenModal={setModalItem} />;
-      case "shaheeds": return <SlideShaheeds onOpenModal={setModalItem} />;
+      case "pyare": return <SlidePyare onOpenModal={setModalItem} cms={cms} />;
+      case "sahibzaade": return <SlideSahibzaade onOpenModal={setModalItem} cms={cms} />;
+      case "shaheeds": return <SlideShaheeds onOpenModal={setModalItem} cms={cms} />;
       default: return <SlideToday />;
     }
   })();
+
+  const layoutCfg = cms.layoutConfig || {};
+  const customFoundations = applyCmsOrder(
+    cms.customTopics?.foundations || [],
+    (t) => t.id,
+    "foundations",
+    cms
+  );
 
   return (
     <section
@@ -1142,11 +1271,19 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
         if (e.key === "ArrowRight") go(index + 1);
         if (e.key === "ArrowLeft") go(index - 1);
       }}
-      className="space-y-6 outline-none"
+      style={{
+        fontFamily: resolveCmsFontFamily(layoutCfg.fontFamily),
+        backgroundColor: layoutCfg.pageBgColor || undefined,
+        color: layoutCfg.bodyTextColor || undefined,
+      }}
+      className="space-y-6 outline-none transition-opacity duration-200 rounded-3xl"
     >
       <div className="space-y-2">
         <Eyebrow>Sikhi 101 • Start here</Eyebrow>
-        <Heading className="font-serif text-3xl sm:text-5xl font-bold tracking-tight">
+        <Heading
+          style={{ color: layoutCfg.headingTextColor || undefined }}
+          className="font-serif text-3xl sm:text-5xl font-bold tracking-tight"
+        >
           Who is a Sikh? &amp; Foundations of Sikhi
         </Heading>
         <p className="max-w-3xl text-base" style={muted}>
@@ -1199,6 +1336,55 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
           Next →
         </button>
       </div>
+
+      {customFoundations.length > 0 && (
+        <div className="space-y-4 pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+          <Eyebrow>Admin Curated Additions</Eyebrow>
+          <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
+            {customFoundations.map((ct) => {
+              const ov = cms.topicEdits?.[ct.id];
+              return (
+                <article
+                  key={ct.id}
+                  style={{
+                    ...card,
+                    backgroundColor: ov?.bgColor || ct.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
+                    borderColor: ov?.borderColor || ct.borderColor || layoutCfg.accentColor || card.borderColor,
+                    color: ov?.textColor || ct.textColor || layoutCfg.bodyTextColor || card.color,
+                  }}
+                  className="rounded-2xl border p-4 space-y-2.5"
+                >
+                  <EditableHeritageImage
+                    imageKey={ct.imageKey || ct.id}
+                    defaultSrc=""
+                    alt={ov?.title || ct.title}
+                    defaultOrientation="natural"
+                  />
+                  {(ov?.gurmukhi || ct.gurmukhi) && (
+                    <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>
+                      {ov?.gurmukhi || ct.gurmukhi}
+                    </p>
+                  )}
+                  <h4
+                    style={{ color: ov?.textColor || ct.textColor || layoutCfg.headingTextColor || undefined }}
+                    className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || ct.fontScale || layoutCfg.headingScale)} font-bold`}
+                  >
+                    {ov?.title || ct.title}
+                  </h4>
+                  {(ov?.subtitle || ct.subtitle) && (
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">
+                      {ov?.subtitle || ct.subtitle}
+                    </p>
+                  )}
+                  <p className={resolveCmsBodyClass(ov?.fontScale || ct.fontScale || layoutCfg.bodyScale)} style={muted}>
+                    {ov?.description || ct.description}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <FoundationDetailModal item={modalItem} onClose={() => setModalItem(null)} />
     </section>

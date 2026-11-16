@@ -11,6 +11,13 @@ import {
   EditableHeritageImage,
   compressImageFile,
   saveAndSyncFrame,
+  useCmsSiteState,
+  writeCmsCache,
+  applyCmsOrder,
+  resolveCmsFontFamily,
+  resolveCmsHeadingClass,
+  resolveCmsBodyClass,
+  resolveCmsGridClass,
   type FrameOrientation,
   type FrameFitMode as HeritageFitMode,
 } from "@/components/editable-heritage-image";
@@ -747,6 +754,7 @@ function SangatHubContent() {
   const [newDilShabadIdx, setNewDilShabadIdx] = useState<number>(0);
 
   // SikhStack & SikhInterest unified feed
+  const cms = useCmsSiteState();
   const [feedTab, setFeedTab] = useState<FeedTabId>("all");
   const [curatedLinks, setCuratedLinks] = useState<CuratedLink[]>(CURATED_LINK_SEED);
   const [readingItem, setReadingItem] = useState<FeedItem | null>(null);
@@ -978,13 +986,28 @@ function SangatHubContent() {
 
   const pushSiteSync = async (payload: Record<string, unknown>): Promise<boolean> => {
     try {
+      const adminToken =
+        window.localStorage.getItem("learnsikhi_admin_token_v1") ||
+        (window.localStorage.getItem("learnsikhi_founder_admin_v1") === "true"
+          ? "verified_founder_1313"
+          : "");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (adminToken) {
+        headers.Authorization = `Bearer ${adminToken}`;
+        headers["x-admin-token"] = adminToken;
+      }
       const res = await fetch("/api/site-frames", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
         cache: "no-store",
       });
       const data = await res.json().catch(() => null);
+      if (data && typeof data === "object" && res.ok) {
+        writeCmsCache(data);
+      }
       console.log("[sangat] POST /api/site-frames", { ok: res.ok, data });
       return res.ok && Boolean(data?.ok);
     } catch (err) {
@@ -1055,6 +1078,34 @@ function SangatHubContent() {
         preview: b.subtitle || b.paragraphs[0] || "",
         blog: b,
       }));
+    const customTopicEssays: FeedItem[] = (cms.customTopics?.sangat || []).map((ct) => ({
+      kind: "essay",
+      id: ct.id,
+      title: ct.title,
+      byline: ct.subtitle || "Admin Dispatch",
+      preview: ct.description,
+      blog: {
+        id: ct.id,
+        authorName: ct.subtitle || "Learn Sikhi Editors",
+        authorHandle: "editors",
+        authorRole: ct.badge || "Admin Dispatch",
+        authorBio: "",
+        authorInterests: [],
+        authorAvatarPreset: "khanda-crest",
+        title: ct.title,
+        subtitle: ct.subtitle || "",
+        gurmukhiHeader: ct.gurmukhi || "",
+        topicTag: "Gurbani Research",
+        readingTime: "Editorial",
+        createdAt: ct.createdAt || "Featured",
+        pullQuote: "",
+        paragraphs: [ct.description],
+        likesCount: 0,
+        comments: [],
+        imageUrl: cms.frames?.[ct.imageKey || ct.id]?.src || null,
+        isUserCreated: true,
+      },
+    }));
     const visualItems: FeedItem[] = pins
       .filter((p) => isVisible("visual", p.id))
       .map((p) => ({
@@ -1077,24 +1128,48 @@ function SangatHubContent() {
           link: l,
         }));
 
+    let baseList: FeedItem[];
     switch (feedTab) {
       case "essays":
-        return [...linkItems("essays").filter((i) => i.kind === "link" && i.link.isUserCreated), ...essayItems, ...linkItems("essays").filter((i) => i.kind === "link" && !i.link.isUserCreated)];
+        baseList = [
+          ...customTopicEssays,
+          ...linkItems("essays").filter((i) => i.kind === "link" && i.link.isUserCreated),
+          ...essayItems,
+          ...linkItems("essays").filter((i) => i.kind === "link" && !i.link.isUserCreated),
+        ];
+        break;
       case "visuals":
-        return [...linkItems("visuals"), ...visualItems];
+        baseList = [...linkItems("visuals"), ...visualItems];
+        break;
       case "news":
-        return linkItems("news");
+        baseList = linkItems("news");
+        break;
       default: {
         const all = linkItems();
-        return [
+        baseList = [
+          ...customTopicEssays,
           ...all.filter((i) => i.kind === "link" && i.link.isUserCreated),
           ...essayItems,
           ...visualItems,
           ...all.filter((i) => i.kind === "link" && !i.link.isUserCreated),
         ];
+        break;
       }
     }
-  }, [blogs, pins, curatedLinks, feedTab, deletedIds]);
+
+    const edited = baseList.map((item) => {
+      const ov = cms.topicEdits?.[item.id];
+      if (!ov) return item;
+      return {
+        ...item,
+        title: ov.title || item.title,
+        byline: ov.subtitle || item.byline,
+        preview: ov.description || item.preview,
+      };
+    });
+
+    return applyCmsOrder(edited, (i) => i.id, "sangat", cms);
+  }, [blogs, pins, curatedLinks, feedTab, deletedIds, cms]);
 
   const feedCounts = useMemo(
     () => ({
@@ -1901,13 +1976,19 @@ function SangatHubContent() {
     });
   };
 
+  const layoutCfg = cms.layoutConfig || {};
+  const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
+  const headingSizeCls = resolveCmsHeadingClass(layoutCfg.headingScale);
+  const bodySizeCls = resolveCmsBodyClass(layoutCfg.bodyScale);
+
   return (
     <div
       style={{
-        backgroundColor: "var(--bg-primary)",
-        color: "var(--text-primary)",
+        backgroundColor: layoutCfg.pageBgColor || "var(--bg-primary)",
+        color: layoutCfg.bodyTextColor || "var(--text-primary)",
+        fontFamily: pageFont,
       }}
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex flex-col transition-opacity duration-200"
     >
       <Header solid />
 
@@ -2338,21 +2419,37 @@ function SangatHubContent() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+                  <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
                     {feedItems.map((item) => {
+                      const ov = cms.topicEdits?.[item.id];
                       const badge =
-                        item.kind === "link"
+                        ov?.badge ||
+                        (item.kind === "link"
                           ? getDomain(item.link.url)
                           : item.kind === "essay"
                             ? item.blog.topicTag
-                            : item.pin.category;
+                            : item.pin.category);
                       const imgSrc = getItemImage(item);
-                      const focal = getItemFocal(item);
+                      const cardHeadingCls = ov?.fontScale
+                        ? resolveCmsHeadingClass(ov.fontScale)
+                        : headingSizeCls;
+                      const cardBodyCls = ov?.fontScale
+                        ? resolveCmsBodyClass(ov.fontScale)
+                        : bodySizeCls;
 
                       return (
                         <article
                           key={`${item.kind}-${item.id}`}
-                          className="group flex flex-col justify-between rounded-2xl border border-[#C59B27]/25 bg-[var(--bg-surface)] p-5 shadow-sm hover:border-[#C59B27]/65 transition"
+                          style={{
+                            backgroundColor:
+                              ov?.bgColor || layoutCfg.cardBgColor || "var(--bg-surface)",
+                            borderColor:
+                              ov?.borderColor ||
+                              layoutCfg.accentColor ||
+                              "rgba(197,155,39,0.25)",
+                            color: ov?.textColor || layoutCfg.bodyTextColor || undefined,
+                          }}
+                          className="group flex flex-col justify-between rounded-2xl border p-5 shadow-sm hover:border-[#C59B27]/65 transition"
                         >
                           <div className="space-y-3 flex-1">
                             {imgSrc && (
@@ -2369,20 +2466,30 @@ function SangatHubContent() {
                               onClick={() => setReadingItem(item)}
                               className="w-full text-left space-y-2.5"
                             >
-                              <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158]">
+                              <div
+                                style={{
+                                  color: layoutCfg.accentColor || undefined,
+                                }}
+                                className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158]"
+                              >
                                 <span className="truncate">{badge}</span>
                                 {item.kind === "essay" && (
                                   <span className="shrink-0 opacity-75">{item.blog.readingTime}</span>
                                 )}
                               </div>
 
-                              <h3 className="text-base sm:text-lg font-extrabold leading-snug group-hover:text-[#9A7418] dark:group-hover:text-[#E5C158] transition">
+                              <h3
+                                style={{
+                                  color: ov?.textColor || layoutCfg.headingTextColor || undefined,
+                                }}
+                                className={`${cardHeadingCls} font-extrabold leading-snug group-hover:text-[#9A7418] dark:group-hover:text-[#E5C158] transition`}
+                              >
                                 {item.title}
                               </h3>
 
                               <p className="text-xs font-semibold opacity-75">By {item.byline}</p>
 
-                              <p className="text-sm opacity-80 leading-relaxed line-clamp-2">
+                              <p className={`${cardBodyCls} opacity-80 leading-relaxed line-clamp-2`}>
                                 {item.preview}
                               </p>
                             </button>
@@ -2430,7 +2537,7 @@ function SangatHubContent() {
                                       onClick={() => handleAdminCycleFocal(item)}
                                       className="px-2 py-1 rounded-lg border border-[#C59B27]/40 hover:border-[#C59B27] transition"
                                     >
-                                      Change Focal Point ({focal})
+                                      Change Focal Point ({getItemFocal(item)})
                                     </button>
                                     <button
                                       type="button"

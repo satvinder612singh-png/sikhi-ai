@@ -5,6 +5,16 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import {
   EditableHeritageImage,
+  writeCmsCache,
+  resolveCmsFontFamily,
+  resolveCmsHeadingClass,
+  resolveCmsBodyClass,
+  resolveCmsGurmukhiClass,
+  type CmsFontFamily,
+  type CmsFontScale,
+  type CmsLayoutConfig,
+  type CmsTopicEdit,
+  type CmsCustomTopic,
   type FrameOrientation,
   type HeritageFrameSettings,
 } from "@/components/editable-heritage-image";
@@ -20,32 +30,71 @@ import {
 type AdminTab = "order" | "topics" | "graphics" | "vault";
 type PageKey = "sangat" | "foundations" | "matriarchs";
 
-interface TopicEdit {
-  title?: string;
-  gurmukhi?: string;
-  subtitle?: string;
-  description?: string;
-  badge?: string;
-  source?: string;
-}
+type TopicEdit = CmsTopicEdit;
+type CustomTopic = CmsCustomTopic;
+type LayoutConfig = CmsLayoutConfig;
 
-interface CustomTopic {
+const COLOR_PRESETS: {
   id: string;
-  title: string;
-  gurmukhi?: string;
-  subtitle?: string;
-  description: string;
-  badge?: string;
-  source?: string;
-  imageKey?: string;
-  createdAt: string;
-}
-
-interface LayoutConfig {
-  feedLayout?: "grid-3" | "grid-2" | "editorial";
-  heroHeight?: "compact" | "standard" | "cinema";
-  accentStyle?: "classic-gold" | "minimal" | "museum-frame";
-}
+  label: string;
+  patch: Partial<LayoutConfig>;
+}[] = [
+  {
+    id: "midnight-darbar",
+    label: "Midnight Darbar",
+    patch: {
+      pageBgColor: "#0B101B",
+      cardBgColor: "#141B2D",
+      headingTextColor: "#FAF7F0",
+      bodyTextColor: "#D6D3CD",
+      accentColor: "#E5C158",
+    },
+  },
+  {
+    id: "sunlit-ivory",
+    label: "Sunlit Ivory",
+    patch: {
+      pageBgColor: "#FAF7F0",
+      cardBgColor: "#FFFFFF",
+      headingTextColor: "#18181B",
+      bodyTextColor: "#3F3F46",
+      accentColor: "#9A7418",
+    },
+  },
+  {
+    id: "puratan-parchment",
+    label: "Puratan Parchment",
+    patch: {
+      pageBgColor: "#F2E9D8",
+      cardBgColor: "#FBF6EC",
+      headingTextColor: "#2C1D0C",
+      bodyTextColor: "#4A3621",
+      accentColor: "#B45309",
+    },
+  },
+  {
+    id: "royal-maroon",
+    label: "Royal Maroon",
+    patch: {
+      pageBgColor: "#240B14",
+      cardBgColor: "#34121E",
+      headingTextColor: "#FAF7F0",
+      bodyTextColor: "#E7DCE0",
+      accentColor: "#E5C158",
+    },
+  },
+  {
+    id: "reset-default",
+    label: "Reset Default",
+    patch: {
+      pageBgColor: "",
+      cardBgColor: "",
+      headingTextColor: "",
+      bodyTextColor: "",
+      accentColor: "",
+    },
+  },
+];
 
 interface CustomPostStub {
   id: string;
@@ -155,6 +204,10 @@ export default function AdminStudioPage() {
   const [newTopicBadge, setNewTopicBadge] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicSource, setNewTopicSource] = useState("");
+  const [newTopicBgColor, setNewTopicBgColor] = useState("");
+  const [newTopicTextColor, setNewTopicTextColor] = useState("");
+  const [newTopicBorderColor, setNewTopicBorderColor] = useState("");
+  const [newTopicFontScale, setNewTopicFontScale] = useState<CmsFontScale>("md");
   const [newTopicDraftKey] = useState(() => `custom-topic-${Date.now()}`);
 
   const [editPage, setEditPage] = useState<PageKey>("foundations");
@@ -165,6 +218,10 @@ export default function AdminStudioPage() {
   const [editBadge, setEditBadge] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editSource, setEditSource] = useState("");
+  const [editBgColor, setEditBgColor] = useState("");
+  const [editTextColor, setEditTextColor] = useState("");
+  const [editBorderColor, setEditBorderColor] = useState("");
+  const [editFontScale, setEditFontScale] = useState<CmsFontScale>("md");
 
   useEffect(() => {
     try {
@@ -237,6 +294,7 @@ export default function AdminStudioPage() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
+          "x-admin-token": getToken(),
         },
         body: JSON.stringify(payload),
         cache: "no-store",
@@ -245,6 +303,7 @@ export default function AdminStudioPage() {
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || `Save failed (${res.status})`);
       }
+      writeCmsCache(data);
       setSiteState((prev) => ({
         ...prev,
         ...data,
@@ -408,6 +467,10 @@ export default function AdminStudioPage() {
     setEditBadge(existing.badge ?? ct?.badge ?? "");
     setEditDescription(existing.description ?? ct?.description ?? "");
     setEditSource(existing.source ?? ct?.source ?? "");
+    setEditBgColor(existing.bgColor ?? ct?.bgColor ?? "");
+    setEditTextColor(existing.textColor ?? ct?.textColor ?? "");
+    setEditBorderColor(existing.borderColor ?? ct?.borderColor ?? "");
+    setEditFontScale(existing.fontScale ?? ct?.fontScale ?? "md");
   }, [selectedTopicId, editPage, siteState.topicEdits, siteState.customTopics]);
 
   const applyOrderChange = (nextOrderIds: string[], nextPinned = siteState.pinnedIds, nextArchived = siteState.archivedIds) => {
@@ -465,6 +528,10 @@ export default function AdminStudioPage() {
       description: newTopicDescription.trim(),
       badge: newTopicBadge.trim() || undefined,
       source: newTopicSource.trim() || undefined,
+      bgColor: newTopicBgColor.trim() || undefined,
+      textColor: newTopicTextColor.trim() || undefined,
+      borderColor: newTopicBorderColor.trim() || undefined,
+      fontScale: newTopicFontScale,
       imageKey: newTopicDraftKey,
       createdAt: new Date().toISOString(),
     };
@@ -483,6 +550,9 @@ export default function AdminStudioPage() {
     setNewTopicBadge("");
     setNewTopicDescription("");
     setNewTopicSource("");
+    setNewTopicBgColor("");
+    setNewTopicTextColor("");
+    setNewTopicBorderColor("");
   };
 
   const handleSaveTopicEdit = async (e: React.FormEvent) => {
@@ -498,6 +568,10 @@ export default function AdminStudioPage() {
             badge: editBadge.trim() || undefined,
             description: editDescription.trim() || undefined,
             source: editSource.trim() || undefined,
+            bgColor: editBgColor.trim() || undefined,
+            textColor: editTextColor.trim() || undefined,
+            borderColor: editBorderColor.trim() || undefined,
+            fontScale: editFontScale,
           },
         },
       },
@@ -667,7 +741,7 @@ export default function AdminStudioPage() {
                   [
                     { id: "order", label: "1. Order & Sequence" },
                     { id: "topics", label: "2. Topics & Descriptions CMS" },
-                    { id: "graphics", label: "3. Graphics & Layout Controls" },
+                    { id: "graphics", label: "3. Graphics, Typography & Colors" },
                     {
                       id: "vault",
                       label: `4. Paintings & Media Vault (${Object.keys(siteState.frames).length})`,
@@ -966,6 +1040,69 @@ export default function AdminStudioPage() {
                       />
                     </div>
 
+                    {/* Per-Card Colors & Text Size */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Card BG Color</label>
+                        <input
+                          type="text"
+                          value={newTopicBgColor}
+                          onChange={(e) => setNewTopicBgColor(e.target.value)}
+                          placeholder="#141B2D"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Card Text Color</label>
+                        <input
+                          type="text"
+                          value={newTopicTextColor}
+                          onChange={(e) => setNewTopicTextColor(e.target.value)}
+                          placeholder="#FAF7F0"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Border Color</label>
+                        <input
+                          type="text"
+                          value={newTopicBorderColor}
+                          onChange={(e) => setNewTopicBorderColor(e.target.value)}
+                          placeholder="#C59B27"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Text Size</label>
+                        <select
+                          value={newTopicFontScale}
+                          onChange={(e) => setNewTopicFontScale(e.target.value as CmsFontScale)}
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2 py-1.5 text-xs"
+                        >
+                          <option value="sm">SM</option>
+                          <option value="md">MD</option>
+                          <option value="lg">LG</option>
+                          <option value="xl">XL</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
                       className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold uppercase tracking-wider"
@@ -1114,6 +1251,69 @@ export default function AdminStudioPage() {
                       />
                     </div>
 
+                    {/* Per-Card Colors & Text Size */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Card BG Color</label>
+                        <input
+                          type="text"
+                          value={editBgColor}
+                          onChange={(e) => setEditBgColor(e.target.value)}
+                          placeholder="#141B2D"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Card Text Color</label>
+                        <input
+                          type="text"
+                          value={editTextColor}
+                          onChange={(e) => setEditTextColor(e.target.value)}
+                          placeholder="#FAF7F0"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Border Color</label>
+                        <input
+                          type="text"
+                          value={editBorderColor}
+                          onChange={(e) => setEditBorderColor(e.target.value)}
+                          placeholder="#C59B27"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold mb-1">Text Size</label>
+                        <select
+                          value={editFontScale}
+                          onChange={(e) => setEditFontScale(e.target.value as CmsFontScale)}
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-lg border px-2 py-1.5 text-xs"
+                        >
+                          <option value="sm">SM</option>
+                          <option value="md">MD</option>
+                          <option value="lg">LG</option>
+                          <option value="xl">XL</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
                       className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold uppercase tracking-wider"
@@ -1253,6 +1453,252 @@ export default function AdminStudioPage() {
                         {opt.label}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Typography: Font Family & Text Size Controls */}
+                <div className="pt-4 border-t border-[#C59B27]/20 space-y-5">
+                  <div>
+                    <h3 className="text-base font-serif font-bold">
+                      Typography &amp; Script Scale
+                    </h3>
+                    <p className="text-xs opacity-75">
+                      Control global fonts and proportional sizing across headings, English prose, and Gurmukhi.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <span className="block text-xs font-bold uppercase tracking-wider text-[#C59B27]">
+                        Font Family
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {(
+                          [
+                            { id: "serif-heritage", label: "Heritage Serif" },
+                            { id: "sans-modern", label: "Modern Editorial Sans" },
+                            { id: "manuscript", label: "Puratan Manuscript" },
+                            { id: "mono-clean", label: "Clean Monospace" },
+                          ] as { id: CmsFontFamily; label: string }[]
+                        ).map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() =>
+                              void postStudioUpdate(
+                                {
+                                  layoutConfig: {
+                                    ...siteState.layoutConfig,
+                                    fontFamily: opt.id,
+                                  },
+                                },
+                                `✓ Font family set to ${opt.label}`
+                              )
+                            }
+                            style={{ fontFamily: resolveCmsFontFamily(opt.id) }}
+                            className={`px-3.5 py-2.5 rounded-xl border text-left text-xs font-bold transition ${
+                              (siteState.layoutConfig.fontFamily || "serif-heritage") === opt.id
+                                ? "border-[#C59B27] bg-[#C59B27]/15 text-[#9A7418] dark:text-[#E5C158]"
+                                : "border-[#C59B27]/25 opacity-80 hover:opacity-100"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {(
+                        [
+                          { key: "headingScale", label: "Headings Size" },
+                          { key: "bodyScale", label: "Body Text Size" },
+                          { key: "gurmukhiScale", label: "Gurmukhi Script Size" },
+                        ] as const
+                      ).map((row) => (
+                        <div key={row.key} className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-bold">{row.label}</span>
+                          <div className="flex gap-1.5">
+                            {(["sm", "md", "lg", "xl"] as const).map((sz) => (
+                              <button
+                                key={sz}
+                                type="button"
+                                onClick={() =>
+                                  void postStudioUpdate(
+                                    {
+                                      layoutConfig: {
+                                        ...siteState.layoutConfig,
+                                        [row.key]: sz,
+                                      },
+                                    },
+                                    `✓ ${row.label} set to ${sz.toUpperCase()}`
+                                  )
+                                }
+                                className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold uppercase ${
+                                  (siteState.layoutConfig[row.key] || "md") === sz
+                                    ? "border-[#C59B27] bg-[#C59B27]/15 text-[#9A7418] dark:text-[#E5C158]"
+                                    : "border-[#C59B27]/25 opacity-75 hover:opacity-100"
+                                }`}
+                              >
+                                {sz}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Color Palette Presets, Color Pickers & Live Preview */}
+                <div className="pt-4 border-t border-[#C59B27]/20 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-serif font-bold">
+                        Global Color Palette &amp; Presets
+                      </h3>
+                      <p className="text-xs opacity-75">
+                        Apply a curated palette preset or tune individual page, card, text, and accent hex colors.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COLOR_PRESETS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() =>
+                            void postStudioUpdate(
+                              {
+                                layoutConfig: {
+                                  ...siteState.layoutConfig,
+                                  ...preset.patch,
+                                },
+                              },
+                              `✓ Applied "${preset.label}" color palette`
+                            )
+                          }
+                          className="px-3 py-1.5 rounded-xl border border-[#C59B27]/35 text-xs font-bold hover:border-[#C59B27] transition"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {(
+                      [
+                        { key: "pageBgColor", label: "Page Background", fallback: "#0B101B" },
+                        { key: "cardBgColor", label: "Card Background", fallback: "#141B2D" },
+                        { key: "headingTextColor", label: "Heading Text", fallback: "#FAF7F0" },
+                        { key: "bodyTextColor", label: "Body Text", fallback: "#D6D3CD" },
+                        { key: "accentColor", label: "Gold / Border Accent", fallback: "#C59B27" },
+                      ] as const
+                    ).map((field) => {
+                      const val = siteState.layoutConfig[field.key] || "";
+                      return (
+                        <div
+                          key={field.key}
+                          style={{ borderColor: "var(--border-subtle)" }}
+                          className="rounded-2xl border p-3 space-y-2"
+                        >
+                          <label className="block text-[11px] font-bold">{field.label}</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={/^#[0-9a-f]{6}$/i.test(val) ? val : field.fallback}
+                              onChange={(e) =>
+                                setSiteState((prev) => ({
+                                  ...prev,
+                                  layoutConfig: {
+                                    ...prev.layoutConfig,
+                                    [field.key]: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={val}
+                              placeholder={field.fallback}
+                              onChange={(e) =>
+                                setSiteState((prev) => ({
+                                  ...prev,
+                                  layoutConfig: {
+                                    ...prev.layoutConfig,
+                                    [field.key]: e.target.value,
+                                  },
+                                }))
+                              }
+                              style={{
+                                backgroundColor: "var(--bg-primary)",
+                                borderColor: "var(--border-subtle)",
+                              }}
+                              className="w-full min-w-0 rounded-lg border px-2 py-1 text-xs"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void postStudioUpdate(
+                          { layoutConfig: siteState.layoutConfig },
+                          "✓ Saved global color & typography palette"
+                        )
+                      }
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold uppercase tracking-wider"
+                    >
+                      Save Colors &amp; Typography
+                    </button>
+                  </div>
+
+                  {/* Live Preview Card */}
+                  <div
+                    style={{
+                      backgroundColor: siteState.layoutConfig.pageBgColor || "var(--bg-primary)",
+                      fontFamily: resolveCmsFontFamily(siteState.layoutConfig.fontFamily),
+                      borderColor: siteState.layoutConfig.accentColor || "var(--border-subtle)",
+                    }}
+                    className="rounded-2xl border p-5 space-y-3"
+                  >
+                    <p
+                      style={{ color: siteState.layoutConfig.accentColor || "#C59B27" }}
+                      className="text-[11px] font-bold uppercase tracking-widest"
+                    >
+                      LIVE PREVIEW CARD
+                    </p>
+                    <div
+                      style={{
+                        backgroundColor: siteState.layoutConfig.cardBgColor || "var(--bg-surface)",
+                        borderColor: siteState.layoutConfig.accentColor || "rgba(197,155,39,0.4)",
+                      }}
+                      className="rounded-2xl border p-5 space-y-2"
+                    >
+                      <p
+                        style={{ color: siteState.layoutConfig.accentColor || "#C59B27" }}
+                        className={`font-semibold ${resolveCmsGurmukhiClass(siteState.layoutConfig.gurmukhiScale)}`}
+                      >
+                        ੴ ਸਤਿਗੁਰ ਪ੍ਰਸਾਦਿ ॥
+                      </p>
+                      <h4
+                        style={{ color: siteState.layoutConfig.headingTextColor || "var(--text-primary)" }}
+                        className={`font-bold ${resolveCmsHeadingClass(siteState.layoutConfig.headingScale)}`}
+                      >
+                        SikhStack &amp; Heritage Typography Preview
+                      </h4>
+                      <p
+                        style={{ color: siteState.layoutConfig.bodyTextColor || "var(--theme-text-muted)" }}
+                        className={`leading-relaxed ${resolveCmsBodyClass(siteState.layoutConfig.bodyScale)}`}
+                      >
+                        This live card reflects your active font family, heading/body/Gurmukhi sizes, and custom color palette.
+                      </p>
+                    </div>
                   </div>
                 </div>
 

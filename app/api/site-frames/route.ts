@@ -19,6 +19,13 @@ export interface FrameRecord {
   updatedAt?: string;
 }
 
+export type FontScaleOption = "sm" | "md" | "lg" | "xl";
+export type FontFamilyOption =
+  | "serif-heritage"
+  | "sans-modern"
+  | "manuscript"
+  | "mono-clean";
+
 export interface TopicEdit {
   title?: string;
   gurmukhi?: string;
@@ -26,6 +33,10 @@ export interface TopicEdit {
   description?: string;
   badge?: string;
   source?: string;
+  textColor?: string;
+  bgColor?: string;
+  borderColor?: string;
+  fontScale?: FontScaleOption;
 }
 
 export interface CustomTopic {
@@ -37,6 +48,10 @@ export interface CustomTopic {
   badge?: string;
   source?: string;
   imageKey?: string;
+  textColor?: string;
+  bgColor?: string;
+  borderColor?: string;
+  fontScale?: FontScaleOption;
   createdAt: string;
 }
 
@@ -44,6 +59,15 @@ export interface LayoutConfig {
   feedLayout?: "grid-3" | "grid-2" | "editorial";
   heroHeight?: "compact" | "standard" | "cinema";
   accentStyle?: "classic-gold" | "minimal" | "museum-frame";
+  fontFamily?: FontFamilyOption;
+  headingScale?: FontScaleOption;
+  bodyScale?: FontScaleOption;
+  gurmukhiScale?: FontScaleOption;
+  pageBgColor?: string;
+  cardBgColor?: string;
+  headingTextColor?: string;
+  bodyTextColor?: string;
+  accentColor?: string;
 }
 
 export interface SiteFramesPayload {
@@ -168,9 +192,10 @@ async function verifyAdminRequest(
   body?: Record<string, unknown>
 ): Promise<{ verified: boolean; email: string | null }> {
   const authHeader = req.headers.get("authorization") || "";
+  const xAdminHeader = (req.headers.get("x-admin-token") || "").trim();
   const bearer = authHeader.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
-    : "";
+    : xAdminHeader;
 
   if (bearer) {
     if (bearer === "verified_founder_1313") {

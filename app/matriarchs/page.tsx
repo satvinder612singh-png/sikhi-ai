@@ -5,7 +5,16 @@ import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { COMMONS_ART, ChitrakariCardHeader } from "@/components/chitrakari-card-header";
-import { EditableHeritageImage } from "@/components/editable-heritage-image";
+import {
+  EditableHeritageImage,
+  useCmsSiteState,
+  applyCmsOrder,
+  resolveCmsFontFamily,
+  resolveCmsHeadingClass,
+  resolveCmsBodyClass,
+  resolveCmsGurmukhiClass,
+  resolveCmsGridClass,
+} from "@/components/editable-heritage-image";
 import { AnimatedModal } from "@/components/animated-modal";
 import { SikhiIcon } from "@/components/sikhi-icons";
 
@@ -278,6 +287,7 @@ const CATEGORIES: ("All" | MatriarchCategory)[] = [
 ];
 
 export default function MatriarchsPage() {
+  const cms = useCmsSiteState();
   const [selectedCategory, setSelectedCategory] =
     useState<"All" | MatriarchCategory>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -286,7 +296,40 @@ export default function MatriarchsPage() {
   );
 
   const filteredProfiles = useMemo(() => {
-    return MATRIARCH_PROFILES.filter((p) => {
+    const customEntries: MatriarchProfile[] = (
+      cms.customTopics?.matriarchs || []
+    ).map((ct, idx) => ({
+      id: ct.id,
+      numeral: String(MATRIARCH_PROFILES.length + idx + 1),
+      name: ct.title,
+      gurmukhiName: ct.gurmukhi || "ੴ",
+      era: ct.subtitle || "Historical Archive",
+      region: ct.badge || "Punjab",
+      category: "Spiritual Pioneers",
+      roleTitle: ct.badge || ct.subtitle || "Featured Profile",
+      shortSummary: ct.description,
+      fullBiography: ct.description,
+      historiographicalNote: ct.source || "",
+      primaryCitation: ct.source || "Admin Archive",
+      keyQuoteOrEmblem: ct.gurmukhi || ct.title,
+      image: cms.frames?.[ct.imageKey || ct.id]?.src || "",
+    }));
+
+    const combined = [...customEntries, ...MATRIARCH_PROFILES].map((p) => {
+      const ov = cms.topicEdits?.[p.id];
+      if (!ov) return p;
+      return {
+        ...p,
+        name: ov.title || p.name,
+        gurmukhiName: ov.gurmukhi || p.gurmukhiName,
+        roleTitle: ov.subtitle || p.roleTitle,
+        shortSummary: ov.description || p.shortSummary,
+        fullBiography: ov.description || p.fullBiography,
+        primaryCitation: ov.source || p.primaryCitation,
+      };
+    });
+
+    const filtered = combined.filter((p) => {
       const catMatch =
         selectedCategory === "All" || p.category === selectedCategory;
       const q = searchQuery.trim().toLowerCase();
@@ -300,10 +343,25 @@ export default function MatriarchsPage() {
           p.gurmukhiName.includes(q))
       );
     });
-  }, [selectedCategory, searchQuery]);
+
+    return applyCmsOrder(filtered, (p) => p.id, "matriarchs", cms);
+  }, [selectedCategory, searchQuery, cms]);
+
+  const layoutCfg = cms.layoutConfig || {};
+  const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
+  const headingSizeCls = resolveCmsHeadingClass(layoutCfg.headingScale);
+  const bodySizeCls = resolveCmsBodyClass(layoutCfg.bodyScale);
+  const gurmukhiSizeCls = resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF6EE] text-[#171917]">
+    <div
+      style={{
+        backgroundColor: layoutCfg.pageBgColor || "#FAF6EE",
+        color: layoutCfg.bodyTextColor || "#171917",
+        fontFamily: pageFont,
+      }}
+      className="min-h-screen flex flex-col transition-opacity duration-200"
+    >
       <Header solid />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
@@ -378,13 +436,27 @@ export default function MatriarchsPage() {
           </div>
         </section>
 
-        {/* 13 Matriarchs & Warriors Grid (Max 3 per row) */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredProfiles.map((profile) => (
-            <article
-              key={profile.id}
-              className="rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
-            >
+        {/* 13 Matriarchs & Warriors Grid */}
+        <section className={resolveCmsGridClass(layoutCfg.feedLayout)}>
+          {filteredProfiles.map((profile) => {
+            const ov = cms.topicEdits?.[profile.id];
+            const cardHeadingCls = ov?.fontScale
+              ? resolveCmsHeadingClass(ov.fontScale)
+              : headingSizeCls;
+            const cardBodyCls = ov?.fontScale
+              ? resolveCmsBodyClass(ov.fontScale)
+              : bodySizeCls;
+
+            return (
+              <article
+                key={profile.id}
+                style={{
+                  backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || "#1B2A20",
+                  borderColor: ov?.borderColor || layoutCfg.accentColor || "rgba(197,155,39,0.4)",
+                  color: ov?.textColor || layoutCfg.bodyTextColor || undefined,
+                }}
+                className="rounded-2xl border p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
+              >
               <div className="space-y-3">
                 <EditableHeritageImage
                   imageKey={`matriarch-${profile.id}`}
@@ -434,22 +506,34 @@ export default function MatriarchsPage() {
                       {profile.numeral}
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30">
-                    {profile.category}
+                  <span
+                    style={{ color: layoutCfg.accentColor || undefined }}
+                    className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30"
+                  >
+                    {ov?.badge || profile.category}
                   </span>
                 </div>
 
                 <div>
                   <p
                     lang="pa"
-                    className="font-gurmukhi text-base font-medium text-[#D97706]"
+                    style={{ color: layoutCfg.accentColor || undefined }}
+                    className={`font-gurmukhi ${gurmukhiSizeCls} font-medium text-[#D97706]`}
                   >
                     {profile.gurmukhiName}
                   </p>
-                  <h2 className="text-xl font-serif font-bold mt-0.5">
+                  <h2
+                    style={{
+                      color: ov?.textColor || layoutCfg.headingTextColor || undefined,
+                    }}
+                    className={`${cardHeadingCls} font-serif font-bold mt-0.5`}
+                  >
                     {profile.name}
                   </h2>
-                  <p className="text-xs font-semibold text-[#C59B27] mt-0.5">
+                  <p
+                    style={{ color: layoutCfg.accentColor || undefined }}
+                    className="text-xs font-semibold text-[#C59B27] mt-0.5"
+                  >
                     {profile.roleTitle}
                   </p>
                   <p className="text-[11px] text-[#4A554E] mt-1">
@@ -457,7 +541,7 @@ export default function MatriarchsPage() {
                   </p>
                 </div>
 
-                <p className="text-sm text-[#4A554E] leading-relaxed">
+                <p className={`${cardBodyCls} opacity-85 leading-relaxed`}>
                   {profile.shortSummary}
                 </p>
 
@@ -479,7 +563,8 @@ export default function MatriarchsPage() {
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
         </section>
 
         {/* Expandable Biography & Primary Citation Modal */}
