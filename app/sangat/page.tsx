@@ -19,6 +19,7 @@ import {
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
   resolveCmsGridClass,
+  resolveCmsCardLayoutClass,
   getPageTransitionClass,
   type FrameOrientation,
   type FrameFitMode as HeritageFitMode,
@@ -2675,6 +2676,11 @@ function SangatHubContent() {
                         ? resolveCmsBodyClass(ov.fontScale)
                         : bodySizeCls;
 
+                      const cardLayoutCls = resolveCmsCardLayoutClass(
+                        ov,
+                        layoutCfg.feedLayout
+                      );
+
                       return (
                         <article
                           key={`${item.kind}-${item.id}`}
@@ -2684,13 +2690,13 @@ function SangatHubContent() {
                             borderColor:
                               ov?.borderColor ||
                               layoutCfg.accentColor ||
-                              "rgba(197,155,39,0.25)",
+                              "rgba(212,175,55,0.3)",
                             color: ov?.textColor || layoutCfg.bodyTextColor || undefined,
                             fontFamily: ov?.fontFamily
                               ? resolveCmsFontFamily(ov.fontFamily)
                               : undefined,
                           }}
-                          className="group relative flex flex-col justify-between rounded-2xl border p-5 shadow-sm hover:border-[#C59B27]/65 transition"
+                          className={`group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37]/70 transition-all duration-300 ease-out ${cardLayoutCls}`}
                         >
                           <div className="space-y-3 flex-1">
                             <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -2720,13 +2726,17 @@ function SangatHubContent() {
                             <button
                               type="button"
                               onClick={() => setReadingItem(item)}
-                              className="w-full text-left space-y-2.5"
+                              className={`w-full space-y-2.5 ${
+                                ov?.textAlign === "center" ? "text-center" : "text-left"
+                              }`}
                             >
                               <div
                                 style={{
                                   color: layoutCfg.accentColor || undefined,
                                 }}
-                                className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158]"
+                                className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158] ${
+                                  ov?.textAlign === "center" ? "justify-center" : "justify-between"
+                                }`}
                               >
                                 <span className="truncate">{badge}</span>
                                 {item.kind === "essay" && (

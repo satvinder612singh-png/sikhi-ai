@@ -42,6 +42,10 @@ export type CmsFontFamily =
   | "manuscript"
   | "mono-clean";
 
+export type CmsCardWidthMode = "1/3" | "1/2" | "2/3" | "full";
+export type CmsCardAlignMode = "left" | "center";
+export type CmsCardSpacingMode = "compact" | "normal" | "relaxed";
+
 export interface CmsTopicEdit {
   title?: string;
   gurmukhi?: string;
@@ -53,6 +57,10 @@ export interface CmsTopicEdit {
   bgColor?: string;
   borderColor?: string;
   fontScale?: CmsFontScale;
+  fontFamily?: CmsFontFamily;
+  widthMode?: CmsCardWidthMode;
+  textAlign?: CmsCardAlignMode;
+  spacingMode?: CmsCardSpacingMode;
 }
 
 export interface CmsCustomTopic {
@@ -181,18 +189,50 @@ export function readCmsCache(): CmsSiteState | null {
 
 export function writeCmsCache(data: Partial<CmsSiteState>): CmsSiteState {
   const prev = readCmsCache() || EMPTY_CMS_STATE;
+  const mergedTopicEdits =
+    data.topicEdits && typeof data.topicEdits === "object"
+      ? Object.entries(data.topicEdits).reduce<Record<string, CmsTopicEdit>>(
+          (acc, [k, v]) => {
+            acc[k] = { ...(acc[k] || {}), ...(v || {}) };
+            return acc;
+          },
+          { ...(prev.topicEdits || {}) }
+        )
+      : prev.topicEdits;
+
+  const mergedSectionLayoutMap =
+    data.sectionLayoutMap && typeof data.sectionLayoutMap === "object"
+      ? Object.entries(data.sectionLayoutMap).reduce<Record<string, unknown>>(
+          (acc, [k, v]) => {
+            const existingVal =
+              acc[k] && typeof acc[k] === "object"
+                ? (acc[k] as Record<string, unknown>)
+                : {};
+            const nextVal =
+              v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+            acc[k] = { ...existingVal, ...nextVal };
+            return acc;
+          },
+          { ...(prev.sectionLayoutMap || {}) }
+        )
+      : prev.sectionLayoutMap;
+
   const merged: CmsSiteState = {
     ...prev,
     ...data,
     layoutConfig: { ...prev.layoutConfig, ...(data.layoutConfig || {}) },
     securityConfig: { ...prev.securityConfig, ...(data.securityConfig || {}) },
-    sectionLayoutMap: data.sectionLayoutMap ?? prev.sectionLayoutMap,
-    sectionOrder: data.sectionOrder ?? prev.sectionOrder,
+    sectionLayoutMap: mergedSectionLayoutMap,
+    sectionOrder: data.sectionOrder
+      ? { ...(prev.sectionOrder || {}), ...data.sectionOrder }
+      : prev.sectionOrder,
     pinnedIds: Array.isArray(data.pinnedIds) ? data.pinnedIds : prev.pinnedIds,
     archivedIds: Array.isArray(data.archivedIds) ? data.archivedIds : prev.archivedIds,
     deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds : prev.deletedIds,
-    topicEdits: data.topicEdits ?? prev.topicEdits,
-    customTopics: data.customTopics ?? prev.customTopics,
+    topicEdits: mergedTopicEdits,
+    customTopics: data.customTopics
+      ? { ...(prev.customTopics || {}), ...data.customTopics }
+      : prev.customTopics,
     frames: data.frames ?? prev.frames,
   };
   if (typeof window !== "undefined") {
@@ -391,9 +431,55 @@ export function resolveCmsGurmukhiClass(scale?: CmsFontScale): string {
 }
 
 export function resolveCmsGridClass(feedLayout?: CmsLayoutConfig["feedLayout"]): string {
-  if (feedLayout === "grid-2") return "grid grid-cols-1 md:grid-cols-2 gap-6 items-start";
-  if (feedLayout === "editorial") return "grid grid-cols-1 max-w-3xl mx-auto gap-5";
-  return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start";
+  if (feedLayout === "editorial") {
+    return "grid grid-cols-1 md:grid-cols-6 max-w-4xl mx-auto gap-5 items-start";
+  }
+  return "grid grid-cols-1 md:grid-cols-6 gap-6 items-start";
+}
+
+export function resolveCmsCardLayoutClass(
+  edit?: Pick<CmsTopicEdit, "widthMode" | "textAlign" | "spacingMode">,
+  defaultGrid?: CmsLayoutConfig["feedLayout"]
+): string {
+  let widthCls: string;
+  switch (edit?.widthMode) {
+    case "full":
+      widthCls = "md:col-span-6 w-full";
+      break;
+    case "2/3":
+      widthCls = "md:col-span-6 lg:col-span-4";
+      break;
+    case "1/2":
+      widthCls = "md:col-span-3";
+      break;
+    case "1/3":
+      widthCls = "md:col-span-3 lg:col-span-2";
+      break;
+    default:
+      widthCls =
+        defaultGrid === "editorial"
+          ? "md:col-span-6 w-full"
+          : defaultGrid === "grid-2"
+            ? "md:col-span-3"
+            : "md:col-span-3 lg:col-span-2";
+      break;
+  }
+
+  const alignCls =
+    edit?.textAlign === "center"
+      ? "text-center items-center"
+      : edit?.textAlign === "left"
+        ? "text-left"
+        : "";
+
+  const spacingCls =
+    edit?.spacingMode === "relaxed"
+      ? "my-3 sm:py-8"
+      : edit?.spacingMode === "compact"
+        ? "my-0"
+        : "";
+
+  return [widthCls, alignCls, spacingCls].filter(Boolean).join(" ");
 }
 
 export function applyCmsOrder<T>(

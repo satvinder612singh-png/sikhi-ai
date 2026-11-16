@@ -9,6 +9,9 @@ import {
   isStealthAdminEmail,
   pushAdminCmsPatch,
   resolveCmsFontFamily,
+  type CmsCardAlignMode,
+  type CmsCardSpacingMode,
+  type CmsCardWidthMode,
   type CmsCustomTopic,
   type CmsFontFamily,
   type CmsFontScale,
@@ -400,6 +403,26 @@ export function InlineOrderControls({
   const idx = allIds.indexOf(itemId);
   const canMovePrev = idx > 0;
   const canMoveNext = idx !== -1 && idx < allIds.length - 1;
+  const currentEdit = (cms.topicEdits?.[itemId] || {}) as CmsTopicEdit;
+  const currentWidth = currentEdit.widthMode;
+  const currentAlign = currentEdit.textAlign;
+  const currentSpacing = currentEdit.spacingMode || "normal";
+
+  const updateCardStyle = async (
+    e: React.MouseEvent,
+    patch: Partial<CmsTopicEdit>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+    setBusy(true);
+    await pushAdminCmsPatch({
+      topicEdits: {
+        [itemId]: patch,
+      },
+    });
+    setBusy(false);
+  };
 
   const applyReorder = async (
     e: React.MouseEvent,
@@ -469,56 +492,129 @@ export function InlineOrderControls({
     setBusy(false);
   };
 
+  const WIDTH_BUTTONS: { id: CmsCardWidthMode; label: string }[] = [
+    { id: "1/3", label: "1/3" },
+    { id: "1/2", label: "1/2" },
+    { id: "2/3", label: "2/3" },
+    { id: "full", label: "Full" },
+  ];
+
+  const nextSpacing: CmsCardSpacingMode =
+    currentSpacing === "normal"
+      ? "relaxed"
+      : currentSpacing === "relaxed"
+        ? "compact"
+        : "normal";
+
   return (
     <div
-      className="inline-flex flex-wrap items-center gap-1 rounded-full bg-black/85 border border-[#C59B27]/60 px-1.5 py-0.5 text-[10px] font-bold text-[#FAF7F0] shadow-md z-30"
+      className="flex flex-wrap items-center gap-1 rounded-xl bg-black/88 border border-[#d4af37]/50 px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-xl shadow-black/25 z-30 backdrop-blur-sm"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
+      {/* MS Word-Style Card Width Controls */}
+      <div className="inline-flex items-center gap-0.5 pr-1.5 border-r border-white/15">
+        {WIDTH_BUTTONS.map((w) => (
+          <button
+            key={w.id}
+            type="button"
+            disabled={busy}
+            onClick={(e) => updateCardStyle(e, { widthMode: w.id })}
+            title={`${w.label} Width`}
+            className={`px-1.5 py-0.5 rounded transition ${
+              currentWidth === w.id
+                ? "bg-[#d4af37] text-[#18181B]"
+                : "text-[#FAF7F0]/80 hover:bg-white/15"
+            }`}
+          >
+            {w.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Alignment & Vertical Spacing */}
+      <div className="inline-flex items-center gap-0.5 pr-1.5 border-r border-white/15">
+        {(
+          [
+            { id: "left", label: "◧ Left" },
+            { id: "center", label: "▣ Center" },
+          ] as { id: CmsCardAlignMode; label: string }[]
+        ).map((al) => (
+          <button
+            key={al.id}
+            type="button"
+            disabled={busy}
+            onClick={(e) => updateCardStyle(e, { textAlign: al.id })}
+            title={`Align ${al.id}`}
+            className={`px-1.5 py-0.5 rounded transition ${
+              currentAlign === al.id
+                ? "bg-[#d4af37] text-[#18181B]"
+                : "text-[#FAF7F0]/80 hover:bg-white/15"
+            }`}
+          >
+            {al.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={(e) => updateCardStyle(e, { spacingMode: nextSpacing })}
+          title="Cycle Card Vertical Spacing (Compact / Normal / Relaxed)"
+          className={`px-1.5 py-0.5 rounded transition ${
+            currentSpacing !== "normal"
+              ? "bg-[#d4af37]/30 text-[#E5C158]"
+              : "text-[#FAF7F0]/80 hover:bg-white/15"
+          }`}
+        >
+          ↕ {currentSpacing === "relaxed" ? "Roomy" : currentSpacing === "compact" ? "Tight" : "Space"}
+        </button>
+      </div>
+
+      {/* Spatial Position Controls */}
       <button
         type="button"
         disabled={busy || idx === 0}
         onClick={(e) => applyReorder(e, "first")}
-        title="Pin / Move to First"
-        className="px-1.5 py-0.5 rounded-full hover:bg-[#C59B27]/25 text-[#E5C158] disabled:opacity-35 transition"
+        title="Pin First"
+        className="px-1.5 py-0.5 rounded hover:bg-[#d4af37]/25 text-[#E5C158] disabled:opacity-35 transition"
       >
-        ⭐ First
+        ⭐ Pin First
       </button>
       <button
         type="button"
         disabled={busy || !canMovePrev}
         onClick={(e) => applyReorder(e, "prev")}
-        title="Move Previous / Left"
-        aria-label="Move card earlier"
-        className="px-1.5 py-0.5 rounded-full hover:bg-white/15 disabled:opacity-35 transition"
+        title="Move Left / Up"
+        aria-label="Move Left or Up"
+        className="px-1.5 py-0.5 rounded hover:bg-white/15 disabled:opacity-35 transition"
       >
-        ◀
+        ⬅
       </button>
       <button
         type="button"
         disabled={busy || !canMoveNext}
         onClick={(e) => applyReorder(e, "next")}
-        title="Move Next / Right"
-        aria-label="Move card later"
-        className="px-1.5 py-0.5 rounded-full hover:bg-white/15 disabled:opacity-35 transition"
+        title="Move Right / Down"
+        aria-label="Move Right or Down"
+        className="px-1.5 py-0.5 rounded hover:bg-white/15 disabled:opacity-35 transition"
       >
-        ▶
+        ➡
       </button>
       <button
         type="button"
         disabled={busy || idx === allIds.length - 1}
         onClick={(e) => applyReorder(e, "last")}
-        title="Move to End of List"
-        className="px-1.5 py-0.5 rounded-full hover:bg-white/15 disabled:opacity-35 transition"
+        title="Send Last"
+        className="px-1.5 py-0.5 rounded hover:bg-white/15 disabled:opacity-35 transition"
       >
-        📥 Last
+        📥 Send Last
       </button>
       <button
         type="button"
         disabled={busy}
         onClick={(e) => applyReorder(e, "hide")}
         title="Hide / Archive Card"
-        className="px-1.5 py-0.5 rounded-full hover:bg-red-500/25 text-red-300 disabled:opacity-35 transition"
+        className="px-1.5 py-0.5 rounded hover:bg-red-500/25 text-red-300 disabled:opacity-35 transition"
       >
         👁️ Hide
       </button>
@@ -540,6 +636,8 @@ export function InlineSectionBanner({
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameDraft, setRenameDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [gurmukhi, setGurmukhi] = useState("");
@@ -555,8 +653,10 @@ export function InlineSectionBanner({
     SectionLayoutInfo
   >;
   const sec = sectionMap[sectionId] || {};
+  const activeSectionTitle = sec.customTitle || defaultTitle;
   const align = sec.titleAlign || "left";
   const widthMode = sec.widthMode || "full";
+  const currentGrid = cms.layoutConfig?.feedLayout || "grid-3";
 
   const updateSectionLayout = async (patch: Partial<SectionLayoutInfo>) => {
     await pushAdminCmsPatch({
@@ -566,6 +666,23 @@ export function InlineSectionBanner({
           ...sec,
           ...patch,
         },
+      },
+    });
+  };
+
+  const handleSaveRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateSectionLayout({ customTitle: renameDraft.trim() || undefined });
+    setIsRenaming(false);
+  };
+
+  const updateColumnLayout = async (
+    feedLayout: "grid-3" | "grid-2" | "editorial"
+  ) => {
+    await pushAdminCmsPatch({
+      layoutConfig: {
+        ...(cms.layoutConfig || {}),
+        feedLayout,
       },
     });
   };
@@ -618,20 +735,84 @@ export function InlineSectionBanner({
     <div
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      className="rounded-2xl border-2 border-dashed border-[#C59B27]/70 bg-[#111318]/95 text-[#FAF7F0] px-4 py-3 shadow-lg space-y-2"
+      className="rounded-2xl border border-dashed border-[#d4af37]/60 bg-[#111318]/95 text-[#FAF7F0] px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-md space-y-2.5 transition-all duration-300 ease-out"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="px-2 py-0.5 rounded-full bg-[#C59B27]/20 border border-[#C59B27]/50 text-[#E5C158] font-extrabold uppercase tracking-wider text-[10px]">
-            📍 Section Locator
+          <span className="px-2.5 py-0.5 rounded-full bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#E5C158] font-extrabold uppercase tracking-wider text-[10px]">
+            📍 Section Canvas
           </span>
-          <span className="font-bold text-[#FAF7F0]">{defaultTitle}</span>
-          <span className="text-[11px] opacity-65 font-mono">
+          {isRenaming ? (
+            <form onSubmit={handleSaveRename} className="inline-flex items-center gap-1.5">
+              <input
+                type="text"
+                value={renameDraft}
+                onChange={(e) => setRenameDraft(e.target.value)}
+                placeholder={defaultTitle}
+                className="rounded-lg border border-[#d4af37]/50 bg-black/50 px-2.5 py-1 text-xs text-[#FAF7F0]"
+              />
+              <button
+                type="submit"
+                className="px-2 py-1 rounded-lg bg-[#d4af37] text-[#18181B] font-bold text-[11px]"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRenaming(false)}
+                className="px-2 py-1 rounded-lg border border-white/20 text-[11px]"
+              >
+                ✕
+              </button>
+            </form>
+          ) : (
+            <div className="inline-flex items-center gap-1.5">
+              <span className="font-bold text-[#FAF7F0]">{activeSectionTitle}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setRenameDraft(activeSectionTitle);
+                  setIsRenaming(true);
+                }}
+                className="px-2 py-0.5 rounded-md border border-white/20 text-[10px] font-bold text-[#E5C158] hover:border-[#d4af37]"
+              >
+                ✏️ Rename
+              </button>
+            </div>
+          )}
+          <span className="text-[11px] opacity-55 font-mono">
             ({pageKey} • #{sectionId})
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
+          {/* Column Layout */}
+          <div className="inline-flex items-center gap-1 rounded-xl bg-black/50 border border-white/15 p-0.5">
+            <span className="px-1.5 text-[10px] font-bold opacity-70 uppercase">
+              Cols:
+            </span>
+            {(
+              [
+                { id: "grid-3", label: "3-Col" },
+                { id: "grid-2", label: "2-Col" },
+                { id: "editorial", label: "1-Col" },
+              ] as const
+            ).map((col) => (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => void updateColumnLayout(col.id)}
+                className={`px-2 py-0.5 rounded-lg font-bold transition ${
+                  currentGrid === col.id
+                    ? "bg-[#d4af37] text-[#18181B]"
+                    : "text-[#FAF7F0]/80 hover:text-white"
+                }`}
+              >
+                {col.label}
+              </button>
+            ))}
+          </div>
+
           {/* Title Alignment */}
           <div className="inline-flex items-center gap-1 rounded-xl bg-black/50 border border-white/15 p-0.5">
             <span className="px-1.5 text-[10px] font-bold opacity-70 uppercase">
@@ -644,7 +825,7 @@ export function InlineSectionBanner({
                 onClick={() => void updateSectionLayout({ titleAlign: a })}
                 className={`px-2 py-0.5 rounded-lg capitalize font-bold transition ${
                   align === a
-                    ? "bg-[#C59B27] text-[#18181B]"
+                    ? "bg-[#d4af37] text-[#18181B]"
                     : "text-[#FAF7F0]/80 hover:text-white"
                 }`}
               >
@@ -665,7 +846,7 @@ export function InlineSectionBanner({
                 onClick={() => void updateSectionLayout({ widthMode: w })}
                 className={`px-2 py-0.5 rounded-lg capitalize font-bold transition ${
                   widthMode === w
-                    ? "bg-[#C59B27] text-[#18181B]"
+                    ? "bg-[#d4af37] text-[#18181B]"
                     : "text-[#FAF7F0]/80 hover:text-white"
                 }`}
               >
@@ -679,7 +860,7 @@ export function InlineSectionBanner({
             onClick={() => setIsModalOpen(true)}
             className="px-3 py-1 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-extrabold text-[11px] shadow-sm hover:opacity-95 transition"
           >
-            + Add New Topic Card to This Page
+            + Add New Card Here
           </button>
         </div>
       </div>

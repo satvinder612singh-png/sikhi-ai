@@ -16,6 +16,7 @@ import {
   resolveCmsBodyClass,
   resolveCmsGurmukhiClass,
   resolveCmsGridClass,
+  resolveCmsCardLayoutClass,
   getPageTransitionClass,
   type CmsSiteState,
 } from "@/components/editable-heritage-image";
@@ -608,7 +609,7 @@ function SlideFiveKs({
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-start">
         <article
           key={k.id}
           role="button"
@@ -620,7 +621,7 @@ function SlideFiveKs({
               openKakaarModal(k);
             }
           }}
-          className="rounded-3xl border-2 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+          className={`rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(kEdit, "grid-2")}`}
           style={{
             ...card,
             backgroundColor: kEdit?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -660,7 +661,7 @@ function SlideFiveKs({
           </span>
         </article>
 
-        <div className="rounded-3xl border-2 p-6 space-y-4" style={card}>
+        <div className="md:col-span-3 rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out" style={card}>
           <Eyebrow>All 5 Articles • Click Any Card for Sakhi</Eyebrow>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {orderedKs.map((item) => {
@@ -928,7 +929,7 @@ function SlidePyare({
                   openPyareModal(p);
                 }
               }}
-              className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               style={{
                 ...card,
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -1029,7 +1030,7 @@ function SlideSahibzaade({
           Mata Gujri Ji, were imprisoned in the freezing Thanda Burj at Sirhind where they refused to give up their faith.
         </p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-5 items-start">
         {orderedSahibzaade.map((rawS) => {
           const ov = cms.topicEdits?.[rawS.art.artKey];
           const s = {
@@ -1050,7 +1051,7 @@ function SlideSahibzaade({
                   openSahibzaadaModal(s);
                 }
               }}
-              className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(ov, "grid-2")}`}
               style={{
                 ...card,
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -1184,7 +1185,7 @@ function SlideShaheeds({
                   openShaheedModal(s);
                 }
               }}
-              className="space-y-3 rounded-2xl border p-4 cursor-pointer hover:border-[#C59B27] transition-all flex flex-col justify-between"
+              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               style={{
                 ...card,
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -1498,7 +1499,7 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
                       ? resolveCmsFontFamily(ov.fontFamily)
                       : undefined,
                   }}
-                  className="rounded-2xl border p-4 space-y-2.5"
+                  className={`rounded-2xl border border-[#d4af37]/30 p-4 space-y-2.5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <InlineOrderControls

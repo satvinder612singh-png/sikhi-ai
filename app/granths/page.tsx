@@ -16,6 +16,7 @@ import {
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
   resolveCmsGurmukhiClass,
+  resolveCmsCardLayoutClass,
   getPageTransitionClass,
 } from "@/components/editable-heritage-image";
 import {
@@ -1254,7 +1255,7 @@ export default function GranthsAndKirtanPage() {
                 />
               </div>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
                 {filteredKirtanTracks.map((track) => {
                   const active = currentTrack.id === track.id;
                   const imgKey = track.imageKey || `kirtan-art-${track.id}`;
@@ -1275,6 +1276,7 @@ export default function GranthsAndKirtanPage() {
                   const displayGurmukhi = ov?.gurmukhi || track.gurmukhiTitle;
                   const displayRaag = ov?.badge || track.raag;
                   const displayRagi = ov?.subtitle || track.ragi;
+                  const cardLayoutCls = resolveCmsCardLayoutClass(ov, "editorial");
                   return (
                     <div
                       key={track.id}
@@ -1297,10 +1299,10 @@ export default function GranthsAndKirtanPage() {
                           ? resolveCmsFontFamily(ov.fontFamily)
                           : undefined,
                       }}
-                      className={`p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-3 ${
+                      className={`p-5 rounded-2xl border border-[#d4af37]/30 transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between gap-3 ${cardLayoutCls} ${
                         active
-                          ? "bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-md"
-                          : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
+                          ? "bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-2xl shadow-black/30"
+                          : "bg-[#F3ECE0] text-[#171917] hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30"
                       }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-1.5">

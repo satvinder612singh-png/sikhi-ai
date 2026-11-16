@@ -14,6 +14,7 @@ import {
   resolveCmsBodyClass,
   resolveCmsGurmukhiClass,
   resolveCmsGridClass,
+  resolveCmsCardLayoutClass,
   getPageTransitionClass,
 } from "@/components/editable-heritage-image";
 import {
@@ -545,7 +546,7 @@ export default function MatriarchsPage() {
                     ? resolveCmsFontFamily(ov.fontFamily)
                     : undefined,
                 }}
-                className="rounded-2xl border p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
+                className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               >
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
