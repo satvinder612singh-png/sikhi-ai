@@ -1428,6 +1428,7 @@ export function GodModeText({
 export interface SlideCanvasState {
   x?: number;
   y?: number;
+  transform?: string;
   width?: number;
   height?: number;
   widthPreset?: "1/3" | "1/2" | "3/4" | "full" | "custom";
@@ -1439,8 +1440,10 @@ export interface SlideCanvasState {
   bgColor?: string;
   borderColor?: string;
   snapStep?: 0 | 10 | 20;
-  scope?: "root" | "child";
+  scope?: "root" | "child" | "micro";
+  isMicroElement?: boolean;
   parentId?: string;
+  deleted?: boolean;
 }
 
 export interface SlidePresentationCanvasProps {
@@ -1453,6 +1456,7 @@ export interface SlidePresentationCanvasProps {
   style?: React.CSSProperties;
   isFloatingWidget?: boolean;
   isChild?: boolean;
+  isMicroElement?: boolean;
   parentId?: string;
   snapToGrid?: boolean | number;
   extraInspectorContent?: React.ReactNode;
@@ -1460,7 +1464,66 @@ export interface SlidePresentationCanvasProps {
 
 const NestedFrameDepthContext = createContext<string | null>(null);
 const ACTIVE_ENTERED_FRAME_EVENT = "learnsikhi-entered-frame-change";
+const ACTIVE_HOVERED_CANVAS_EVENT = "learnsikhi-hovered-canvas-change";
 let currentEnteredFrameId: string | null = null;
+let currentHoveredCanvasId: string | null = null;
+
+function setHoveredCanvasIdGlobal(nextId: string | null) {
+  if (currentHoveredCanvasId === nextId) return;
+  currentHoveredCanvasId = nextId;
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(ACTIVE_HOVERED_CANVAS_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function useHoveredCanvasId(): [string | null, (next: string | null) => void] {
+  const [hoveredId, setHoveredId] = useState<string | null>(currentHoveredCanvasId);
+
+  useEffect(() => {
+    const sync = () => setHoveredId(currentHoveredCanvasId);
+    window.addEventListener(ACTIVE_HOVERED_CANVAS_EVENT, sync);
+    return () => {
+      window.removeEventListener(ACTIVE_HOVERED_CANVAS_EVENT, sync);
+    };
+  }, []);
+
+  return [hoveredId, setHoveredCanvasIdGlobal];
+}
+
+function projectDeltaToLocal(
+  parentEl: HTMLElement | null,
+  dxScreen: number,
+  dyScreen: number
+): { dx: number; dy: number } {
+  if (!parentEl || typeof window === "undefined") {
+    return { dx: dxScreen, dy: dyScreen };
+  }
+  const transform = window.getComputedStyle(parentEl).transform;
+  if (!transform || transform === "none") {
+    return { dx: dxScreen, dy: dyScreen };
+  }
+  const match = transform.match(/^matrix\(([^)]+)\)$/);
+  if (!match) {
+    return { dx: dxScreen, dy: dyScreen };
+  }
+  const nums = match[1].split(",").map((v) => Number.parseFloat(v.trim()));
+  if (nums.length < 4 || nums.some((n) => !Number.isFinite(n))) {
+    return { dx: dxScreen, dy: dyScreen };
+  }
+  const [a, b, c, d] = nums;
+  const det = a * d - b * c;
+  if (Math.abs(det) < 1e-4) {
+    return { dx: dxScreen, dy: dyScreen };
+  }
+  return {
+    dx: (d * dxScreen - c * dyScreen) / det,
+    dy: (-b * dxScreen + a * dyScreen) / det,
+  };
+}
 
 function setEnteredFrameIdGlobal(nextId: string | null) {
   currentEnteredFrameId = nextId;
@@ -1536,6 +1599,7 @@ export function SlidePresentationCanvas({
   style,
   isFloatingWidget = false,
   isChild = false,
+  isMicroElement = false,
   parentId: explicitParentId,
   snapToGrid = true,
   extraInspectorContent,
@@ -1544,23 +1608,28 @@ export function SlidePresentationCanvas({
   const canEdit = useVerifiedLiveEdit();
   const contextParentId = useContext(NestedFrameDepthContext);
   const resolvedParentId = explicitParentId ?? contextParentId;
-  const isChildNode = Boolean(isChild || resolvedParentId);
+  const isMicroNode = Boolean(isMicroElement);
+  const isChildNode = Boolean(isChild || isMicroNode || resolvedParentId);
   const [enteredFrameId, setEnteredFrameId] = useEnteredFrameId();
+  const [globalHoveredId, setGlobalHoveredId] = useHoveredCanvasId();
 
   const isEnteredAsParent = !isChildNode && enteredFrameId === id;
   const isInteractiveChild =
     canEdit &&
     isChildNode &&
-    (resolvedParentId ? enteredFrameId === resolvedParentId : true);
+    (isMicroNode || (resolvedParentId ? enteredFrameId === resolvedParentId : true));
   const showHandles = canEdit && (!isChildNode ? !isEnteredAsParent : isInteractiveChild);
 
-  const storageKey =
-    isChildNode && resolvedParentId
+  const storageKey = isMicroNode
+    ? resolvedParentId
+      ? `__slide_micro_${resolvedParentId}::${id}`
+      : `__slide_micro_${id}`
+    : isChildNode && resolvedParentId
       ? `__slide_child_${resolvedParentId}::${id}`
       : `__slide_canvas_${id}`;
 
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const [hovered, setHovered] = useState(false);
+  const hovered = showHandles && globalHoveredId === id;
   const [selected, setSelected] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
@@ -1568,15 +1637,17 @@ export function SlidePresentationCanvas({
     elementType ||
     (/image|painting/i.test(label || "")
       ? "Image"
-      : /caption|text|title|quote/i.test(label || "")
+      : /caption|text|title|quote|heading/i.test(label || "")
         ? "Text"
-        : /icon/i.test(label || "")
+        : /icon|emblem/i.test(label || "")
           ? "Icon"
-          : /frame|border/i.test(label || "")
-            ? "Frame"
-            : /panel|search|player|widget/i.test(label || "")
-              ? "Widget"
-              : "Card");
+          : /badge|pill|button/i.test(label || "")
+            ? "Badge"
+            : /frame|border/i.test(label || "")
+              ? "Frame"
+              : /panel|search|player|widget/i.test(label || "")
+                ? "Widget"
+                : "Card");
   const [activeOp, setActiveOp] = useState<
     "idle" | "drag" | "resize" | "rotate"
   >("idle");
@@ -1589,11 +1660,15 @@ export function SlidePresentationCanvas({
     rect?: { top: number; left: number; width: number; height: number };
   } | null>(null);
 
-  const legacySaved = (
-    (cms.sectionLayoutMap || {})[`__god_box_${id}`] || {}
-  ) as GodModeBoxRecord;
+  const layoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
+  const legacySaved = (layoutMap[`__god_box_${id}`] || {}) as GodModeBoxRecord;
   const slideSaved = (
-    (cms.sectionLayoutMap || {})[storageKey] || {}
+    layoutMap[storageKey] ||
+    (isMicroNode && resolvedParentId
+      ? layoutMap[`__slide_child_${resolvedParentId}::${id}`]
+      : undefined) ||
+    (isMicroNode ? layoutMap[`__slide_canvas_${id}`] : undefined) ||
+    {}
   ) as SlideCanvasState;
 
   const saved: SlideCanvasState = {
@@ -1610,6 +1685,7 @@ export function SlidePresentationCanvas({
     textColor: slideSaved.textColor,
     bgColor: slideSaved.bgColor,
     borderColor: slideSaved.borderColor,
+    deleted: Boolean(slideSaved.deleted),
     snapStep:
       slideSaved.snapStep !== undefined
         ? slideSaved.snapStep
@@ -1628,14 +1704,14 @@ export function SlidePresentationCanvas({
 
   useEffect(() => {
     if (!canEdit) {
-      setHovered(false);
+      setGlobalHoveredId(null);
       setSelected(false);
       setInspectorOpen(false);
       if (currentEnteredFrameId === id) {
         setEnteredFrameIdGlobal(null);
       }
     }
-  }, [canEdit, id]);
+  }, [canEdit, id, setGlobalHoveredId]);
 
   useEffect(() => {
     if (!selected) return;
@@ -1649,10 +1725,17 @@ export function SlidePresentationCanvas({
   }, [selected]);
 
   const persistCanvas = async (patch: Partial<SlideCanvasState>) => {
+    const nextX = patch.x !== undefined ? patch.x : (saved.x ?? 0);
+    const nextY = patch.y !== undefined ? patch.y : (saved.y ?? 0);
     const nextMerged: SlideCanvasState = {
       ...saved,
       ...patch,
-      scope: isChildNode ? "child" : "root",
+      transform:
+        nextX !== 0 || nextY !== 0
+          ? `translate(${nextX}px, ${nextY}px)`
+          : undefined,
+      scope: isMicroNode ? "micro" : isChildNode ? "child" : "root",
+      ...(isMicroNode ? { isMicroElement: true } : {}),
       ...(resolvedParentId ? { parentId: resolvedParentId } : {}),
     };
     await pushAdminCmsPatch({
@@ -1669,6 +1752,17 @@ export function SlidePresentationCanvas({
     else document.body.classList.remove("god-mode-dragging");
   };
 
+  const findParentCardElement = (el: HTMLElement | null): HTMLElement | null => {
+    if (!el) return null;
+    if (isMicroNode) {
+      const cardAncestor = el.parentElement?.closest(
+        '[data-god-card="true"], article, .god-mode-box'
+      ) as HTMLElement | null;
+      if (cardAncestor) return cardAncestor;
+    }
+    return (el.offsetParent as HTMLElement | null) || el.parentElement;
+  };
+
   const handleDragStart = (e: React.PointerEvent) => {
     if (!showHandles) return;
     e.preventDefault();
@@ -1679,11 +1773,10 @@ export function SlidePresentationCanvas({
     const baseX = saved.x || 0;
     const baseY = saved.y || 0;
 
-    // Measure element & parent container center for magnetic center-alignment guides
+    // Measure element & parent card container for localized coordinates and magnetic alignment
     const el = boxRef.current;
     const elRect = el ? el.getBoundingClientRect() : null;
-    const parentEl =
-      el && ((el.offsetParent as HTMLElement | null) || el.parentElement);
+    const parentEl = findParentCardElement(el);
     const parentRectRaw = parentEl ? parentEl.getBoundingClientRect() : null;
 
     const exactCenterX =
@@ -1716,12 +1809,22 @@ export function SlidePresentationCanvas({
 
     let latestX = baseX;
     let latestY = baseY;
+    let moved = false;
     setActiveOp("drag");
     setDraggingBodyLock(true);
 
     const onMove = (ev: PointerEvent) => {
-      const rawX = baseX + (ev.clientX - startX);
-      const rawY = baseY + (ev.clientY - startY);
+      const screenDx = ev.clientX - startX;
+      const screenDy = ev.clientY - startY;
+      if (Math.abs(screenDx) > 2 || Math.abs(screenDy) > 2) {
+        moved = true;
+      }
+      const { dx, dy } = isMicroNode
+        ? projectDeltaToLocal(parentEl, screenDx, screenDy)
+        : { dx: screenDx, dy: screenDy };
+
+      const rawX = baseX + dx;
+      const rawY = baseY + dy;
 
       let hitV = false;
       let hitH = false;
@@ -1757,7 +1860,9 @@ export function SlidePresentationCanvas({
       setDraggingBodyLock(false);
       setSmartGuides(null);
       setLiveOverride(null);
-      void persistCanvas({ x: latestX, y: latestY });
+      if (moved) {
+        void persistCanvas({ x: latestX, y: latestY });
+      }
     };
 
     window.addEventListener("pointermove", onMove);
@@ -1770,19 +1875,23 @@ export function SlidePresentationCanvas({
     e.stopPropagation();
     setSelected(true);
     const el = boxRef.current;
+    const parentEl = findParentCardElement(el);
     const rect = el ? el.getBoundingClientRect() : { width: 380, height: 140 };
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
     const baseX = saved.x || 0;
     const baseY = saved.y || 0;
-    const baseW = saved.width || Math.round(rect.width);
-    const baseH = saved.height || Math.round(rect.height);
-    const aspect = baseW / Math.max(40, baseH);
+    const minW = isMicroNode ? 20 : 80;
+    const minH = isMicroNode ? 20 : 36;
+    const baseW = saved.width || Math.max(minW, Math.round(rect.width));
+    const baseH = saved.height || Math.max(minH, Math.round(rect.height));
+    const aspect = baseW / Math.max(minH, baseH);
 
     let nextX = baseX;
     let nextY = baseY;
     let nextW = baseW;
     let nextH = baseH;
+    let resized = false;
 
     setActiveOp("resize");
     setDraggingBodyLock(true);
@@ -1793,31 +1902,37 @@ export function SlidePresentationCanvas({
         : Math.round(v);
 
     const onMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - startMouseX;
-      const dy = ev.clientY - startMouseY;
+      const screenDx = ev.clientX - startMouseX;
+      const screenDy = ev.clientY - startMouseY;
+      if (Math.abs(screenDx) > 1 || Math.abs(screenDy) > 1) {
+        resized = true;
+      }
+      const { dx, dy } = isMicroNode
+        ? projectDeltaToLocal(parentEl, screenDx, screenDy)
+        : { dx: screenDx, dy: screenDy };
 
       let w = baseW;
       let h = baseH;
       let x = baseX;
       let y = baseY;
 
-      if (dir.includes("e")) w = Math.max(80, snapVal(baseW + dx));
-      if (dir.includes("s")) h = Math.max(36, snapVal(baseH + dy));
+      if (dir.includes("e")) w = Math.max(minW, snapVal(baseW + dx));
+      if (dir.includes("s")) h = Math.max(minH, snapVal(baseH + dy));
       if (dir.includes("w")) {
-        const candidateW = Math.max(80, snapVal(baseW - dx));
+        const candidateW = Math.max(minW, snapVal(baseW - dx));
         x = Math.round(baseX + (baseW - candidateW));
         w = candidateW;
       }
       if (dir.includes("n")) {
-        const candidateH = Math.max(36, snapVal(baseH - dy));
+        const candidateH = Math.max(minH, snapVal(baseH - dy));
         y = Math.round(baseY + (baseH - candidateH));
         h = candidateH;
       }
 
       if (saved.lockAspectRatio && (dir.length === 2 || dir === "e" || dir === "w")) {
-        h = Math.max(36, Math.round(w / aspect));
+        h = Math.max(minH, Math.round(w / aspect));
       } else if (saved.lockAspectRatio && (dir === "n" || dir === "s")) {
-        w = Math.max(80, Math.round(h * aspect));
+        w = Math.max(minW, Math.round(h * aspect));
       }
 
       nextX = x;
@@ -1839,13 +1954,15 @@ export function SlidePresentationCanvas({
       setActiveOp("idle");
       setDraggingBodyLock(false);
       setLiveOverride(null);
-      void persistCanvas({
-        x: nextX,
-        y: nextY,
-        width: nextW,
-        height: nextH,
-        widthPreset: "custom",
-      });
+      if (resized) {
+        void persistCanvas({
+          x: nextX,
+          y: nextY,
+          width: nextW,
+          height: nextH,
+          widthPreset: "custom",
+        });
+      }
     };
 
     window.addEventListener("pointermove", onMove);
@@ -1943,7 +2060,7 @@ export function SlidePresentationCanvas({
       : {}),
   };
 
-  const frameContent = !isChildNode ? (
+  const frameContent = !isMicroNode ? (
     <NestedFrameDepthContext.Provider value={id}>
       {children}
     </NestedFrameDepthContext.Provider>
@@ -1951,9 +2068,36 @@ export function SlidePresentationCanvas({
     children
   );
 
+  if (saved.deleted && !canEdit) {
+    return null;
+  }
+
+  if (saved.deleted && canEdit) {
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-red-400/50 bg-black/50 px-2 py-1 text-[10px] font-bold text-red-200/80"
+      >
+        <span>🗑️ Hidden {resolvedElementType}: {label || id}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            void persistCanvas({ deleted: false });
+          }}
+          className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#18181B] font-extrabold text-[9px]"
+        >
+          Restore
+        </button>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       ref={boxRef}
+      data-god-card={!isMicroNode && !isFloatingWidget ? "true" : undefined}
       animate={{
         x: curX,
         y: curY,
@@ -1965,13 +2109,31 @@ export function SlidePresentationCanvas({
           : { type: "spring", stiffness: 360, damping: 32, mass: 0.5 }
       }
       style={canvasStyle}
-      onMouseEnter={(e) => {
+      onMouseOver={(e) => {
         if (!showHandles) return;
         e.stopPropagation();
-        setHovered(true);
+        setGlobalHoveredId(id);
       }}
-      onMouseLeave={() => {
-        if (hovered) setHovered(false);
+      onMouseOut={(e) => {
+        if (!showHandles) return;
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          if (currentHoveredCanvasId === id) {
+            setGlobalHoveredId(null);
+          }
+        }
+      }}
+      onPointerDown={(e) => {
+        if (!showHandles || !isMicroNode) return;
+        e.stopPropagation();
+        const targetEl = e.target as HTMLElement | null;
+        if (
+          targetEl?.closest(
+            "input, textarea, select, [data-no-micro-drag='true']"
+          )
+        ) {
+          return;
+        }
+        handleDragStart(e);
       }}
       onClick={(e) => {
         if (showHandles) {
@@ -1984,21 +2146,22 @@ export function SlidePresentationCanvas({
         e.preventDefault();
         e.stopPropagation();
         setEnteredFrameId(isEnteredAsParent ? null : id);
-        setHovered(false);
+        setGlobalHoveredId(null);
         setSelected(false);
         setInspectorOpen(false);
       }}
       className={[
         "god-mode-box",
+        isMicroNode && showHandles ? "cursor-grab active:cursor-grabbing" : "",
         presetWidthCls,
         alignCls,
         isEnteredAsParent
           ? "god-mode-grid rounded-2xl border-2 border-dashed border-[#d4af37] p-1.5 overflow-visible"
           : showHandles
             ? selected
-              ? "god-mode-selected slide-canvas-frame rounded-2xl p-1"
+              ? `god-mode-selected slide-canvas-frame ${isMicroNode ? "rounded-lg" : "rounded-2xl p-1"}`
               : hovered
-                ? "god-mode-hover rounded-2xl p-0.5"
+                ? `god-mode-hover ${isMicroNode ? "rounded-lg" : "rounded-2xl p-0.5"}`
                 : "god-mode-box-active"
             : "",
         activeOp !== "idle" ? "god-mode-box-dragging" : "",
@@ -2028,7 +2191,7 @@ export function SlidePresentationCanvas({
         </div>
       )}
 
-      {showHandles && (
+      {showHandles && (!isMicroNode || selected) && (
         <>
           {/* Top Rotation Handle + Connector Stem */}
           <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-40">
@@ -2054,95 +2217,172 @@ export function SlidePresentationCanvas({
               className={`slide-canvas-handle ${h.posClass} ${h.cursorClass}`}
             />
           ))}
+        </>
+      )}
 
-          {/* Top Floating Drag & Inspector Pill */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-lg ${
-              isChildNode
-                ? "bg-[#1E1B4B]/95 border-[#A855F7]/80"
-                : "bg-[#0F172A]/92 border-[#2563EB]/75"
-            }`}
-          >
-            <div className="flex flex-wrap items-center gap-1">
-              <button
-                type="button"
-                onPointerDown={handleDragStart}
-                title="Drag anywhere (Magnetic Grid + Center Snapping ON)"
-                className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/25 text-[#93C5FD] border border-[#2563EB]/50 select-none"
-              >
-                ⋮⋮ {isChildNode ? "Child" : "Drag"} {label || id}
-              </button>
+      {showHandles && !isMicroNode && (
+        /* Top Floating Drag & Inspector Pill for Root/Child Containers */
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-lg ${
+            isChildNode
+              ? "bg-[#1E1B4B]/95 border-[#A855F7]/80"
+              : "bg-[#0F172A]/92 border-[#2563EB]/75"
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onPointerDown={handleDragStart}
+              title="Drag anywhere (Magnetic Grid + Center Snapping ON)"
+              className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/25 text-[#93C5FD] border border-[#2563EB]/50 select-none"
+            >
+              ⋮⋮ {isChildNode ? "Child" : "Drag"} {label || id}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelected(true);
+                setInspectorOpen((v) => !v);
+              }}
+              className={`px-2 py-0.5 rounded border transition ${
+                inspectorOpen
+                  ? "bg-[#2563EB] text-white border-[#60A5FA]"
+                  : "border-white/20 text-[#E5C158] hover:border-[#d4af37]"
+              }`}
+            >
+              ⚙️ Inspector
+            </button>
+            {!isChildNode && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelected(true);
-                  setInspectorOpen((v) => !v);
+                  setEnteredFrameId(id);
                 }}
-                className={`px-2 py-0.5 rounded border transition ${
-                  inspectorOpen
-                    ? "bg-[#2563EB] text-white border-[#60A5FA]"
-                    : "border-white/20 text-[#E5C158] hover:border-[#d4af37]"
-                }`}
+                title="Double-click frame or click here to move inner elements"
+                className="px-1.5 py-0.5 rounded border border-[#d4af37]/45 text-[#E5C158] hover:bg-[#d4af37]/20"
               >
-                ⚙️ Inspector
+                🔍 Enter
               </button>
-              {!isChildNode && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEnteredFrameId(id);
-                  }}
-                  title="Double-click frame or click here to move inner elements"
-                  className="px-1.5 py-0.5 rounded border border-[#d4af37]/45 text-[#E5C158] hover:bg-[#d4af37]/20"
-                >
-                  🔍 Enter
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1 opacity-90">
-              <span className="font-mono text-[9px] text-sky-200 hidden sm:inline">
-                ({curX}, {curY})
-                {curW ? ` ${curW}px` : ""}
-                {curRot ? ` ${curRot}°` : ""}
-              </span>
-              {(curX !== 0 ||
-                curY !== 0 ||
-                curRot !== 0 ||
-                saved.width ||
-                saved.height ||
-                saved.widthPreset ||
-                saved.textColor ||
-                saved.bgColor ||
-                saved.borderColor) && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    void persistCanvas({
-                      x: 0,
-                      y: 0,
-                      width: undefined,
-                      height: undefined,
-                      widthPreset: undefined,
-                      rotation: 0,
-                      zIndex: undefined,
-                      alignSelf: undefined,
-                      textColor: undefined,
-                      bgColor: undefined,
-                      borderColor: undefined,
-                    })
-                  }
-                  className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
-                >
-                  ↺ Reset
-                </button>
-              )}
-            </div>
+            )}
           </div>
-        </>
+
+          <div className="flex items-center gap-1 opacity-90">
+            <span className="font-mono text-[9px] text-sky-200 hidden sm:inline">
+              ({curX}, {curY})
+              {curW ? ` ${curW}px` : ""}
+              {curRot ? ` ${curRot}°` : ""}
+            </span>
+            {(curX !== 0 ||
+              curY !== 0 ||
+              curRot !== 0 ||
+              saved.width ||
+              saved.height ||
+              saved.widthPreset ||
+              saved.textColor ||
+              saved.bgColor ||
+              saved.borderColor) && (
+              <button
+                type="button"
+                onClick={() =>
+                  void persistCanvas({
+                    x: 0,
+                    y: 0,
+                    width: undefined,
+                    height: undefined,
+                    widthPreset: undefined,
+                    rotation: 0,
+                    zIndex: undefined,
+                    alignSelf: undefined,
+                    textColor: undefined,
+                    bgColor: undefined,
+                    borderColor: undefined,
+                  })
+                }
+                className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
+              >
+                ↺ Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showHandles && isMicroNode && (selected || inspectorOpen) && (
+        /* Compact Out-of-Flow Action Bar for Micro-Elements inside Cards */
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 whitespace-nowrap rounded-lg border border-[#3b82f6] bg-[#0B101B]/95 px-1.5 py-0.5 text-[10px] font-bold text-[#FAF7F0] shadow-xl"
+        >
+          <button
+            type="button"
+            onPointerDown={handleDragStart}
+            title={`Drag ${label || resolvedElementType} relative to parent card`}
+            className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/30 text-[#93C5FD] select-none"
+          >
+            ⋮⋮ {label || resolvedElementType}
+          </button>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelected(true);
+              setInspectorOpen((v) => !v);
+            }}
+            title="Inspect position, size, rotation & colors"
+            className={`px-1.5 py-0.5 rounded border ${
+              inspectorOpen
+                ? "bg-[#2563EB] text-white border-[#60A5FA]"
+                : "border-white/20 text-[#E5C158]"
+            }`}
+          >
+            ⚙️
+          </button>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setInspectorOpen(false);
+              setSelected(false);
+              void persistCanvas({ deleted: true });
+            }}
+            title={`Delete / hide ${label || resolvedElementType}`}
+            className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/25"
+          >
+            🗑️
+          </button>
+          {(curX !== 0 ||
+            curY !== 0 ||
+            curRot !== 0 ||
+            saved.width ||
+            saved.height) && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                void persistCanvas({
+                  x: 0,
+                  y: 0,
+                  width: undefined,
+                  height: undefined,
+                  widthPreset: undefined,
+                  rotation: 0,
+                });
+              }}
+              title="Reset local offset"
+              className="px-1 py-0.5 rounded text-sky-300 hover:bg-white/10"
+            >
+              ↺
+            </button>
+          )}
+        </div>
       )}
 
       {frameContent}
@@ -2189,15 +2429,18 @@ export function SlidePresentationCanvas({
         createPortal(
           <div
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             className="fixed right-4 top-20 z-[100] w-[320px] max-w-[calc(100vw-32px)] max-h-[82vh] overflow-y-auto rounded-2xl border-2 border-[#2563EB] bg-[#0B101B]/98 text-[#FAF7F0] p-4 shadow-2xl shadow-black/60 backdrop-blur-md space-y-3 text-xs"
           >
             <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
               <div className="min-w-0">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-400">
-                  {isChildNode
-                    ? `🧩 Child Element (in ${resolvedParentId || "Card"})`
-                    : "🖼️ Root Frame (Figma Inspector)"}
+                  {isMicroNode
+                    ? `🧬 Micro-Element (${resolvedParentId ? `in ${resolvedParentId}` : "Card Relative"})`
+                    : isChildNode
+                      ? `🧩 Child Element (in ${resolvedParentId || "Card"})`
+                      : "🖼️ Root Frame (Figma Inspector)"}
                 </p>
                 <p className="font-bold truncate text-sm">{label || id}</p>
               </div>
@@ -2211,7 +2454,11 @@ export function SlidePresentationCanvas({
             </div>
 
             {/* Scope Context Switcher */}
-            {isChildNode && resolvedParentId ? (
+            {isMicroNode ? (
+              <p className="rounded-lg border border-sky-400/35 bg-sky-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-sky-200">
+                Coordinates &amp; transforms save independently relative to the enclosing card.
+              </p>
+            ) : isChildNode && resolvedParentId ? (
               <button
                 type="button"
                 onClick={() => {
@@ -2306,7 +2553,7 @@ export function SlidePresentationCanvas({
                   </span>
                   <input
                     type="number"
-                    min={160}
+                    min={isMicroNode ? 20 : 160}
                     placeholder="Auto"
                     value={curW ?? ""}
                     onChange={(e) => {
@@ -2326,7 +2573,7 @@ export function SlidePresentationCanvas({
                   </span>
                   <input
                     type="number"
-                    min={40}
+                    min={isMicroNode ? 20 : 40}
                     placeholder="Auto"
                     value={curH ?? ""}
                     onChange={(e) => {
@@ -2445,29 +2692,43 @@ export function SlidePresentationCanvas({
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-2 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() =>
-                  void persistCanvas({
-                    x: 0,
-                    y: 0,
-                    width: undefined,
-                    height: undefined,
-                    widthPreset: undefined,
-                    rotation: 0,
-                    zIndex: undefined,
-                    lockAspectRatio: false,
-                    alignSelf: undefined,
-                    textColor: undefined,
-                    bgColor: undefined,
-                    borderColor: undefined,
-                  })
-                }
-                className="px-3 py-1.5 rounded-lg border border-red-500/40 text-red-300 font-bold text-[11px]"
-              >
-                ↺ Reset Canvas
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void persistCanvas({
+                      x: 0,
+                      y: 0,
+                      width: undefined,
+                      height: undefined,
+                      widthPreset: undefined,
+                      rotation: 0,
+                      zIndex: undefined,
+                      lockAspectRatio: false,
+                      alignSelf: undefined,
+                      textColor: undefined,
+                      bgColor: undefined,
+                      borderColor: undefined,
+                      deleted: false,
+                    })
+                  }
+                  className="px-2.5 py-1.5 rounded-lg border border-red-500/40 text-red-300 font-bold text-[11px]"
+                >
+                  ↺ Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspectorOpen(false);
+                    setSelected(false);
+                    void persistCanvas({ deleted: true });
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg border border-red-500/50 bg-red-500/15 text-red-200 font-bold text-[11px]"
+                >
+                  🗑️ Delete
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setInspectorOpen(false)}
@@ -2487,4 +2748,131 @@ export type GodModeBoxProps = SlidePresentationCanvasProps;
 
 export function GodModeBox(props: GodModeBoxProps) {
   return <SlidePresentationCanvas {...props} />;
+}
+
+export interface GodModeTopicCardProps {
+  id: string;
+  pageKey?: string;
+  title: string;
+  description: string;
+  badge?: string;
+  gurmukhi?: string;
+  icon?: React.ReactNode;
+  actionButton?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/**
+ * Reusable standard topic card whose internal icon, badge, heading (h3),
+ * body copy (p), and action control are independently draggable micro-elements.
+ */
+export function GodModeTopicCard({
+  id,
+  pageKey = "global",
+  title,
+  description,
+  badge,
+  gurmukhi,
+  icon,
+  actionButton,
+  className = "",
+  style,
+}: GodModeTopicCardProps) {
+  return (
+    <SlidePresentationCanvas
+      id={`card-${id}`}
+      pageKey={pageKey}
+      label={title}
+      elementType="Card"
+      className={className}
+      style={style}
+    >
+      <div className="space-y-2.5">
+        {(icon || badge) && (
+          <div className="flex items-center justify-between gap-2">
+            {icon && (
+              <SlidePresentationCanvas
+                id={`${id}-icon`}
+                parentId={`card-${id}`}
+                pageKey={pageKey}
+                label="Icon"
+                elementType="Icon"
+                isMicroElement={true}
+                className="inline-block w-fit"
+              >
+                {icon}
+              </SlidePresentationCanvas>
+            )}
+            {badge && (
+              <SlidePresentationCanvas
+                id={`${id}-badge`}
+                parentId={`card-${id}`}
+                pageKey={pageKey}
+                label="Badge"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
+              >
+                <span className="inline-flex items-center rounded-full border border-[#C59B27]/40 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#C59B27]">
+                  {badge}
+                </span>
+              </SlidePresentationCanvas>
+            )}
+          </div>
+        )}
+
+        {gurmukhi && (
+          <SlidePresentationCanvas
+            id={`${id}-gurmukhi`}
+            parentId={`card-${id}`}
+            pageKey={pageKey}
+            label="Gurmukhi"
+            elementType="Text"
+            isMicroElement={true}
+          >
+            <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">
+              {gurmukhi}
+            </p>
+          </SlidePresentationCanvas>
+        )}
+
+        <SlidePresentationCanvas
+          id={`${id}-title`}
+          parentId={`card-${id}`}
+          pageKey={pageKey}
+          label="Title"
+          elementType="Text"
+          isMicroElement={true}
+        >
+          <h3 className="font-serif text-lg font-bold">{title}</h3>
+        </SlidePresentationCanvas>
+
+        <SlidePresentationCanvas
+          id={`${id}-description`}
+          parentId={`card-${id}`}
+          pageKey={pageKey}
+          label="Description"
+          elementType="Text"
+          isMicroElement={true}
+        >
+          <p className="text-sm leading-relaxed opacity-85">{description}</p>
+        </SlidePresentationCanvas>
+
+        {actionButton && (
+          <SlidePresentationCanvas
+            id={`${id}-action`}
+            parentId={`card-${id}`}
+            pageKey={pageKey}
+            label="Button"
+            elementType="Widget"
+            isMicroElement={true}
+            className="inline-block w-fit"
+          >
+            {actionButton}
+          </SlidePresentationCanvas>
+        )}
+      </div>
+    </SlidePresentationCanvas>
+  );
 }

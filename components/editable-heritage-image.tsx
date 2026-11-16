@@ -1156,8 +1156,10 @@ export function EditableHeritageImage({
       return fallbackNode && !isEditing ? (
         <SlidePresentationCanvas
           id={`heritage-caption-${imageKey}`}
-          isChild={true}
+          parentId={`heritage-frame-${imageKey}`}
+          isMicroElement={true}
           label="Caption / Emblem"
+          elementType="Text"
           className="w-full"
         >
           <div className="w-full">{fallbackNode}</div>
@@ -1165,13 +1167,15 @@ export function EditableHeritageImage({
       ) : (
         <SlidePresentationCanvas
           id={`heritage-caption-${imageKey}`}
-          isChild={true}
+          parentId={`heritage-frame-${imageKey}`}
+          isMicroElement={true}
           label="Empty Caption"
+          elementType="Text"
           className="w-full"
         >
-          <div className="p-6 text-center text-xs text-[#FAF7F0]/70">
+          <p className="p-6 text-center text-xs text-[#FAF7F0]/70">
             No image set. Paste a URL or upload a painting below.
-          </div>
+          </p>
         </SlidePresentationCanvas>
       );
     }
@@ -1179,8 +1183,10 @@ export function EditableHeritageImage({
     return (
       <SlidePresentationCanvas
         id={`heritage-img-${imageKey}`}
-        isChild={true}
+        parentId={`heritage-frame-${imageKey}`}
+        isMicroElement={true}
         label="Image Layer"
+        elementType="Image"
         className="w-full"
       >
         {resolvedOrientation === "natural" ? (
@@ -1224,6 +1230,7 @@ export function EditableHeritageImage({
             src={effectiveSrc}
             alt={alt}
             draggable={false}
+            data-no-micro-drag={isEditing ? "true" : undefined}
             onLoad={(e) => {
               const img = e.currentTarget;
               if (img.naturalWidth && img.naturalHeight) {
@@ -1270,8 +1277,9 @@ export function EditableHeritageImage({
     <div className={`relative w-full group/frame ${className}`}>
       <SlidePresentationCanvas
         id={`heritage-frame-${imageKey}`}
-        isChild={true}
+        isMicroElement={true}
         label="Border Frame"
+        elementType="Frame"
         className="w-full"
       >
         <div
@@ -1282,17 +1290,27 @@ export function EditableHeritageImage({
 
           {/* Frame / Reposition Pill Button */}
           {canEdit && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsEditing((v) => !v);
-              }}
-              className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-black/80 text-[#E5C158] border border-[#C59B27]/60 text-[11px] font-bold shadow-md hover:bg-black transition"
+            <SlidePresentationCanvas
+              id={`heritage-badge-${imageKey}`}
+              parentId={`heritage-frame-${imageKey}`}
+              isMicroElement={true}
+              label="Frame Badge"
+              elementType="Badge"
+              className="absolute top-2.5 right-2.5 z-20 inline-block w-fit"
             >
-              {hasVisibleImage ? "⚙️ Frame / Reposition" : "⚙️ Upload / Frame Painting"}
-            </button>
+              <button
+                type="button"
+                data-no-micro-drag="true"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditing((v) => !v);
+                }}
+                className="px-2.5 py-1 rounded-full bg-black/80 text-[#E5C158] border border-[#C59B27]/60 text-[11px] font-bold shadow-md hover:bg-black transition"
+              >
+                {hasVisibleImage ? "⚙️ Frame / Reposition" : "⚙️ Upload / Frame Painting"}
+              </button>
+            </SlidePresentationCanvas>
           )}
         </div>
       </SlidePresentationCanvas>
