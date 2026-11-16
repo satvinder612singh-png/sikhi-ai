@@ -629,6 +629,35 @@ a.from-\[\#C59B27\] {
     background: #eff6ff;
   }
 
+  .god-mode-hover {
+    outline: 1px dashed #3b82f6 !important;
+    outline-offset: 2px;
+    background-color: rgba(59, 130, 246, 0.06);
+  }
+
+  .god-mode-selected {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px;
+  }
+
+  .god-mode-type-tag {
+    position: absolute;
+    top: -11px;
+    left: 8px;
+    z-index: 48;
+    background: #3b82f6;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
+  }
+
   .gold-divider-rule {
     background: linear-gradient(
       90deg,

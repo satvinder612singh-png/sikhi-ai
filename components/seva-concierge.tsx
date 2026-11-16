@@ -683,8 +683,17 @@ interface SupportPanelConfig {
   defaultOpen?: boolean;
 }
 
+interface KhojMessage {
+  id: string;
+  role: "user" | "ai";
+  text: string;
+  href?: string;
+  ctaLabel?: string;
+  citation?: string;
+}
+
 /**
- * Floating bottom-right Seva Concierge widget rendered globally across all routes
+ * Compact floating Khoj AI widget rendered globally across all routes
  */
 export function SevaConcierge() {
   const cms = useCmsSiteState();
@@ -694,6 +703,9 @@ export function SevaConcierge() {
 
   const [open, setOpen] = useState(Boolean(supportCfg.defaultOpen));
   const [hasAppliedDefaultOpen, setHasAppliedDefaultOpen] = useState(false);
+  const [promptInput, setPromptInput] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [messages, setMessages] = useState<KhojMessage[]>([]);
   const { isMiniPlayerVisible } = useKirtanAudio();
 
   useEffect(() => {
@@ -715,20 +727,105 @@ export function SevaConcierge() {
     });
   };
 
-  const greeting = supportCfg.greetingText || "What are you looking for?";
-  const headerTitle =
-    supportCfg.headerTitle || "ੴ · ਸੇਵਾ ਮਾਰਗ-ਦਰਸ਼ਕ (Seva Concierge)";
+  const greeting =
+    supportCfg.greetingText ||
+    "Sat Sri Akal! Ask Khoj AI anything about Gurbani, Nitnem, History, or Granths.";
+  const headerTitle = supportCfg.headerTitle || "Khoj AI";
+  const inputPlaceholder =
+    supportCfg.placeholderText || "Ask Khoj AI a question...";
   const panelColor = supportCfg.themeColor || undefined;
+
+  const handleKhojSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = promptInput.trim();
+    if (!q || asking) return;
+    setPromptInput("");
+    const userMsg: KhojMessage = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      text: q,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setAsking(true);
+
+    const lower = q.toLowerCase();
+    const intentMatch = INTENT_ROUTES.find(
+      (item) =>
+        item.pillLabel.toLowerCase().includes(lower) ||
+        item.keywords.some((kw) => lower.includes(kw) || kw.includes(lower))
+    );
+
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data && typeof data.answer === "string" && data.answer.trim()) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            role: "ai",
+            text: data.answer.trim(),
+            href: intentMatch?.primaryHref,
+            ctaLabel: intentMatch?.primaryCta,
+            citation: intentMatch?.angCitation,
+          },
+        ]);
+        setAsking(false);
+        return;
+      }
+    } catch {
+      // fall through to curated route answer
+    }
+
+    if (intentMatch) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: "ai",
+          text: `${intentMatch.headline} — ${intentMatch.guidance}`,
+          href: intentMatch.primaryHref,
+          ctaLabel: intentMatch.primaryCta,
+          citation: intentMatch.angCitation,
+        },
+      ]);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a-${Date.now()}`,
+          role: "ai",
+          text: "Open full Scriptural Inquiry to explore primary Sri Guru Granth Sahib Ji and historical Granth citations for your question.",
+          href: `/ask?q=${encodeURIComponent(q)}`,
+          ctaLabel: "Open in Scriptural Inquiry →",
+        },
+      ]);
+    }
+    setAsking(false);
+  };
 
   const supportInspector = (
     <div className="space-y-2.5 text-xs">
       <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#E5C158]">
-        Support Panel God Mode
+        Khoj AI God Mode Inspector
       </p>
       <label className="block space-y-0.5">
-        <span className="text-[10px] opacity-75 font-bold">
-          Greeting Bubble Text
-        </span>
+        <span className="text-[10px] opacity-75 font-bold">Widget Title</span>
+        <input
+          type="text"
+          value={headerTitle}
+          onChange={(e) =>
+            void updateSupportConfig({ headerTitle: e.target.value })
+          }
+          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+        />
+      </label>
+      <label className="block space-y-0.5">
+        <span className="text-[10px] opacity-75 font-bold">Greeting Text</span>
         <input
           type="text"
           value={greeting}
@@ -740,27 +837,11 @@ export function SevaConcierge() {
       </label>
       <label className="block space-y-0.5">
         <span className="text-[10px] opacity-75 font-bold">
-          Panel Header Text
+          Input Placeholder
         </span>
         <input
           type="text"
-          value={headerTitle}
-          onChange={(e) =>
-            void updateSupportConfig({ headerTitle: e.target.value })
-          }
-          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
-        />
-      </label>
-      <label className="block space-y-0.5">
-        <span className="text-[10px] opacity-75 font-bold">
-          Search Input Placeholder
-        </span>
-        <input
-          type="text"
-          value={
-            supportCfg.placeholderText ||
-            "Type what you need (e.g. 'I need peace', 'Mai Bhago', 'Prof Sahib Singh PDF', 'Raag Asa')..."
-          }
+          value={inputPlaceholder}
           onChange={(e) =>
             void updateSupportConfig({ placeholderText: e.target.value })
           }
@@ -769,11 +850,11 @@ export function SevaConcierge() {
       </label>
       <div className="flex items-center justify-between gap-2 pt-1">
         <label className="flex items-center gap-1.5">
-          <span className="text-[10px] opacity-75 font-bold">Panel Accent</span>
+          <span className="text-[10px] opacity-75 font-bold">Theme Color</span>
           <input
             type="color"
             value={
-              /^#[0-9a-f]{6}$/i.test(panelColor || "") ? panelColor : "#1B2A20"
+              /^#[0-9a-f]{6}$/i.test(panelColor || "") ? panelColor : "#0F172A"
             }
             onChange={(e) =>
               void updateSupportConfig({ themeColor: e.target.value })
@@ -811,7 +892,8 @@ export function SevaConcierge() {
     <SlidePresentationCanvas
       id="support-widget-canvas"
       pageKey="global"
-      label="Support Panel"
+      label="Khoj AI"
+      elementType="Widget"
       isFloatingWidget={true}
       extraInspectorContent={supportInspector}
       className={`fixed right-5 z-40 ${
@@ -821,46 +903,106 @@ export function SevaConcierge() {
       {open ? (
         <div
           role="dialog"
-          aria-label="Seva Concierge and Path-Finder"
+          aria-label="Khoj AI Assistant"
           style={panelColor ? { backgroundColor: panelColor } : undefined}
-          className="w-[92vw] max-w-lg rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-5 shadow-2xl backdrop-blur-md animate-fade-in-up"
+          className="w-[90vw] max-w-sm rounded-2xl border border-[#d4af37]/45 bg-[#0F172A]/95 text-[#FAF7F0] shadow-2xl shadow-black/40 backdrop-blur-xl overflow-hidden flex flex-col animate-fade-in-up"
         >
-          <div className="flex items-center justify-between border-b border-[#C59B27]/25 pb-2.5 mb-3">
-            <span
-              lang="pa"
-              className="font-gurmukhi text-xs font-bold text-[#C59B27]"
-            >
-              {headerTitle}
-            </span>
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                lang="pa"
+                className="h-6 w-6 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-gurmukhi text-xs font-extrabold flex items-center justify-center shrink-0"
+              >
+                ੴ
+              </span>
+              <span className="font-serif font-bold text-sm tracking-wide truncate">
+                {headerTitle}
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close Seva Concierge"
-              className="px-2.5 py-1 rounded-lg border border-[#C59B27]/40 text-xs font-bold hover:border-[#C59B27]"
+              aria-label="Minimize Khoj AI"
+              className="h-7 w-7 rounded-full border border-white/20 text-xs font-bold hover:border-[#d4af37] flex items-center justify-center"
             >
-              ✕ Minimize
+              ✕
             </button>
           </div>
-          <ConciergeCore
-            compact={true}
-            customPlaceholder={supportCfg.placeholderText}
-          />
+
+          <div className="max-h-72 overflow-y-auto p-3.5 space-y-2.5 text-xs">
+            <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-2 leading-relaxed">
+              {greeting}
+            </div>
+
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`rounded-xl px-3 py-2 leading-relaxed space-y-1.5 ${
+                  m.role === "user"
+                    ? "ml-6 bg-[#d4af37]/20 border border-[#d4af37]/40 text-[#FAF7F0]"
+                    : "mr-4 bg-black/35 border border-white/10 text-[#E2E8F0]"
+                }`}
+              >
+                {m.citation && (
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#E5C158]">
+                    {m.citation}
+                  </p>
+                )}
+                <p>{m.text}</p>
+                {m.href && m.ctaLabel && (
+                  <Link
+                    href={m.href}
+                    className="inline-block text-[11px] font-bold text-[#E5C158] hover:underline"
+                  >
+                    {m.ctaLabel}
+                  </Link>
+                )}
+              </div>
+            ))}
+
+            {asking && (
+              <div className="rounded-xl bg-black/30 px-3 py-2 text-[11px] text-[#E5C158] animate-pulse">
+                Khoj AI is consulting Sanctuary sources...
+              </div>
+            )}
+          </div>
+
+          <form
+            onSubmit={handleKhojSubmit}
+            className="p-2.5 border-t border-white/10 flex items-center gap-2 bg-black/25"
+          >
+            <input
+              type="text"
+              value={promptInput}
+              onChange={(e) => setPromptInput(e.target.value)}
+              placeholder={inputPlaceholder}
+              aria-label={inputPlaceholder}
+              className="flex-1 min-w-0 rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0] placeholder:text-zinc-400 focus:outline-none focus:border-[#d4af37]"
+            />
+            <button
+              type="submit"
+              disabled={asking || !promptInput.trim()}
+              className="shrink-0 h-8 px-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold disabled:opacity-45"
+            >
+              Ask
+            </button>
+          </form>
         </div>
       ) : (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={`Open Seva Concierge — ${greeting}`}
+          aria-label="Open Khoj AI"
+          title="Khoj AI"
           style={panelColor ? { backgroundColor: panelColor } : undefined}
-          className="flex items-center gap-2.5 rounded-full border-2 border-[#C59B27] bg-[#1B2A20] px-4 py-3 text-xs sm:text-sm font-bold shadow-xl hover:scale-[1.02] transition"
+          className="w-12 h-12 rounded-full border border-[#d4af37]/60 bg-[#0F172A]/85 backdrop-blur-xl shadow-2xl shadow-black/40 flex items-center justify-center hover:scale-105 transition-all duration-300"
         >
           <span
             lang="pa"
-            className="h-6 w-6 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-gurmukhi text-xs font-bold flex items-center justify-center"
+            className="h-8 w-8 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-gurmukhi text-sm font-black flex items-center justify-center shadow"
           >
             ੴ
           </span>
-          <span>{greeting}</span>
         </button>
       )}
     </SlidePresentationCanvas>

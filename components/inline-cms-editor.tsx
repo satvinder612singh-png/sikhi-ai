@@ -1447,6 +1447,7 @@ export interface SlidePresentationCanvasProps {
   id: string;
   pageKey?: string;
   label?: string;
+  elementType?: string;
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
@@ -1529,6 +1530,7 @@ const HANDLE_DEFS: {
 export function SlidePresentationCanvas({
   id,
   label,
+  elementType,
   children,
   className = "",
   style,
@@ -1558,8 +1560,23 @@ export function SlidePresentationCanvas({
       : `__slide_canvas_${id}`;
 
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+
+  const resolvedElementType =
+    elementType ||
+    (/image|painting/i.test(label || "")
+      ? "Image"
+      : /caption|text|title|quote/i.test(label || "")
+        ? "Text"
+        : /icon/i.test(label || "")
+          ? "Icon"
+          : /frame|border/i.test(label || "")
+            ? "Frame"
+            : /panel|search|player|widget/i.test(label || "")
+              ? "Widget"
+              : "Card");
   const [activeOp, setActiveOp] = useState<
     "idle" | "drag" | "resize" | "rotate"
   >("idle");
@@ -1611,6 +1628,7 @@ export function SlidePresentationCanvas({
 
   useEffect(() => {
     if (!canEdit) {
+      setHovered(false);
       setSelected(false);
       setInspectorOpen(false);
       if (currentEnteredFrameId === id) {
@@ -1618,6 +1636,17 @@ export function SlidePresentationCanvas({
       }
     }
   }, [canEdit, id]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const onOutside = (e: PointerEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setSelected(false);
+      }
+    };
+    window.addEventListener("pointerdown", onOutside);
+    return () => window.removeEventListener("pointerdown", onOutside);
+  }, [selected]);
 
   const persistCanvas = async (patch: Partial<SlideCanvasState>) => {
     const nextMerged: SlideCanvasState = {
@@ -1936,14 +1965,26 @@ export function SlidePresentationCanvas({
           : { type: "spring", stiffness: 360, damping: 32, mass: 0.5 }
       }
       style={canvasStyle}
-      onClick={() => {
-        if (showHandles) setSelected(true);
+      onMouseEnter={(e) => {
+        if (!showHandles) return;
+        e.stopPropagation();
+        setHovered(true);
+      }}
+      onMouseLeave={() => {
+        if (hovered) setHovered(false);
+      }}
+      onClick={(e) => {
+        if (showHandles) {
+          e.stopPropagation();
+          setSelected(true);
+        }
       }}
       onDoubleClick={(e) => {
         if (!canEdit || isChildNode) return;
         e.preventDefault();
         e.stopPropagation();
         setEnteredFrameId(isEnteredAsParent ? null : id);
+        setHovered(false);
         setSelected(false);
         setInspectorOpen(false);
       }}
@@ -1955,8 +1996,10 @@ export function SlidePresentationCanvas({
           ? "god-mode-grid rounded-2xl border-2 border-dashed border-[#d4af37] p-1.5 overflow-visible"
           : showHandles
             ? selected
-              ? "slide-canvas-frame rounded-2xl p-1"
-              : "god-mode-box-active"
+              ? "god-mode-selected slide-canvas-frame rounded-2xl p-1"
+              : hovered
+                ? "god-mode-hover rounded-2xl p-0.5"
+                : "god-mode-box-active"
             : "",
         activeOp !== "idle" ? "god-mode-box-dragging" : "",
         className,
@@ -1964,6 +2007,9 @@ export function SlidePresentationCanvas({
         .filter(Boolean)
         .join(" ")}
     >
+      {showHandles && (selected || hovered) && (
+        <span className="god-mode-type-tag">{resolvedElementType}</span>
+      )}
       {canEdit && isEnteredAsParent && (
         <div
           onClick={(e) => e.stopPropagation()}
