@@ -14,7 +14,12 @@ import {
   resolveCmsBodyClass,
   resolveCmsGurmukhiClass,
   resolveCmsGridClass,
+  getPageTransitionClass,
 } from "@/components/editable-heritage-image";
+import {
+  InlineTopicEditor,
+  type InlineTopicEditData,
+} from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
 import { SikhiIcon } from "@/components/sikhi-icons";
 
@@ -360,7 +365,7 @@ export default function MatriarchsPage() {
         color: layoutCfg.bodyTextColor || "#171917",
         fontFamily: pageFont,
       }}
-      className="min-h-screen flex flex-col transition-opacity duration-200"
+      className={`min-h-screen flex flex-col ${getPageTransitionClass(layoutCfg.pageTransition)}`}
     >
       <Header solid />
 
@@ -382,6 +387,15 @@ export default function MatriarchsPage() {
             }
           ).sectionLayoutMap?.["matriarchs-archive"];
           if (matSec?.hidden) return null;
+          const heroOv = cms.topicEdits?.["matriarchs-hero-header"] as
+            | InlineTopicEditData
+            | undefined;
+          const heroHeadingCls = heroOv?.fontScale
+            ? resolveCmsHeadingClass(heroOv.fontScale)
+            : "";
+          const heroBodyCls = heroOv?.fontScale
+            ? resolveCmsBodyClass(heroOv.fontScale)
+            : "text-sm sm:text-base";
           const alignCls =
             matSec?.titleAlign === "center"
               ? "text-center mx-auto"
@@ -397,29 +411,55 @@ export default function MatriarchsPage() {
           return (
         <section
           style={{
-            backgroundColor: layoutCfg.cardBgColor || undefined,
-            borderColor: layoutCfg.accentColor || undefined,
+            backgroundColor: heroOv?.bgColor || layoutCfg.cardBgColor || undefined,
+            borderColor: heroOv?.borderColor || layoutCfg.accentColor || undefined,
+            color: heroOv?.textColor || undefined,
+            fontFamily: heroOv?.fontFamily
+              ? resolveCmsFontFamily(heroOv.fontFamily)
+              : undefined,
           }}
           className={`rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm ${widthCls}`}
         >
+          <div className="flex justify-end mb-2">
+            <InlineTopicEditor
+              itemId="matriarchs-hero-header"
+              label="Edit Hero Banner"
+              defaults={{
+                title:
+                  matSec?.customTitle ||
+                  "The Unsung Matriarchs & Warriors of the Panth",
+                gurmukhi: "ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ",
+                badge: "SOVEREIGN EQUALITY ARCHIVE • ANG 473 & ANG 967",
+                subtitle:
+                  matSec?.customSubtitle ||
+                  "Over five centuries before modern gender movements, Guru Nanak Dev Ji declared the sovereign dignity of women on Ang 473. Explore 13 foundational Sikh women—spiritual pioneers, battlefield commanders, scriptural scholars, and martyrs from 1469 to 1984—with primary historical citations.",
+              }}
+            />
+          </div>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             <div className={`space-y-3 max-w-3xl ${alignCls}`}>
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
-                  SOVEREIGN EQUALITY ARCHIVE • ANG 473 &amp; ANG 967
+                  {heroOv?.badge || "SOVEREIGN EQUALITY ARCHIVE • ANG 473 & ANG 967"}
                 </span>
                 <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
-                  ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ
+                  {heroOv?.gurmukhi || "ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ"}
                 </span>
               </div>
               <h1
-                style={{ color: layoutCfg.headingTextColor || undefined }}
-                className="text-3xl sm:text-5xl font-serif font-bold tracking-tight"
+                style={{
+                  color: heroOv?.textColor || layoutCfg.headingTextColor || undefined,
+                }}
+                className={`text-3xl sm:text-5xl ${heroHeadingCls} font-serif font-bold tracking-tight`}
               >
-                {matSec?.customTitle || "The Unsung Matriarchs & Warriors of the Panth"}
+                {heroOv?.title ||
+                  matSec?.customTitle ||
+                  "The Unsung Matriarchs & Warriors of the Panth"}
               </h1>
-              <p className="text-sm sm:text-base text-[#4A554E] leading-relaxed">
-                {matSec?.customSubtitle ||
+              <p className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}>
+                {heroOv?.subtitle ||
+                  heroOv?.description ||
+                  matSec?.customSubtitle ||
                   "Over five centuries before modern gender movements, Guru Nanak Dev Ji declared the sovereign dignity of women on Ang 473. Explore 13 foundational Sikh women—spiritual pioneers, battlefield commanders, scriptural scholars, and martyrs from 1469 to 1984—with primary historical citations."}
               </p>
             </div>
@@ -477,7 +517,7 @@ export default function MatriarchsPage() {
         {/* 13 Matriarchs & Warriors Grid */}
         <section className={resolveCmsGridClass(layoutCfg.feedLayout)}>
           {filteredProfiles.map((profile) => {
-            const ov = cms.topicEdits?.[profile.id];
+            const ov = cms.topicEdits?.[profile.id] as InlineTopicEditData | undefined;
             const cardHeadingCls = ov?.fontScale
               ? resolveCmsHeadingClass(ov.fontScale)
               : headingSizeCls;
@@ -492,10 +532,25 @@ export default function MatriarchsPage() {
                   backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || "#1B2A20",
                   borderColor: ov?.borderColor || layoutCfg.accentColor || "rgba(197,155,39,0.4)",
                   color: ov?.textColor || layoutCfg.bodyTextColor || undefined,
+                  fontFamily: ov?.fontFamily
+                    ? resolveCmsFontFamily(ov.fontFamily)
+                    : undefined,
                 }}
                 className="rounded-2xl border p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
               >
               <div className="space-y-3">
+                <div className="flex justify-end">
+                  <InlineTopicEditor
+                    itemId={profile.id}
+                    defaults={{
+                      title: profile.name,
+                      gurmukhi: profile.gurmukhiName,
+                      subtitle: profile.roleTitle,
+                      badge: profile.category,
+                      description: profile.shortSummary,
+                    }}
+                  />
+                </div>
                 <EditableHeritageImage
                   imageKey={`matriarch-${profile.id}`}
                   legacyKeys={[profile.id, `chitrakari-${profile.id}`]}

@@ -16,8 +16,13 @@ import {
   resolveCmsBodyClass,
   resolveCmsGurmukhiClass,
   resolveCmsGridClass,
+  getPageTransitionClass,
   type CmsSiteState,
 } from "@/components/editable-heritage-image";
+import {
+  InlineTopicEditor,
+  type InlineTopicEditData,
+} from "@/components/inline-cms-editor";
 import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
 import {
   FIVE_KS,
@@ -619,9 +624,23 @@ function SlideFiveKs({
             backgroundColor: kEdit?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
             borderColor: kEdit?.borderColor || layoutCfg.accentColor || card.borderColor,
             color: kEdit?.textColor || layoutCfg.bodyTextColor || card.color,
+            fontFamily: (kEdit as InlineTopicEditData | undefined)?.fontFamily
+              ? resolveCmsFontFamily((kEdit as InlineTopicEditData).fontFamily)
+              : undefined,
           }}
         >
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <InlineTopicEditor
+                itemId={rawK.art.artKey}
+                defaults={{
+                  title: k.name,
+                  gurmukhi: k.gurmukhi,
+                  subtitle: k.meaning,
+                  description: k.symbolism,
+                }}
+              />
+            </div>
             <FoundationCardArtwork artKey={k.art.artKey} variant={k.art.variant} title={k.name} heightClass="h-32" compact />
             <div>
               <p lang="pa" className={`font-gurmukhi ${gurmukhiCls} font-bold text-[#C59B27]`}>{k.gurmukhi}</p>
@@ -908,9 +927,23 @@ function SlidePyare({
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
                 borderColor: ov?.borderColor || layoutCfg.accentColor || card.borderColor,
                 color: ov?.textColor || layoutCfg.bodyTextColor || card.color,
+                fontFamily: (ov as InlineTopicEditData | undefined)?.fontFamily
+                  ? resolveCmsFontFamily((ov as InlineTopicEditData).fontFamily)
+                  : undefined,
               }}
             >
               <div className="space-y-2.5">
+                <div className="flex justify-end">
+                  <InlineTopicEditor
+                    itemId={p.art.artKey}
+                    defaults={{
+                      title: p.name,
+                      gurmukhi: p.gurmukhi,
+                      subtitle: p.from,
+                      description: p.note,
+                    }}
+                  />
+                </div>
                 <FoundationCardArtwork artKey={p.art.artKey} variant={p.art.variant} title={p.name} heightClass="h-32" compact />
                 <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{p.gurmukhi}</p>
                 <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{p.name}</h4>
@@ -1011,9 +1044,23 @@ function SlideSahibzaade({
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
                 borderColor: ov?.borderColor || layoutCfg.accentColor || card.borderColor,
                 color: ov?.textColor || layoutCfg.bodyTextColor || card.color,
+                fontFamily: (ov as InlineTopicEditData | undefined)?.fontFamily
+                  ? resolveCmsFontFamily((ov as InlineTopicEditData).fontFamily)
+                  : undefined,
               }}
             >
               <div className="space-y-2.5">
+                <div className="flex justify-end">
+                  <InlineTopicEditor
+                    itemId={s.art.artKey}
+                    defaults={{
+                      title: s.name,
+                      gurmukhi: s.gurmukhi,
+                      subtitle: `${s.age} • ${s.place}`,
+                      description: s.note,
+                    }}
+                  />
+                </div>
                 <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
                 <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
                 <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
@@ -1126,9 +1173,23 @@ function SlideShaheeds({
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
                 borderColor: ov?.borderColor || layoutCfg.accentColor || card.borderColor,
                 color: ov?.textColor || layoutCfg.bodyTextColor || card.color,
+                fontFamily: (ov as InlineTopicEditData | undefined)?.fontFamily
+                  ? resolveCmsFontFamily((ov as InlineTopicEditData).fontFamily)
+                  : undefined,
               }}
             >
               <div className="space-y-2.5">
+                <div className="flex justify-end">
+                  <InlineTopicEditor
+                    itemId={s.art.artKey}
+                    defaults={{
+                      title: s.name,
+                      gurmukhi: s.gurmukhi,
+                      subtitle: s.year,
+                      description: s.note,
+                    }}
+                  />
+                </div>
                 <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
                 <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
                 <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
@@ -1292,6 +1353,10 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
     return null;
   }
 
+  const deckInline = cms.topicEdits?.["foundations-deck-header"] as
+    | InlineTopicEditData
+    | undefined;
+
   return (
     <section
       aria-label="Foundations of Sikhi interactive slide deck"
@@ -1302,22 +1367,41 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
         if (e.key === "ArrowLeft") go(index - 1);
       }}
       style={{
-        fontFamily: resolveCmsFontFamily(layoutCfg.fontFamily),
-        backgroundColor: layoutCfg.pageBgColor || undefined,
-        color: layoutCfg.bodyTextColor || undefined,
+        fontFamily: deckInline?.fontFamily
+          ? resolveCmsFontFamily(deckInline.fontFamily)
+          : resolveCmsFontFamily(layoutCfg.fontFamily),
+        backgroundColor: deckInline?.bgColor || layoutCfg.pageBgColor || undefined,
+        color: deckInline?.textColor || layoutCfg.bodyTextColor || undefined,
       }}
-      className={`space-y-6 outline-none transition-opacity duration-200 rounded-3xl ${deckWidthCls}`}
+      className={`space-y-6 outline-none rounded-3xl ${getPageTransitionClass(layoutCfg.pageTransition)} ${deckWidthCls}`}
     >
       <div className={`space-y-2 ${deckAlignCls}`}>
-        <Eyebrow>Sikhi 101 • Start here</Eyebrow>
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow>{deckInline?.badge || "Sikhi 101 • Start here"}</Eyebrow>
+          <InlineTopicEditor
+            itemId="foundations-deck-header"
+            defaults={{
+              title: deckSec?.customTitle || "Who is a Sikh? & Foundations of Sikhi",
+              badge: "Sikhi 101 • Start here",
+              description:
+                deckSec?.customSubtitle ||
+                "Seven short slides, each with a painting, to understand the heart of Sikhi. Swipe, tap or use the arrow keys.",
+            }}
+          />
+        </div>
         <Heading
-          style={{ color: layoutCfg.headingTextColor || undefined }}
+          style={{
+            color: deckInline?.textColor || layoutCfg.headingTextColor || undefined,
+          }}
           className="font-serif text-3xl sm:text-5xl font-bold tracking-tight"
         >
-          {deckSec?.customTitle || "Who is a Sikh? & Foundations of Sikhi"}
+          {deckInline?.title ||
+            deckSec?.customTitle ||
+            "Who is a Sikh? & Foundations of Sikhi"}
         </Heading>
         <p className={`max-w-3xl text-base ${deckSec?.titleAlign === "center" ? "mx-auto" : ""}`} style={muted}>
-          {deckSec?.customSubtitle ||
+          {deckInline?.description ||
+            deckSec?.customSubtitle ||
             "Seven short slides, each with a painting, to understand the heart of Sikhi. Swipe, tap or use the arrow keys."}
         </p>
       </div>

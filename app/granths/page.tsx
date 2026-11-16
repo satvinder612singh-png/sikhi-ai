@@ -5,7 +5,19 @@ import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
-import { EditableHeritageImage } from "@/components/editable-heritage-image";
+import {
+  EditableHeritageImage,
+  useCmsSiteState,
+  resolveCmsFontFamily,
+  resolveCmsHeadingClass,
+  resolveCmsBodyClass,
+  resolveCmsGurmukhiClass,
+  getPageTransitionClass,
+} from "@/components/editable-heritage-image";
+import {
+  InlineTopicEditor,
+  type InlineTopicEditData,
+} from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
 import { SikhiIcon } from "@/components/sikhi-icons";
 import {
@@ -701,6 +713,13 @@ export default function GranthsAndKirtanPage() {
     }
   };
 
+  const cms = useCmsSiteState();
+  const layoutCfg = cms.layoutConfig || {};
+  const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
+  const headingSizeCls = resolveCmsHeadingClass(layoutCfg.headingScale);
+  const bodySizeCls = resolveCmsBodyClass(layoutCfg.bodyScale);
+  const gurmukhiSizeCls = resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale);
+
   const openGranthModal = (
     granth: GranthVolume,
     initialMode: "bookreader" | "native"
@@ -712,7 +731,14 @@ export default function GranthsAndKirtanPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF6EE] text-[#171917]">
+    <div
+      style={{
+        backgroundColor: layoutCfg.pageBgColor || "#FAF6EE",
+        color: layoutCfg.bodyTextColor || "#171917",
+        fontFamily: pageFont,
+      }}
+      className={`min-h-screen flex flex-col ${getPageTransitionClass(layoutCfg.pageTransition)}`}
+    >
       <Header solid />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
@@ -720,6 +746,15 @@ export default function GranthsAndKirtanPage() {
         {(() => {
           const hubSec = sectionLayoutMap["granths-kirtan-hub"] || {};
           if (hubSec.hidden) return null;
+          const heroOv = cms.topicEdits?.["granths-hero-header"] as
+            | InlineTopicEditData
+            | undefined;
+          const heroHeadingCls = heroOv?.fontScale
+            ? resolveCmsHeadingClass(heroOv.fontScale)
+            : "";
+          const heroBodyCls = heroOv?.fontScale
+            ? resolveCmsBodyClass(heroOv.fontScale)
+            : "text-sm sm:text-base";
           const alignCls =
             hubSec.titleAlign === "center"
               ? "text-center items-center"
@@ -727,22 +762,59 @@ export default function GranthsAndKirtanPage() {
                 ? "text-right items-end"
                 : "text-left items-start";
           return (
-            <section className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm">
+            <section
+              style={{
+                backgroundColor: heroOv?.bgColor || layoutCfg.cardBgColor || undefined,
+                borderColor: heroOv?.borderColor || layoutCfg.accentColor || undefined,
+                color: heroOv?.textColor || undefined,
+                fontFamily: heroOv?.fontFamily
+                  ? resolveCmsFontFamily(heroOv.fontFamily)
+                  : undefined,
+              }}
+              className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm"
+            >
+              <div className="flex justify-end mb-2">
+                <InlineTopicEditor
+                  itemId="granths-hero-header"
+                  label="Edit Hero Banner"
+                  defaults={{
+                    title:
+                      hubSec.customTitle ||
+                      "Puratan Raag Darbar & Interactive Granths",
+                    gurmukhi: "ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ",
+                    badge:
+                      "SANCTUARY ARCHIVE • PURATAN KIRTAN & GRANTH BOOKREADER",
+                    subtitle:
+                      hubSec.customSubtitle ||
+                      "Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi (proxied directly from Archive.org or our 5TB Drive Vault) or open our Dual-Mode Interactive BookReader & Live Ang 1–1430 Darpan Viewer.",
+                  }}
+                />
+              </div>
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div className={`space-y-3 max-w-3xl flex flex-col ${alignCls}`}>
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
-                      SANCTUARY ARCHIVE • PURATAN KIRTAN &amp; GRANTH BOOKREADER
+                      {heroOv?.badge ||
+                        "SANCTUARY ARCHIVE • PURATAN KIRTAN & GRANTH BOOKREADER"}
                     </span>
                     <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
-                      ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ
+                      {heroOv?.gurmukhi || "ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ"}
                     </span>
                   </div>
-                  <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight">
-                    {hubSec.customTitle || "Puratan Raag Darbar & Interactive Granths"}
+                  <h1
+                    style={{
+                      color: heroOv?.textColor || layoutCfg.headingTextColor || undefined,
+                    }}
+                    className={`text-3xl sm:text-5xl ${heroHeadingCls} font-serif font-bold tracking-tight`}
+                  >
+                    {heroOv?.title ||
+                      hubSec.customTitle ||
+                      "Puratan Raag Darbar & Interactive Granths"}
                   </h1>
-                  <p className="text-sm sm:text-base text-[#4A554E] leading-relaxed">
-                    {hubSec.customSubtitle ||
+                  <p className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}>
+                    {heroOv?.subtitle ||
+                      heroOv?.description ||
+                      hubSec.customSubtitle ||
                       "Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi (proxied directly from Archive.org or our 5TB Drive Vault) or open our Dual-Mode Interactive BookReader & Live Ang 1–1430 Darpan Viewer."}
                   </p>
                 </div>
@@ -1087,10 +1159,23 @@ export default function GranthsAndKirtanPage() {
                 {filteredKirtanTracks.map((track) => {
                   const active = currentTrack.id === track.id;
                   const imgKey = track.imageKey || `kirtan-art-${track.id}`;
-                  const storedFrame = remoteFrames[imgKey];
+                  const storedFrame = cms.frames?.[imgKey] || remoteFrames[imgKey];
                   const hasPicture =
                     !storedFrame?.hidden &&
                     Boolean(storedFrame?.src || track.imageUrl);
+                  const ov = cms.topicEdits?.[track.id] as
+                    | InlineTopicEditData
+                    | undefined;
+                  const cardHeadingCls = ov?.fontScale
+                    ? resolveCmsHeadingClass(ov.fontScale)
+                    : headingSizeCls;
+                  const cardBodyCls = ov?.fontScale
+                    ? resolveCmsBodyClass(ov.fontScale)
+                    : bodySizeCls;
+                  const displayTitle = ov?.title || track.title;
+                  const displayGurmukhi = ov?.gurmukhi || track.gurmukhiTitle;
+                  const displayRaag = ov?.badge || track.raag;
+                  const displayRagi = ov?.subtitle || track.ragi;
                   return (
                     <div
                       key={track.id}
@@ -1103,17 +1188,40 @@ export default function GranthsAndKirtanPage() {
                           handleTrackClick(track);
                         }
                       }}
+                      style={{
+                        backgroundColor:
+                          ov?.bgColor || (!active ? layoutCfg.cardBgColor || undefined : undefined),
+                        borderColor:
+                          ov?.borderColor || layoutCfg.accentColor || undefined,
+                        color: ov?.textColor || undefined,
+                        fontFamily: ov?.fontFamily
+                          ? resolveCmsFontFamily(ov.fontFamily)
+                          : undefined,
+                      }}
                       className={`p-5 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-3 ${
                         active
                           ? "bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-md"
                           : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
                       }`}
                     >
+                      <div className="flex justify-end">
+                        <InlineTopicEditor
+                          itemId={track.id}
+                          label="Edit Shabad"
+                          defaults={{
+                            title: track.title,
+                            gurmukhi: track.gurmukhiTitle,
+                            subtitle: track.ragi,
+                            badge: track.raag,
+                            description: track.raagNotes,
+                          }}
+                        />
+                      </div>
                       {hasPicture && (
                         <EditableHeritageImage
                           imageKey={imgKey}
                           defaultSrc={storedFrame?.src || track.imageUrl || ""}
-                          alt={track.title}
+                          alt={displayTitle}
                           defaultOrientation="natural"
                         />
                       )}
@@ -1127,8 +1235,11 @@ export default function GranthsAndKirtanPage() {
                           </span>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
-                                {track.raag}
+                              <span
+                                style={{ color: layoutCfg.accentColor || undefined }}
+                                className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]"
+                              >
+                                {displayRaag}
                               </span>
                               <span className={`text-xs ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
                                 • {track.durationLabel}
@@ -1136,16 +1247,21 @@ export default function GranthsAndKirtanPage() {
                             </div>
                             <p
                               lang="pa"
-                              className="font-gurmukhi text-lg font-medium text-[#D97706] mt-0.5"
+                              className={`font-gurmukhi ${gurmukhiSizeCls} font-medium text-[#D97706] mt-0.5`}
                             >
-                              {track.gurmukhiTitle}
+                              {displayGurmukhi}
                             </p>
-                            <h3 className="text-lg font-serif font-bold truncate">
-                              {track.title}
+                            <h3 className={`${cardHeadingCls} font-serif font-bold truncate`}>
+                              {displayTitle}
                             </h3>
-                            <p className={`text-xs font-medium ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
-                              {track.ragi}
+                            <p className={`${cardBodyCls} font-medium ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
+                              {displayRagi}
                             </p>
+                            {ov?.description && (
+                              <p className="text-xs opacity-75 mt-1">
+                                {ov.description}
+                              </p>
+                            )}
                           </div>
                         </div>
 

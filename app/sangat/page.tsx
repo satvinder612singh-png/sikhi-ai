@@ -18,9 +18,14 @@ import {
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
   resolveCmsGridClass,
+  getPageTransitionClass,
   type FrameOrientation,
   type FrameFitMode as HeritageFitMode,
 } from "@/components/editable-heritage-image";
+import {
+  InlineTopicEditor,
+  type InlineTopicEditData,
+} from "@/components/inline-cms-editor";
 import {
   SikhHeritageAvatar,
   PublicResearcherProfileModal,
@@ -2045,7 +2050,7 @@ function SangatHubContent() {
         color: layoutCfg.bodyTextColor || "var(--text-primary)",
         fontFamily: pageFont,
       }}
-      className="min-h-screen flex flex-col transition-opacity duration-200"
+      className={`min-h-screen flex flex-col ${getPageTransitionClass(layoutCfg.pageTransition)}`}
     >
       <Header solid />
 
@@ -2081,11 +2086,20 @@ function SangatHubContent() {
               : heroSec?.widthMode === "contained"
                 ? "max-w-5xl mx-auto"
                 : "w-full";
+          const heroInline = cms.topicEdits?.["sangat-hero-header"] as
+            | InlineTopicEditData
+            | undefined;
           return (
         <section
           style={{
-            backgroundColor: layoutCfg.cardBgColor || "var(--bg-surface)",
-            borderColor: layoutCfg.accentColor || "var(--border-subtle)",
+            backgroundColor:
+              heroInline?.bgColor || layoutCfg.cardBgColor || "var(--bg-surface)",
+            borderColor:
+              heroInline?.borderColor || layoutCfg.accentColor || "var(--border-subtle)",
+            fontFamily: heroInline?.fontFamily
+              ? resolveCmsFontFamily(heroInline.fontFamily)
+              : undefined,
+            color: heroInline?.textColor || undefined,
           }}
           className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6 ${widthCls}`}
         >
@@ -2113,23 +2127,43 @@ function SangatHubContent() {
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div className={`space-y-2 max-w-2xl ${alignCls}`}>
-              <p
-                style={{ color: layoutCfg.accentColor || undefined }}
-                className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
-              >
-                SIKHSTACK &amp; SIKHINTEREST
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p
+                  style={{ color: layoutCfg.accentColor || undefined }}
+                  className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+                >
+                  {heroInline?.badge || "SIKHSTACK & SIKHINTEREST"}
+                </p>
+                <InlineTopicEditor
+                  itemId="sangat-hero-header"
+                  defaults={{
+                    title: heroSec?.customTitle || "SikhStack & SikhInterest",
+                    badge: "SIKHSTACK & SIKHINTEREST",
+                    description:
+                      heroSec?.customSubtitle ||
+                      "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage.",
+                  }}
+                />
+              </div>
               <h1
-                style={{ color: layoutCfg.headingTextColor || undefined }}
+                style={{
+                  color: heroInline?.textColor || layoutCfg.headingTextColor || undefined,
+                }}
                 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight"
               >
-                {heroSec?.customTitle || "SikhStack & SikhInterest"}
+                {heroInline?.title || heroSec?.customTitle || "SikhStack & SikhInterest"}
               </h1>
               <p
-                style={{ color: layoutCfg.bodyTextColor || "var(--theme-text-muted)" }}
+                style={{
+                  color:
+                    heroInline?.textColor ||
+                    layoutCfg.bodyTextColor ||
+                    "var(--theme-text-muted)",
+                }}
                 className="text-sm sm:text-base leading-relaxed"
               >
-                {heroSec?.customSubtitle ||
+                {heroInline?.description ||
+                  heroSec?.customSubtitle ||
                   "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage."}
               </p>
               {isStealthAdmin && (
@@ -2515,7 +2549,9 @@ function SangatHubContent() {
                 ) : (
                   <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
                     {feedItems.map((item) => {
-                      const ov = cms.topicEdits?.[item.id];
+                      const ov = cms.topicEdits?.[item.id] as
+                        | InlineTopicEditData
+                        | undefined;
                       const badge =
                         ov?.badge ||
                         (item.kind === "link"
@@ -2542,10 +2578,24 @@ function SangatHubContent() {
                               layoutCfg.accentColor ||
                               "rgba(197,155,39,0.25)",
                             color: ov?.textColor || layoutCfg.bodyTextColor || undefined,
+                            fontFamily: ov?.fontFamily
+                              ? resolveCmsFontFamily(ov.fontFamily)
+                              : undefined,
                           }}
-                          className="group flex flex-col justify-between rounded-2xl border p-5 shadow-sm hover:border-[#C59B27]/65 transition"
+                          className="group relative flex flex-col justify-between rounded-2xl border p-5 shadow-sm hover:border-[#C59B27]/65 transition"
                         >
                           <div className="space-y-3 flex-1">
+                            <div className="flex justify-end">
+                              <InlineTopicEditor
+                                itemId={item.id}
+                                defaults={{
+                                  title: item.title,
+                                  subtitle: item.byline,
+                                  badge,
+                                  description: item.preview,
+                                }}
+                              />
+                            </div>
                             {imgSrc && (
                               <EditableHeritageImage
                                 imageKey={`sangat-feed-${item.kind}-${item.id}`}
