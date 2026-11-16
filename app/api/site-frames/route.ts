@@ -56,7 +56,11 @@ function getSupabaseAdminOrAnon() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
   return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
   });
 }
 
@@ -216,8 +220,25 @@ export async function POST(req: Request) {
       }
     }
 
+    if (typeof body.frameKey === "string" && body.frameKey) {
+      if (body.frameData === null) {
+        delete nextFrames[body.frameKey];
+      } else if (body.frameData && typeof body.frameData === "object") {
+        nextFrames[body.frameKey] = {
+          ...(body.frameData as FrameRecord),
+          updatedAt: now,
+        };
+      }
+    }
+
     if (body.frames && typeof body.frames === "object") {
-      Object.assign(nextFrames, body.frames as Record<string, FrameRecord>);
+      for (const [k, v] of Object.entries(body.frames as Record<string, FrameRecord | null>)) {
+        if (v === null) {
+          delete nextFrames[k];
+        } else if (v && typeof v === "object") {
+          nextFrames[k] = { ...v, updatedAt: now };
+        }
+      }
     }
 
     const incomingPosts =
@@ -255,6 +276,18 @@ export async function POST(req: Request) {
 
     const source = await writeGlobalState(nextState);
     const storageMode = source === "supabase" ? "supabase" : "fallback";
+    console.log("[site-frames]", req.method, {
+      storageMode,
+      frameKeys: Object.keys(
+        (body?.frames && typeof body.frames === "object"
+          ? body.frames
+          : nextState.frames) as Record<string, unknown>
+      ),
+      postCount:
+        nextState.customPosts.links.length +
+        nextState.customPosts.blogs.length +
+        nextState.customPosts.pins.length,
+    });
     return NextResponse.json({ ok: true, source, storageMode, ...nextState });
   } catch (err) {
     return NextResponse.json(

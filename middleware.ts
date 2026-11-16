@@ -13,6 +13,9 @@ const PROTECTED_PREFIXES = ["/ask"];
  * persists across routes) and gates protected pages.
  */
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/site-frames")) {
+    return NextResponse.next();
+  }
   if (!isSupabaseConfigured) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
@@ -37,10 +40,38 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // getUser() validates the token with Supabase; do not use getSession() here.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getUser() validates the token with Supabase; handle stale refresh tokens gracefully.
+  let user = null;
+  const clearStaleSbCookies = () => {
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-")) {
+        response.cookies.delete(cookie.name);
+      }
+    }
+  };
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      const errCode = (error as { code?: string }).code;
+      if (
+        errCode === "refresh_token_not_found" ||
+        error.message?.includes("Refresh Token")
+      ) {
+        clearStaleSbCookies();
+      }
+    } else {
+      user = data.user ?? null;
+    }
+  } catch (err) {
+    const errObj = err as { code?: string; message?: string };
+    if (
+      errObj?.code === "refresh_token_not_found" ||
+      errObj?.message?.includes("Refresh Token")
+    ) {
+      clearStaleSbCookies();
+    }
+  }
 
   const { pathname, search } = request.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some(

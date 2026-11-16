@@ -96,11 +96,13 @@ export function compressImageFile(
 let memoryFramesCache: Record<string, HeritageFrameSettings> = {};
 let remoteSyncPromise: Promise<void> | null = null;
 
-function syncRemoteFramesOnce(): Promise<void> {
+function syncRemoteFramesOnce(force = false): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
-  if (remoteSyncPromise) return remoteSyncPromise;
+  if (remoteSyncPromise && !force) return remoteSyncPromise;
 
-  remoteSyncPromise = fetch("/api/site-frames", { cache: "no-store" })
+  remoteSyncPromise = fetch(`/api/site-frames?t=${Date.now()}`, {
+    cache: "no-store",
+  })
     .then((res) => (res.ok ? res.json() : null))
     .then((data) => {
       if (!data || typeof data !== "object" || !data.frames) return;
@@ -133,28 +135,36 @@ function pushFrameToServer(
     window.clearTimeout(framePushTimers[imageKey]);
   }
   onStatus?.("syncing");
-  framePushTimers[imageKey] = window.setTimeout(() => {
-    void fetch("/api/site-frames", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        frameUpdate: { imageKey, settings: next },
-      }),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const errData = await res.json().catch(() => null);
-          throw new Error(errData?.error || `Sync failed (${res.status})`);
-        }
-        onStatus?.("synced");
-      })
-      .catch((err) => {
-        onStatus?.(
-          "error",
-          err instanceof Error ? err.message : "Failed to sync image globally."
-        );
+  framePushTimers[imageKey] = window.setTimeout(async () => {
+    try {
+      const res = await fetch("/api/site-frames", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          frames: { [imageKey]: next },
+        }),
+        cache: "no-store",
       });
-  }, 220);
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        storageMode?: "supabase" | "fallback";
+        error?: string;
+      } | null;
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || `Sync failed (${res.status})`);
+      }
+      if (data.storageMode === "supabase") {
+        onStatus?.("synced", "✓ Image saved & synced globally (Supabase)");
+      } else {
+        onStatus?.("synced", "✓ Image synced to server");
+      }
+    } catch (err) {
+      onStatus?.(
+        "error",
+        err instanceof Error ? err.message : "Failed to sync image globally."
+      );
+    }
+  }, 150);
 }
 
 export function saveAndSyncFrame(
@@ -295,6 +305,9 @@ export function EditableHeritageImage({
 
     syncFrame();
     void syncRemoteFramesOnce();
+    const onFocusSync = () => {
+      void syncRemoteFramesOnce(true);
+    };
     const onFrameUpdated = (e: Event) => {
       const detail = (e as CustomEvent<{ imageKey?: string }>).detail;
       if (!detail?.imageKey || detail.imageKey === imageKey) {
@@ -302,9 +315,11 @@ export function EditableHeritageImage({
       }
     };
     window.addEventListener("storage", syncFrame);
+    window.addEventListener("focus", onFocusSync);
     window.addEventListener(FRAME_UPDATED_EVENT, onFrameUpdated);
     return () => {
       window.removeEventListener("storage", syncFrame);
+      window.removeEventListener("focus", onFocusSync);
       window.removeEventListener(FRAME_UPDATED_EVENT, onFrameUpdated);
     };
   }, [imageKey, defaultSrc, defaultOrientation, defaultFit]);
@@ -320,7 +335,7 @@ export function EditableHeritageImage({
     if (status === "syncing") {
       setSyncMessage("Uploading & syncing image...");
     } else if (status === "synced") {
-      setSyncMessage("✓ Image saved & synced globally");
+      setSyncMessage(msg || "✓ Image saved & synced globally");
       window.setTimeout(() => {
         setSyncStatus((curr) => (curr === "synced" ? "idle" : curr));
       }, 3500);
@@ -333,9 +348,7 @@ export function EditableHeritageImage({
     const next: HeritageFrameSettings = { ...settings, ...patch };
     setSettings(next);
     writeFrame(imageKey, next);
-    if (canEdit) {
-      pushFrameToServer(imageKey, next, handleSyncFeedback);
-    }
+    pushFrameToServer(imageKey, next, handleSyncFeedback);
     if (patch.src !== undefined && onImageChange) {
       onImageChange(patch.src);
     }
@@ -345,9 +358,7 @@ export function EditableHeritageImage({
     const fresh = buildDefaults();
     setSettings(fresh);
     writeFrame(imageKey, null);
-    if (canEdit) {
-      pushFrameToServer(imageKey, null, handleSyncFeedback);
-    }
+    pushFrameToServer(imageKey, null, handleSyncFeedback);
     setNaturalRatio(null);
     if (onImageChange) {
       onImageChange(defaultSrc);

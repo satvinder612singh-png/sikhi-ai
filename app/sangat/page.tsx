@@ -898,7 +898,7 @@ function SangatHubContent() {
     }
 
     // Fetch shared global banners, custom posts, and deleted IDs from /api/site-frames
-    void fetch("/api/site-frames", { cache: "no-store" })
+    void fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data || typeof data !== "object") return;
@@ -976,14 +976,21 @@ function SangatHubContent() {
       });
   }, []);
 
-  const pushSiteSync = (payload: Record<string, unknown>): Promise<boolean> => {
-    return fetch("/api/site-frames", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.ok)
-      .catch(() => false);
+  const pushSiteSync = async (payload: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/site-frames", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+      console.log("[sangat] POST /api/site-frames", { ok: res.ok, data });
+      return res.ok && Boolean(data?.ok);
+    } catch (err) {
+      console.warn("[sangat] POST /api/site-frames failed", err);
+      return false;
+    }
   };
 
   const saveProfileToStorage = (updated: SangatUserProfile) => {
@@ -1453,9 +1460,8 @@ function SangatHubContent() {
         [key]: { ...prev, imageUrl: compressed },
       });
       const ok = await pushSiteSync({
-        frameUpdate: {
-          imageKey: `sangat-feed-${item.kind}-${item.id}`,
-          settings: {
+        frames: {
+          [`sangat-feed-${item.kind}-${item.id}`]: {
             src: compressed,
             orientation: "auto",
             fitMode: "contain-museum",
