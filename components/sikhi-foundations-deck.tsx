@@ -53,7 +53,6 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 /* --------------------- BANNER ARTWORK (NO PORTRAIT CROP) ------------------ */
 function SlideBannerArtwork({
   artKey,
-  variant,
   title,
 }: {
   artKey: string;
@@ -65,33 +64,29 @@ function SlideBannerArtwork({
     ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(commons.file)}?width=1200`
     : "";
 
-  if (!src) {
-    return (
-      <>
-        <EditableHeritageImage
-          imageKey={`foundations-slide-${artKey}`}
-          defaultSrc=""
-          alt={title}
-          defaultFit="contain-museum"
-        />
-        <ChitrakariCardHeader
-          artKey={artKey}
-          variant={variant}
-          title={title}
-          heightClass="h-52 sm:h-64"
-          editable
-        />
-      </>
-    );
-  }
-
   return (
     <div className="space-y-1.5">
       <EditableHeritageImage
         imageKey={`foundations-slide-${artKey}`}
+        legacyKeys={[artKey, `chitrakari-${artKey}`, `foundations-card-${artKey}`]}
         defaultSrc={src}
         alt={commons?.caption || title}
+        defaultOrientation="natural"
         defaultFit="contain-museum"
+        fallbackNode={
+          <div
+            className="h-52 sm:h-64 w-full rounded-xl flex items-center justify-center text-center px-4"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 35%, rgba(197,155,39,0.22), #0B1020 75%)",
+              border: "2px double rgba(197,155,39,0.45)",
+            }}
+          >
+            <span className="font-serif text-lg sm:text-xl font-bold text-[#E5C158]">
+              {title}
+            </span>
+          </div>
+        }
       />
       {commons?.caption && (
         <p className="text-[11px] font-medium opacity-75 px-1">{commons.caption}</p>
@@ -102,10 +97,8 @@ function SlideBannerArtwork({
 
 function FoundationCardArtwork({
   artKey,
-  variant,
   title,
   heightClass,
-  compact = false,
 }: {
   artKey: string;
   variant: ChitrakariVariant;
@@ -118,34 +111,27 @@ function FoundationCardArtwork({
     ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(commons.file)}?width=1200`
     : "";
 
-  if (src) {
-    return (
-      <EditableHeritageImage
-        imageKey={`foundations-card-${artKey}`}
-        defaultSrc={src}
-        alt={title}
-        defaultFit="contain-museum"
-      />
-    );
-  }
-
   return (
-    <>
-      <EditableHeritageImage
-        imageKey={`foundations-card-${artKey}`}
-        defaultSrc=""
-        alt={title}
-        defaultFit="contain-museum"
-      />
-      <ChitrakariCardHeader
-        artKey={artKey}
-        variant={variant}
-        title={title}
-        heightClass={heightClass}
-        editable
-        compact={compact}
-      />
-    </>
+    <EditableHeritageImage
+      imageKey={`foundations-card-${artKey}`}
+      legacyKeys={[artKey, `chitrakari-${artKey}`, `foundations-slide-${artKey}`]}
+      defaultSrc={src}
+      alt={title}
+      defaultOrientation="natural"
+      defaultFit="contain-museum"
+      fallbackNode={
+        <div
+          className={`w-full rounded-xl flex items-center justify-center text-center px-3 ${heightClass}`}
+          style={{
+            background:
+              "radial-gradient(circle at 50% 35%, rgba(197,155,39,0.2), #0B1020 75%)",
+            border: "2px double rgba(197,155,39,0.4)",
+          }}
+        >
+          <span className="font-serif text-sm font-bold text-[#E5C158]">{title}</span>
+        </div>
+      }
+    />
   );
 }
 

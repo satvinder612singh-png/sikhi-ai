@@ -1,15 +1,10 @@
 ﻿"use client";
 
-import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import { AnimatedModal } from "@/components/animated-modal";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import React, { useEffect, useId } from "react";
+import {
+  EditableHeritageImage,
+  migrateLegacyChitrakariFramesOnce,
+} from "@/components/editable-heritage-image";
 
 /* ============================================================================
    1. VERIFIED PUBLIC-DOMAIN SIKH PAINTINGS (Wikimedia Commons file names)
@@ -58,122 +53,18 @@ export const COMMONS_ART: Record<string, { file: string; caption: string }> = {
 
 const commonsUrl = (file: string, width = 900) =>
   `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${width}`;
-const commonsPage = (file: string) =>
-  `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replace(/ /g, "_"))}`;
 
 /* ============================================================================
-   2. COMMUNITY OVERRIDES (localStorage + Supabase public.chitrakari_artworks)
+   2. LEGACY HOOK COMPATIBILITY
 ============================================================================ */
-const STORAGE_KEY = "learnsikhi_chitrakari_v1";
 type OverrideMap = Record<string, string>;
 const EMPTY: OverrideMap = {};
 
-let overrides: OverrideMap = EMPTY;
-let remoteApproved: OverrideMap = EMPTY;
-let localOverrides: OverrideMap = EMPTY;
-let loaded = false;
-const listeners = new Set<() => void>();
-
-function emit() {
-  overrides = { ...remoteApproved, ...localOverrides };
-  listeners.forEach((l) => l());
-}
-
-function loadOnce() {
-  if (loaded || typeof window === "undefined") return;
-  loaded = true;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) localOverrides = JSON.parse(raw) as OverrideMap;
-  } catch {
-    localOverrides = EMPTY;
-  }
-  emit();
-
-  const supabase = getSupabaseBrowserClient();
-  if (supabase) {
-    supabase
-      .from("chitrakari_artworks")
-      .select("artwork_key,image_url,created_at")
-      .eq("status", "approved")
-      .order("created_at", { ascending: true })
-      .limit(300)
-      .then(({ data }) => {
-        if (!Array.isArray(data)) return;
-        const map: OverrideMap = {};
-        data.forEach((row: Record<string, unknown>) => {
-          map[String(row.artwork_key)] = String(row.image_url);
-        });
-        remoteApproved = map;
-        emit();
-      });
-  }
-}
-
-function subscribe(cb: () => void) {
-  loadOnce();
-  listeners.add(cb);
-  return () => {
-    listeners.delete(cb);
-  };
-}
-
 export function useChitrakariOverrides(): OverrideMap {
-  return useSyncExternalStore(
-    subscribe,
-    () => overrides,
-    () => EMPTY
-  );
-}
-
-async function saveOverride(artKey: string, imageUrl: string | null, contributor: string) {
-  const next = { ...localOverrides };
-  if (imageUrl) next[artKey] = imageUrl;
-  else delete next[artKey];
-  localOverrides = next;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    /* quota — keep in memory for this session */
-  }
-  emit();
-
-  const supabase = getSupabaseBrowserClient();
-  if (supabase && imageUrl) {
-    try {
-      await supabase.from("chitrakari_artworks").insert({
-        artwork_key: artKey,
-        image_url: imageUrl,
-        contributor_name: contributor,
-        status: "pending_review",
-      });
-    } catch {
-      /* local copy already saved */
-    }
-  }
-}
-
-function fileToScaledDataUrl(file: File, maxSide = 1000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("decode failed"));
-      img.onload = () => {
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("no canvas"));
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
-      };
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
+  useEffect(() => {
+    migrateLegacyChitrakariFramesOnce();
+  }, []);
+  return EMPTY;
 }
 
 /* ============================================================================
@@ -412,8 +303,6 @@ export function ChitrakariCardHeader({
   variant = "guru",
   title,
   heightClass = "h-40",
-  editable = false,
-  compact = false,
   commonsKey,
   className = "",
 }: {
@@ -426,285 +315,36 @@ export function ChitrakariCardHeader({
   commonsKey?: string;
   className?: string;
 }) {
-  const store = useChitrakariOverrides();
-  const override = store[artKey];
-  const commons = COMMONS_ART[commonsKey ?? artKey];
-  const [overrideFailed, setOverrideFailed] = useState(false);
-  const [commonsFailed, setCommonsFailed] = useState(false);
-  const [uploaderOpen, setUploaderOpen] = useState(false);
-
-  useEffect(() => setOverrideFailed(false), [override]);
-
-  const showOverride = !!override && !overrideFailed;
-  const showCommons = !showOverride && !!commons && !commonsFailed;
-
-  return (
-    <>
-      <figure
-        className={`relative m-0 w-full overflow-hidden rounded-xl ${heightClass} ${className}`}
-        style={{
-          border: "3px double var(--accent-primary)",
-          boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.22)",
-          background: "#0B1020",
-        }}
-      >
-        {showOverride ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={override}
-            alt={`${title} — community painting`}
-            loading="lazy"
-            decoding="async"
-            onError={() => setOverrideFailed(true)}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : showCommons ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={commonsUrl(commons.file)}
-            alt={commons.caption}
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            onError={() => setCommonsFailed(true)}
-            className="absolute inset-0 h-full w-full object-cover object-top"
-          />
-        ) : (
-          <Scene variant={variant} seed={artKey} />
-        )}
-
-        {/* Caption + credit */}
-        <figcaption
-          className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 px-3 pb-2 pt-8"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.86), rgba(0,0,0,0))" }}
-        >
-          <span className="text-[11px] font-semibold leading-tight text-white">
-            {showOverride
-              ? "Community Chitrakari"
-              : showCommons
-              ? (
-                <>
-                  {commons.caption}{" "}
-                  <a
-                    href={commonsPage(commons.file)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                    style={{ color: "#FFD25A" }}
-                  >
-                    Wikimedia Commons ↗
-                  </a>
-                </>
-              )
-              : "Chitrakari-style illustration"}
-          </span>
-
-          {editable && (
-            <button
-              type="button"
-              onClick={() => setUploaderOpen(true)}
-              aria-label={`Add custom painting or Chitrakari for ${title}`}
-              title="Add Custom Painting / Chitrakari"
-              className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold"
-              style={{ background: "#FFB800", color: "#000" }}
-            >
-              {compact ? "🎨 Add Painting" : "🎨 Add Custom Painting / Chitrakari"}
-            </button>
-          )}
-        </figcaption>
-      </figure>
-
-      {editable && (
-        <ChitrakariUploader
-          open={uploaderOpen}
-          onClose={() => setUploaderOpen(false)}
-          artKey={artKey}
-          title={title}
-          hasOverride={!!override}
-        />
-      )}
-    </>
-  );
-}
-
-/* ============================================================================
-   5. UPLOADER MODAL (file upload or pasted URL → localStorage + Supabase)
-============================================================================ */
-function ChitrakariUploader({
-  open,
-  onClose,
-  artKey,
-  title,
-  hasOverride,
-}: {
-  open: boolean;
-  onClose: () => void;
-  artKey: string;
-  title: string;
-  hasOverride: boolean;
-}) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [urlInput, setUrlInput] = useState("");
-  const [contributor, setContributor] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
-
-  const reset = useCallback(() => {
-    setPreview(null);
-    setUrlInput("");
-    setError(null);
+  useEffect(() => {
+    migrateLegacyChitrakariFramesOnce();
   }, []);
 
-  const onFile = async (file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose an image file (JPG, PNG, WebP).");
-      return;
-    }
-    try {
-      setError(null);
-      setPreview(await fileToScaledDataUrl(file));
-    } catch {
-      setError("That image could not be read. Try another file.");
-    }
-  };
-
-  const onUrl = (value: string) => {
-    setUrlInput(value);
-    setError(null);
-    if (!value.trim()) return setPreview(null);
-    if (/^https:\/\/\S+$/i.test(value.trim())) setPreview(value.trim());
-    else setPreview(null);
-  };
-
-  const save = async () => {
-    if (!preview) {
-      setError("Add an image file or paste a valid https:// artwork URL first.");
-      return;
-    }
-    setSaving(true);
-    await saveOverride(artKey, preview, contributor.trim() || "Sangat contributor");
-    setSaving(false);
-    reset();
-    onClose();
-  };
-
-  const clear = async () => {
-    await saveOverride(artKey, null, "");
-    reset();
-    onClose();
-  };
+  const commons = COMMONS_ART[commonsKey ?? artKey];
+  const defaultSrc = commons ? commonsUrl(commons.file, 1000) : "";
 
   return (
-    <AnimatedModal open={open}>
-      {open && (
+    <EditableHeritageImage
+      imageKey={`chitrakari-${artKey}`}
+      legacyKeys={[artKey, `matriarch-${artKey}`, `foundations-card-${artKey}`]}
+      defaultSrc={defaultSrc}
+      alt={commons?.caption || title}
+      defaultOrientation="natural"
+      defaultFit="contain-museum"
+      allowUserEdit={false}
+      className={className}
+      fallbackNode={
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Add custom painting for ${title}`}
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4"
+          className={`relative w-full overflow-hidden rounded-xl ${heightClass}`}
+          style={{
+            border: "3px double var(--accent-primary)",
+            boxShadow:
+              "inset 0 0 0 2px rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.22)",
+            background: "#0B1020",
+          }}
         >
-          <div
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              borderColor: "var(--accent-primary)",
-              color: "var(--text-primary)",
-            }}
-            className="my-6 w-full max-w-lg space-y-4 rounded-3xl border-2 p-6 shadow-2xl"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
-                  Chitrakari Contribution
-                </span>
-                <h3 className="font-serif text-xl font-bold">{title}</h3>
-                <p style={{ color: "var(--theme-text-muted)" }} className="text-xs leading-relaxed">
-                  Upload your own painting or paste a link to an artwork you have the right to share.
-                  It appears for you immediately and is sent for review before it is shown to everyone.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-[#C59B27]/45 px-3 py-1.5 text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="relative h-44 w-full overflow-hidden rounded-xl border border-[#C59B27]/45 bg-black/40">
-              {preview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={preview} alt="Preview" className="h-full w-full object-cover" onError={() => setError("That link did not load as an image.")} />
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs" style={{ color: "var(--theme-text-muted)" }}>
-                  Preview appears here
-                </div>
-              )}
-            </div>
-
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2 text-xs font-bold"
-              >
-                Upload Image File
-              </button>
-              {hasOverride && (
-                <button type="button" onClick={() => void clear()} className="rounded-xl border border-[#C59B27]/45 px-4 py-2 text-xs font-bold">
-                  Remove my painting
-                </button>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-bold">…or paste an artwork URL (https only)</label>
-              <input
-                type="url"
-                value={urlInput}
-                onChange={(e) => onUrl(e.target.value)}
-                placeholder="https://…/painting.jpg"
-                style={{ backgroundColor: "var(--bg-primary)" }}
-                className="w-full rounded-xl border px-3.5 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold">Artist / contributor name (optional)</label>
-              <input
-                type="text"
-                value={contributor}
-                onChange={(e) => setContributor(e.target.value)}
-                style={{ backgroundColor: "var(--bg-primary)" }}
-                className="w-full rounded-xl border px-3.5 py-2 text-sm"
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="rounded-xl border px-3 py-2 text-xs font-semibold" style={{ borderColor: "var(--vivid-crimson, #F43F5E)", color: "var(--text-primary)" }}>
-                {error}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2 border-t border-[#C59B27]/30 pt-3">
-              <button type="button" onClick={onClose} className="rounded-xl border border-[#C59B27]/45 px-4 py-2 text-xs font-bold">
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void save()}
-                className="rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-5 py-2 text-xs font-bold disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save Painting"}
-              </button>
-            </div>
-          </div>
+          <Scene variant={variant} seed={artKey} />
         </div>
-      )}
-    </AnimatedModal>
+      }
+    />
   );
 }
-

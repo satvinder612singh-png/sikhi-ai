@@ -388,6 +388,7 @@ export default function MatriarchsPage() {
               <div className="space-y-3">
                 <EditableHeritageImage
                   imageKey={`matriarch-${profile.id}`}
+                  legacyKeys={[profile.id, `chitrakari-${profile.id}`]}
                   defaultSrc={
                     profile.image ||
                     (COMMONS_ART[profile.id]?.file
@@ -395,19 +396,25 @@ export default function MatriarchsPage() {
                       : "")
                   }
                   alt={profile.name}
-                  defaultOrientation="portrait"
+                  defaultOrientation="natural"
                   defaultFit="contain-museum"
-                />
-                <ChitrakariCardHeader
-                  artKey={profile.id}
-                  variant={
-                    profile.category === "Battlefield Commanders"
-                      ? "warrior"
-                      : "woman"
+                  fallbackNode={
+                    <div
+                      className="h-44 w-full rounded-xl flex flex-col items-center justify-center gap-1.5 text-center px-4"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 50% 35%, rgba(197,155,39,0.22), #0B1020 75%)",
+                        border: "2px double rgba(197,155,39,0.45)",
+                      }}
+                    >
+                      <span className="font-serif text-lg font-bold text-[#E5C158]">
+                        {profile.gurmukhiName}
+                      </span>
+                      <span className="text-[11px] text-[#FAF7F0]/70">
+                        {profile.name}
+                      </span>
+                    </div>
                   }
-                  title={profile.name}
-                  heightClass="h-44"
-                  editable
                 />
 
                 <div className="flex items-center justify-between gap-2">
@@ -529,6 +536,7 @@ export default function MatriarchsPage() {
                 <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
                   <EditableHeritageImage
                     imageKey={`matriarch-${activeProfile.id}`}
+                    legacyKeys={[activeProfile.id, `chitrakari-${activeProfile.id}`]}
                     defaultSrc={
                       activeProfile.image ||
                       (COMMONS_ART[activeProfile.id]?.file
@@ -536,19 +544,25 @@ export default function MatriarchsPage() {
                         : "")
                     }
                     alt={activeProfile.name}
-                    defaultOrientation="portrait"
+                    defaultOrientation="natural"
                     defaultFit="contain-museum"
-                  />
-                  <ChitrakariCardHeader
-                    artKey={activeProfile.id}
-                    variant={
-                      activeProfile.category === "Battlefield Commanders"
-                        ? "warrior"
-                        : "woman"
+                    fallbackNode={
+                      <div
+                        className="h-48 w-full rounded-xl flex flex-col items-center justify-center gap-1.5 text-center px-4"
+                        style={{
+                          background:
+                            "radial-gradient(circle at 50% 35%, rgba(197,155,39,0.22), #0B1020 75%)",
+                          border: "2px double rgba(197,155,39,0.45)",
+                        }}
+                      >
+                        <span className="font-serif text-xl font-bold text-[#E5C158]">
+                          {activeProfile.gurmukhiName}
+                        </span>
+                        <span className="text-xs text-[#FAF7F0]/75">
+                          {activeProfile.name}
+                        </span>
+                      </div>
                     }
-                    title={activeProfile.name}
-                    heightClass="h-48"
-                    editable
                   />
 
                   <div className="space-y-4">

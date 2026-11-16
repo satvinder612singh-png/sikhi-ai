@@ -3,7 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 
-export type FrameOrientation = "auto" | "landscape" | "portrait" | "square";
+export type FrameOrientation =
+  | "natural"
+  | "auto"
+  | "landscape"
+  | "portrait"
+  | "square";
 export type FrameFitMode = "contain-museum" | "cover";
 
 export interface HeritageFrameSettings {
@@ -18,12 +23,14 @@ export interface HeritageFrameSettings {
 
 export interface EditableHeritageImageProps {
   imageKey: string;
+  legacyKeys?: string[];
   defaultSrc: string;
   alt: string;
   defaultOrientation?: FrameOrientation;
   defaultFit?: FrameFitMode;
   className?: string;
   allowUserEdit?: boolean;
+  fallbackNode?: React.ReactNode;
   onImageChange?: (newSrc: string) => void;
 }
 
@@ -95,6 +102,108 @@ export function compressImageFile(
 
 let memoryFramesCache: Record<string, HeritageFrameSettings> = {};
 let remoteSyncPromise: Promise<void> | null = null;
+let legacyMigrationRan = false;
+
+export function migrateLegacyChitrakariFramesOnce(): void {
+  if (typeof window === "undefined" || legacyMigrationRan) return;
+  legacyMigrationRan = true;
+
+  try {
+    const legacyEntries: Record<string, string> = {};
+    const knownMapKeys = ["learnsikhi_chitrakari_v1", "learnsikhi_custom_chitrakari_v1"];
+
+    for (const mapKey of knownMapKeys) {
+      const raw = window.localStorage.getItem(mapKey);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (parsed && typeof parsed === "object") {
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === "string" && (v.startsWith("data:image/") || v.startsWith("http"))) {
+              legacyEntries[k] = v;
+            }
+          }
+        }
+      } catch {
+        // ignore malformed JSON
+      }
+    }
+
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const storageKey = window.localStorage.key(i);
+      if (!storageKey) continue;
+      if (
+        storageKey === FRAMES_STORAGE_KEY ||
+        knownMapKeys.includes(storageKey)
+      ) {
+        continue;
+      }
+      if (
+        storageKey.startsWith("sikhi_custom_chitrakari_") ||
+        storageKey.includes("chitrakari")
+      ) {
+        const rawVal = window.localStorage.getItem(storageKey);
+        if (!rawVal) continue;
+        if (rawVal.startsWith("data:image/") || rawVal.startsWith("http")) {
+          const cleanKey = storageKey.replace(/^sikhi_custom_chitrakari_/, "");
+          legacyEntries[cleanKey] = rawVal;
+        }
+      }
+    }
+
+    const keys = Object.keys(legacyEntries);
+    if (keys.length === 0) return;
+
+    const existing = readAllFrames();
+    const migratedFrames: Record<string, HeritageFrameSettings> = {};
+
+    for (const rawKey of keys) {
+      const src = legacyEntries[rawKey];
+      const baseKey = rawKey.replace(/^(chitrakari-|matriarch-|foundations-card-)/, "");
+      const targets = [
+        `chitrakari-${baseKey}`,
+        `matriarch-${baseKey}`,
+        `foundations-card-${baseKey}`,
+      ];
+      for (const targetKey of targets) {
+        if (!existing[targetKey]?.src) {
+          const frame: HeritageFrameSettings = {
+            src,
+            orientation: "natural",
+            fitMode: "contain-museum",
+            posX: 50,
+            posY: 35,
+            zoom: 100,
+            hidden: false,
+          };
+          existing[targetKey] = frame;
+          migratedFrames[targetKey] = frame;
+        }
+      }
+    }
+
+    if (Object.keys(migratedFrames).length === 0) return;
+
+    memoryFramesCache = existing;
+    try {
+      window.localStorage.setItem(FRAMES_STORAGE_KEY, JSON.stringify(existing));
+    } catch {
+      // ignore quota errors
+    }
+    window.dispatchEvent(new CustomEvent(FRAME_UPDATED_EVENT, { detail: {} }));
+
+    void fetch("/api/site-frames", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ frames: migratedFrames }),
+      cache: "no-store",
+    }).catch(() => {
+      // ignore offline errors
+    });
+  } catch {
+    // ignore storage read errors
+  }
+}
 
 function syncRemoteFramesOnce(force = false): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
@@ -217,12 +326,14 @@ function writeFrame(imageKey: string, next: HeritageFrameSettings | null) {
 
 export function EditableHeritageImage({
   imageKey,
+  legacyKeys = [],
   defaultSrc,
   alt,
   defaultOrientation = "auto",
   defaultFit = "contain-museum",
   className = "",
   allowUserEdit = false,
+  fallbackNode,
   onImageChange,
 }: EditableHeritageImageProps) {
   const { user } = useAuth();
@@ -275,11 +386,21 @@ export function EditableHeritageImage({
     };
   }, [user?.email]);
 
-  // Sync persisted frame settings for imageKey
+  // Sync persisted frame settings for imageKey (and legacyKeys)
   useEffect(() => {
+    migrateLegacyChitrakariFramesOnce();
+    const legacyKeySignature = legacyKeys.join("|");
     const syncFrame = () => {
       const all = readAllFrames();
-      const saved = all[imageKey];
+      let saved = all[imageKey];
+      if (!saved && legacyKeySignature) {
+        for (const lk of legacyKeySignature.split("|")) {
+          if (lk && all[lk]) {
+            saved = all[lk];
+            break;
+          }
+        }
+      }
       if (saved) {
         setSettings({
           src: saved.src ?? defaultSrc,
@@ -325,8 +446,9 @@ export function EditableHeritageImage({
   }, [imageKey, defaultSrc, defaultOrientation, defaultFit]);
 
   const effectiveSrc = (settings.src || "").trim();
+  const hasVisibleImage = Boolean(effectiveSrc) && !settings.hidden;
 
-  if ((settings.hidden || !effectiveSrc) && !isEditing) {
+  if (!hasVisibleImage && !isEditing && !fallbackNode) {
     return null;
   }
 
@@ -372,7 +494,12 @@ export function EditableHeritageImage({
     try {
       const compressed = await compressImageFile(file, 1000, 0.72);
       setNaturalRatio(null);
-      updateSettings({ src: compressed, hidden: false });
+      updateSettings({
+        src: compressed,
+        orientation: "natural",
+        fitMode: "contain-museum",
+        hidden: false,
+      });
     } catch (err) {
       setSyncStatus("error");
       setSyncMessage(
@@ -387,21 +514,25 @@ export function EditableHeritageImage({
   const resolvedOrientation: Exclude<FrameOrientation, "auto"> =
     settings.orientation === "auto"
       ? isAutoPortrait
-        ? "portrait"
+        ? "natural"
         : "landscape"
       : settings.orientation;
 
   const resolvedFit: FrameFitMode =
-    settings.orientation === "auto" && isAutoPortrait
+    resolvedOrientation === "natural"
       ? "contain-museum"
-      : settings.fitMode;
+      : settings.orientation === "auto" && isAutoPortrait
+        ? "contain-museum"
+        : settings.fitMode;
 
   const aspectClass =
-    resolvedOrientation === "portrait"
-      ? "aspect-[3/4] sm:aspect-[4/5] max-h-[460px] mx-auto"
-      : resolvedOrientation === "square"
-        ? "aspect-square max-h-[380px] mx-auto"
-        : "aspect-[16/10] sm:aspect-[16/9]";
+    resolvedOrientation === "natural"
+      ? ""
+      : resolvedOrientation === "portrait"
+        ? "aspect-[3/4] w-full"
+        : resolvedOrientation === "square"
+          ? "aspect-square w-full"
+          : "aspect-[16/9] w-full";
 
   const zoomScale = Math.max(100, Math.min(150, settings.zoom)) / 100;
 
@@ -411,8 +542,20 @@ export function EditableHeritageImage({
         key={effectiveSrc || "empty-frame"}
         className={`relative w-full overflow-hidden rounded-xl bg-[#111318] flex items-center justify-center ${aspectClass}`}
       >
-        {effectiveSrc ? (
-          resolvedFit === "contain-museum" ? (
+        {hasVisibleImage ? (
+          resolvedOrientation === "natural" ? (
+            <img
+              src={effectiveSrc}
+              alt={alt}
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                if (img.naturalWidth && img.naturalHeight) {
+                  setNaturalRatio(img.naturalWidth / img.naturalHeight);
+                }
+              }}
+              className="w-full h-auto max-h-[520px] object-contain block mx-auto"
+            />
+          ) : resolvedFit === "contain-museum" ? (
             <>
               <img
                 src={effectiveSrc}
@@ -449,6 +592,7 @@ export function EditableHeritageImage({
               }}
               onPointerDown={(e) => {
                 if (!canEdit || !isEditing) return;
+                e.stopPropagation();
                 e.currentTarget.setPointerCapture(e.pointerId);
                 setDragOrigin({
                   x: e.clientX,
@@ -473,11 +617,13 @@ export function EditableHeritageImage({
                 objectPosition: `${settings.posX}% ${settings.posY}%`,
                 transform: `scale(${zoomScale})`,
               }}
-              className={`w-full h-full object-cover transition-transform duration-150 ${
+              className={`w-full h-full object-cover transition-transform duration-150 touch-none ${
                 canEdit && isEditing ? "cursor-grab active:cursor-grabbing select-none" : ""
               }`}
             />
           )
+        ) : fallbackNode && !isEditing ? (
+          <div className="w-full">{fallbackNode}</div>
         ) : (
           <div className="p-6 text-center text-xs text-[#FAF7F0]/70">
             No image set. Paste a URL or upload a painting below.
@@ -489,12 +635,13 @@ export function EditableHeritageImage({
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               setIsEditing((v) => !v);
             }}
             className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-black/80 text-[#E5C158] border border-[#C59B27]/60 text-[11px] font-bold shadow-md hover:bg-black transition"
           >
-            ⚙️ Frame / Reposition
+            {hasVisibleImage ? "⚙️ Frame / Reposition" : "⚙️ Upload / Frame Painting"}
           </button>
         )}
       </div>
@@ -502,14 +649,20 @@ export function EditableHeritageImage({
       {/* Inline Frame Editor Popover */}
       {canEdit && isEditing && (
         <div
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
           className="absolute top-11 right-2 z-30 w-72 sm:w-80 max-h-[75vh] overflow-y-auto rounded-2xl border border-[#C59B27]/50 bg-[#111318] text-[#FAF7F0] p-4 shadow-2xl space-y-3.5 text-xs"
         >
           <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
             <span className="font-extrabold text-[#E5C158]">Frame &amp; Painting Editor</span>
             <button
               type="button"
-              onClick={() => setIsEditing(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsEditing(false);
+              }}
               className="px-2 py-0.5 rounded-md border border-white/20 text-[11px] hover:border-[#C59B27]"
             >
               Done ✕
@@ -530,24 +683,31 @@ export function EditableHeritageImage({
             </div>
           )}
 
-          {/* Orientation Toggle */}
+          {/* Sizing Mode Buttons */}
           <div className="space-y-1.5">
             <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
-              Orientation
+              Sizing &amp; Orientation
             </span>
             <div className="grid grid-cols-2 gap-1.5">
               {(
                 [
-                  { id: "auto", label: "Auto" },
-                  { id: "landscape", label: "Landscape (16:9)" },
+                  { id: "natural", label: "Natural Size (Full Picture)" },
                   { id: "portrait", label: "Portrait (3:4)" },
+                  { id: "landscape", label: "Landscape (16:9)" },
                   { id: "square", label: "Square (1:1)" },
                 ] as const
               ).map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => updateSettings({ orientation: opt.id })}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({
+                      orientation: opt.id,
+                      fitMode: opt.id === "natural" ? "contain-museum" : "cover",
+                    });
+                  }}
                   className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
                     settings.orientation === opt.id
                       ? "border-[#C59B27] bg-[#C59B27]/20 text-[#E5C158]"
@@ -561,38 +721,98 @@ export function EditableHeritageImage({
           </div>
 
           {/* Display Mode */}
-          <div className="space-y-1.5">
-            <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
-              Display Mode
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => updateSettings({ fitMode: "contain-museum" })}
-                className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
-                  settings.fitMode === "contain-museum"
-                    ? "border-[#C59B27] bg-[#C59B27]/20 text-[#E5C158]"
-                    : "border-white/15 opacity-80 hover:opacity-100"
-                }`}
-              >
-                Full Painting (Zero Crop)
-              </button>
-              <button
-                type="button"
-                onClick={() => updateSettings({ fitMode: "cover" })}
-                className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
-                  settings.fitMode === "cover"
-                    ? "border-[#C59B27] bg-[#C59B27]/20 text-[#E5C158]"
-                    : "border-white/15 opacity-80 hover:opacity-100"
-                }`}
-              >
-                Fill Frame (Cover)
-              </button>
+          {resolvedOrientation !== "natural" && (
+            <div className="space-y-1.5">
+              <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
+                Display Mode
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({ fitMode: "contain-museum" });
+                  }}
+                  className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
+                    settings.fitMode === "contain-museum"
+                      ? "border-[#C59B27] bg-[#C59B27]/20 text-[#E5C158]"
+                      : "border-white/15 opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  Full Painting (Zero Crop)
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({ fitMode: "cover" });
+                  }}
+                  className={`px-2 py-1.5 rounded-lg border text-[11px] font-semibold transition ${
+                    settings.fitMode === "cover"
+                      ? "border-[#C59B27] bg-[#C59B27]/20 text-[#E5C158]"
+                      : "border-white/15 opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  Fill Frame (Drag to Pan)
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Position & Zoom Sliders */}
+          {/* Position, Nudge & Zoom Controls */}
           <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] opacity-80">Nudge Position</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({ posX: Math.max(0, settings.posX - 5) });
+                  }}
+                  className="px-2 py-0.5 rounded border border-white/20 hover:border-[#C59B27]"
+                >
+                  ⬅
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({ posY: Math.max(0, settings.posY - 5) });
+                  }}
+                  className="px-2 py-0.5 rounded border border-white/20 hover:border-[#C59B27]"
+                >
+                  ⬆
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({ posY: Math.min(100, settings.posY + 5) });
+                  }}
+                  className="px-2 py-0.5 rounded border border-white/20 hover:border-[#C59B27]"
+                >
+                  ⬇
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateSettings({ posX: Math.min(100, settings.posX + 5) });
+                  }}
+                  className="px-2 py-0.5 rounded border border-white/20 hover:border-[#C59B27]"
+                >
+                  ➡
+                </button>
+              </div>
+            </div>
+
             <label className="block">
               <span className="flex justify-between text-[11px] opacity-80 mb-0.5">
                 <span>Horizontal (X)</span>
@@ -623,10 +843,33 @@ export function EditableHeritageImage({
               />
             </label>
 
-            <label className="block">
-              <span className="flex justify-between text-[11px] opacity-80 mb-0.5">
-                <span>Zoom</span>
-                <span>{settings.zoom}%</span>
+            <div className="block">
+              <span className="flex items-center justify-between text-[11px] opacity-80 mb-0.5">
+                <span>Zoom ({settings.zoom}%)</span>
+                <span className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      updateSettings({ zoom: Math.max(100, settings.zoom - 5) });
+                    }}
+                    className="px-1.5 py-0 rounded border border-white/20 hover:border-[#C59B27]"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      updateSettings({ zoom: Math.min(150, settings.zoom + 5) });
+                    }}
+                    className="px-1.5 py-0 rounded border border-white/20 hover:border-[#C59B27]"
+                  >
+                    +
+                  </button>
+                </span>
               </span>
               <input
                 type="range"
@@ -636,7 +879,7 @@ export function EditableHeritageImage({
                 onChange={(e) => updateSettings({ zoom: Number(e.target.value) })}
                 className="w-full accent-[#C59B27]"
               />
-            </label>
+            </div>
           </div>
 
           {/* Replace Painting */}
