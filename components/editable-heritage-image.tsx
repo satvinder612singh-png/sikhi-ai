@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type FrameOrientation =
   | "natural"
@@ -37,7 +38,119 @@ export interface EditableHeritageImageProps {
 const FRAMES_STORAGE_KEY = "learnsikhi_image_frames_v1";
 const ADMIN_STORAGE_KEY = "learnsikhi_founder_admin_v1";
 const ADMIN_EMAIL_STORAGE_KEY = "learnsikhi_active_email_v1";
+export const ADMIN_VERIFIED_TOKEN_KEY = "learnsikhi_admin_token_v1";
 const FRAME_UPDATED_EVENT = "learnsikhi-frame-updated";
+
+export function isStealthAdminEmail(email?: string | null): boolean {
+  return Boolean(
+    email && email.trim().toLowerCase().endsWith("student1313@learnsikhi.com")
+  );
+}
+
+let cachedTokenVerification: { token: string; ok: boolean } | null = null;
+
+export async function getVerifiedAdminToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+      if (session?.access_token && isStealthAdminEmail(session.user?.email)) {
+        return session.access_token;
+      }
+    }
+  } catch {
+    // ignore session check errors
+  }
+
+  try {
+    const token = window.localStorage.getItem(ADMIN_VERIFIED_TOKEN_KEY);
+    if (token && token.trim()) {
+      return token.trim();
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
+
+export async function checkVerifiedAdminStatus(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+      if (session?.user) {
+        if (isStealthAdminEmail(session.user.email)) {
+          try {
+            window.localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+          } catch {
+            // ignore
+          }
+          return true;
+        }
+        // Signed in as a non-admin account -> ensure admin flags are cleared unless server token overrides
+        const fallbackToken = window.localStorage.getItem(ADMIN_VERIFIED_TOKEN_KEY);
+        if (!fallbackToken) {
+          try {
+            window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+          } catch {
+            // ignore
+          }
+          return false;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const storedToken = window.localStorage.getItem(ADMIN_VERIFIED_TOKEN_KEY);
+    if (!storedToken) {
+      window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+      return false;
+    }
+    if (cachedTokenVerification?.token === storedToken) {
+      return cachedTokenVerification.ok;
+    }
+    const res = await fetch("/api/site-frames", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${storedToken}`,
+      },
+      body: JSON.stringify({ action: "verify_admin" }),
+      cache: "no-store",
+    });
+    const ok = res.ok;
+    cachedTokenVerification = { token: storedToken, ok };
+    if (ok) {
+      window.localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+      return true;
+    }
+    window.localStorage.removeItem(ADMIN_VERIFIED_TOKEN_KEY);
+    window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function clearAdminAuthTokens(): void {
+  cachedTokenVerification = null;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(ADMIN_VERIFIED_TOKEN_KEY);
+    window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+    window.localStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+    window.dispatchEvent(new Event("learnsikhi-admin-change"));
+  } catch {
+    // ignore
+  }
+}
 
 export function compressImageFile(
   file: File,
@@ -192,14 +305,21 @@ export function migrateLegacyChitrakariFramesOnce(): void {
     }
     window.dispatchEvent(new CustomEvent(FRAME_UPDATED_EVENT, { detail: {} }));
 
-    void fetch("/api/site-frames", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ frames: migratedFrames }),
-      cache: "no-store",
-    }).catch(() => {
-      // ignore offline errors
-    });
+    void (async () => {
+      const token = await getVerifiedAdminToken();
+      if (!token) return;
+      await fetch("/api/site-frames", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ frames: migratedFrames }),
+        cache: "no-store",
+      }).catch(() => {
+        // ignore offline errors
+      });
+    })();
   } catch {
     // ignore storage read errors
   }
@@ -246,9 +366,16 @@ function pushFrameToServer(
   onStatus?.("syncing");
   framePushTimers[imageKey] = window.setTimeout(async () => {
     try {
+      const token = await getVerifiedAdminToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const res = await fetch("/api/site-frames", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           frames: { [imageKey]: next },
         }),
@@ -283,10 +410,6 @@ export function saveAndSyncFrame(
   if (typeof window === "undefined") return;
   writeFrame(imageKey, settings);
   pushFrameToServer(imageKey, settings);
-}
-
-function isStealthAdminEmail(email?: string | null): boolean {
-  return Boolean(email && email.trim().toLowerCase().endsWith("student1313@learnsikhi.com"));
 }
 
 function readAllFrames(): Record<string, HeritageFrameSettings> {
