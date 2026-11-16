@@ -21,6 +21,8 @@ import {
 } from "@/components/editable-heritage-image";
 import {
   InlineTopicEditor,
+  InlineOrderControls,
+  InlineSectionBanner,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
@@ -630,7 +632,12 @@ function SlideFiveKs({
           }}
         >
           <div className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <InlineOrderControls
+                pageKey="foundations"
+                itemId={rawK.art.artKey}
+                allIds={orderedKs.map((x) => x.art.artKey)}
+              />
               <InlineTopicEditor
                 itemId={rawK.art.artKey}
                 defaults={{
@@ -933,7 +940,12 @@ function SlidePyare({
               }}
             >
               <div className="space-y-2.5">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <InlineOrderControls
+                    pageKey="foundations"
+                    itemId={p.art.artKey}
+                    allIds={orderedPyare.map((x) => x.art.artKey)}
+                  />
                   <InlineTopicEditor
                     itemId={p.art.artKey}
                     defaults={{
@@ -1050,7 +1062,12 @@ function SlideSahibzaade({
               }}
             >
               <div className="space-y-2.5">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <InlineOrderControls
+                    pageKey="foundations"
+                    itemId={s.art.artKey}
+                    allIds={orderedSahibzaade.map((x) => x.art.artKey)}
+                  />
                   <InlineTopicEditor
                     itemId={s.art.artKey}
                     defaults={{
@@ -1179,7 +1196,12 @@ function SlideShaheeds({
               }}
             >
               <div className="space-y-2.5">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <InlineOrderControls
+                    pageKey="foundations"
+                    itemId={s.art.artKey}
+                    allIds={orderedShaheeds.map((x) => x.art.artKey)}
+                  />
                   <InlineTopicEditor
                     itemId={s.art.artKey}
                     defaults={{
@@ -1375,6 +1397,11 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
       }}
       className={`space-y-6 outline-none rounded-3xl ${getPageTransitionClass(layoutCfg.pageTransition)} ${deckWidthCls}`}
     >
+      <InlineSectionBanner
+        sectionId="foundations-deck"
+        pageKey="foundations"
+        defaultTitle="Who is a Sikh? & Foundations of Sikhi"
+      />
       <div className={`space-y-2 ${deckAlignCls}`}>
         <div className="flex flex-wrap items-center gap-2">
           <Eyebrow>{deckInline?.badge || "Sikhi 101 • Start here"}</Eyebrow>
@@ -1457,7 +1484,8 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
           <Eyebrow>Admin Curated Additions</Eyebrow>
           <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
             {customFoundations.map((ct) => {
-              const ov = cms.topicEdits?.[ct.id];
+              const customIds = customFoundations.map((x) => x.id);
+              const ov = cms.topicEdits?.[ct.id] as InlineTopicEditData | undefined;
               return (
                 <article
                   key={ct.id}
@@ -1466,9 +1494,29 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
                     backgroundColor: ov?.bgColor || ct.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
                     borderColor: ov?.borderColor || ct.borderColor || layoutCfg.accentColor || card.borderColor,
                     color: ov?.textColor || ct.textColor || layoutCfg.bodyTextColor || card.color,
+                    fontFamily: ov?.fontFamily
+                      ? resolveCmsFontFamily(ov.fontFamily)
+                      : undefined,
                   }}
                   className="rounded-2xl border p-4 space-y-2.5"
                 >
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <InlineOrderControls
+                      pageKey="foundations"
+                      itemId={ct.id}
+                      allIds={customIds}
+                    />
+                    <InlineTopicEditor
+                      itemId={ct.id}
+                      defaults={{
+                        title: ct.title,
+                        gurmukhi: ct.gurmukhi,
+                        subtitle: ct.subtitle,
+                        badge: ct.badge,
+                        description: ct.description,
+                      }}
+                    />
+                  </div>
                   {Boolean(cms.frames?.[ct.imageKey || ct.id]?.src) && (
                     <EditableHeritageImage
                       imageKey={ct.imageKey || ct.id}

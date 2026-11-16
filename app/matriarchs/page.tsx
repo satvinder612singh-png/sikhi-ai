@@ -18,6 +18,8 @@ import {
 } from "@/components/editable-heritage-image";
 import {
   InlineTopicEditor,
+  InlineOrderControls,
+  InlineSectionBanner,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
@@ -370,6 +372,12 @@ export default function MatriarchsPage() {
       <Header solid />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
+        <InlineSectionBanner
+          sectionId="matriarchs-archive"
+          pageKey="matriarchs"
+          defaultTitle="The Unsung Matriarchs & Warriors of the Panth"
+        />
+
         {/* Hero Banner */}
         {(() => {
           const matSec = (
@@ -517,6 +525,7 @@ export default function MatriarchsPage() {
         {/* 13 Matriarchs & Warriors Grid */}
         <section className={resolveCmsGridClass(layoutCfg.feedLayout)}>
           {filteredProfiles.map((profile) => {
+            const matriarchIds = filteredProfiles.map((p) => p.id);
             const ov = cms.topicEdits?.[profile.id] as InlineTopicEditData | undefined;
             const cardHeadingCls = ov?.fontScale
               ? resolveCmsHeadingClass(ov.fontScale)
@@ -539,7 +548,12 @@ export default function MatriarchsPage() {
                 className="rounded-2xl border p-6 shadow-sm hover:border-[#C59B27] hover:-translate-y-0.5 transition flex flex-col justify-between gap-5"
               >
               <div className="space-y-3">
-                <div className="flex justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <InlineOrderControls
+                    pageKey="matriarchs"
+                    itemId={profile.id}
+                    allIds={matriarchIds}
+                  />
                   <InlineTopicEditor
                     itemId={profile.id}
                     defaults={{

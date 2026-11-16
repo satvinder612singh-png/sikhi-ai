@@ -24,6 +24,8 @@ import {
 } from "@/components/editable-heritage-image";
 import {
   InlineTopicEditor,
+  InlineOrderControls,
+  InlineSectionBanner,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import {
@@ -2055,6 +2057,12 @@ function SangatHubContent() {
       <Header solid />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
+        <InlineSectionBanner
+          sectionId="sangat-hero"
+          pageKey="sangat"
+          defaultTitle="Sangat, SikhStack & SikhInterest"
+        />
+
         {/* ================================================================
             PUBLICATION HEADER BAR + MINIMAL FEED TABS
         ================================================================ */}
@@ -2549,6 +2557,7 @@ function SangatHubContent() {
                 ) : (
                   <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
                     {feedItems.map((item) => {
+                      const feedItemIds = feedItems.map((fi) => fi.id);
                       const ov = cms.topicEdits?.[item.id] as
                         | InlineTopicEditData
                         | undefined;
@@ -2585,7 +2594,12 @@ function SangatHubContent() {
                           className="group relative flex flex-col justify-between rounded-2xl border p-5 shadow-sm hover:border-[#C59B27]/65 transition"
                         >
                           <div className="space-y-3 flex-1">
-                            <div className="flex justify-end">
+                            <div className="flex flex-wrap items-center justify-between gap-1.5">
+                              <InlineOrderControls
+                                pageKey="sangat"
+                                itemId={item.id}
+                                allIds={feedItemIds}
+                              />
                               <InlineTopicEditor
                                 itemId={item.id}
                                 defaults={{

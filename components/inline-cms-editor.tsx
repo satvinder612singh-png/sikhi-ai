@@ -7,10 +7,45 @@ import {
   checkVerifiedAdminStatus,
   pushAdminCmsPatch,
   resolveCmsFontFamily,
+  type CmsCustomTopic,
   type CmsFontFamily,
   type CmsFontScale,
   type CmsTopicEdit,
 } from "@/components/editable-heritage-image";
+
+type SectionLayoutInfo = {
+  titleAlign?: "left" | "center" | "right";
+  widthMode?: "full" | "contained" | "compact";
+  customTitle?: string;
+  customSubtitle?: string;
+  hidden?: boolean;
+};
+
+function useVerifiedLiveEdit(): boolean {
+  const [liveEditMode] = useAdminEditMode();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const sync = async () => {
+      const ok = await checkVerifiedAdminStatus();
+      if (active) setIsAdmin(ok);
+    };
+    void sync();
+    const onChange = () => void sync();
+    window.addEventListener("storage", onChange);
+    window.addEventListener("focus", onChange);
+    window.addEventListener("learnsikhi-admin-change", onChange);
+    return () => {
+      active = false;
+      window.removeEventListener("storage", onChange);
+      window.removeEventListener("focus", onChange);
+      window.removeEventListener("learnsikhi-admin-change", onChange);
+    };
+  }, []);
+
+  return isAdmin && liveEditMode;
+}
 
 export interface InlineTopicEditData extends CmsTopicEdit {
   fontFamily?: CmsFontFamily;
@@ -43,8 +78,7 @@ export function InlineTopicEditor({
   label = "✏️ Edit Text & Style",
 }: InlineTopicEditorProps) {
   const cms = useCmsSiteState();
-  const [liveEditMode] = useAdminEditMode();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const canEdit = useVerifiedLiveEdit();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
@@ -63,25 +97,6 @@ export function InlineTopicEditor({
   const [borderColor, setBorderColor] = useState("");
 
   useEffect(() => {
-    let active = true;
-    const sync = async () => {
-      const ok = await checkVerifiedAdminStatus();
-      if (active) setIsAdmin(ok);
-    };
-    void sync();
-    const onChange = () => void sync();
-    window.addEventListener("storage", onChange);
-    window.addEventListener("focus", onChange);
-    window.addEventListener("learnsikhi-admin-change", onChange);
-    return () => {
-      active = false;
-      window.removeEventListener("storage", onChange);
-      window.removeEventListener("focus", onChange);
-      window.removeEventListener("learnsikhi-admin-change", onChange);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
     setTitle(existing.title ?? defaults.title);
     setGurmukhi(existing.gurmukhi ?? defaults.gurmukhi ?? "");
@@ -96,7 +111,7 @@ export function InlineTopicEditor({
     setStatusMsg(null);
   }, [open, existing, defaults]);
 
-  if (!isAdmin || !liveEditMode) {
+  if (!canEdit) {
     return null;
   }
 
@@ -352,6 +367,427 @@ export function InlineTopicEditor({
               </button>
             </div>
           </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export interface InlineOrderControlsProps {
+  pageKey: string;
+  itemId: string;
+  allIds: string[];
+}
+
+export function InlineOrderControls({
+  pageKey,
+  itemId,
+  allIds,
+}: InlineOrderControlsProps) {
+  const cms = useCmsSiteState();
+  const canEdit = useVerifiedLiveEdit();
+  const [busy, setBusy] = useState(false);
+
+  if (!canEdit) return null;
+
+  const idx = allIds.indexOf(itemId);
+  const canMovePrev = idx > 0;
+  const canMoveNext = idx !== -1 && idx < allIds.length - 1;
+
+  const applyReorder = async (
+    e: React.MouseEvent,
+    action: "first" | "prev" | "next" | "last" | "hide"
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (busy) return;
+
+    const existingPinned = Array.isArray(cms.pinnedIds) ? cms.pinnedIds : [];
+    const pinnedSet = new Set(existingPinned);
+    const existingArchived = Array.isArray(cms.archivedIds) ? cms.archivedIds : [];
+
+    if (action === "hide") {
+      setBusy(true);
+      await pushAdminCmsPatch({
+        archivedIds: Array.from(new Set([...existingArchived, itemId])),
+        pinnedIds: existingPinned.filter((id) => id !== itemId),
+      });
+      setBusy(false);
+      return;
+    }
+
+    const allSet = new Set(allIds);
+    const otherSaved = (cms.sectionOrder?.[pageKey] || []).filter(
+      (id) => !allSet.has(id)
+    );
+    let nextVisible = [...allIds];
+    let nextPinned = [...existingPinned];
+
+    if (action === "first") {
+      nextVisible = [itemId, ...allIds.filter((id) => id !== itemId)];
+      nextPinned = [itemId, ...existingPinned.filter((id) => id !== itemId)];
+    } else if (action === "prev") {
+      if (!canMovePrev) return;
+      const neighborId = nextVisible[idx - 1];
+      [nextVisible[idx - 1], nextVisible[idx]] = [
+        nextVisible[idx],
+        nextVisible[idx - 1],
+      ];
+      if (pinnedSet.has(neighborId) && !pinnedSet.has(itemId)) {
+        nextPinned = [...existingPinned, itemId];
+      }
+    } else if (action === "next") {
+      if (!canMoveNext) return;
+      const neighborId = nextVisible[idx + 1];
+      [nextVisible[idx], nextVisible[idx + 1]] = [
+        nextVisible[idx + 1],
+        nextVisible[idx],
+      ];
+      if (pinnedSet.has(itemId) && !pinnedSet.has(neighborId)) {
+        nextPinned = existingPinned.filter((id) => id !== itemId);
+      }
+    } else if (action === "last") {
+      nextVisible = [...allIds.filter((id) => id !== itemId), itemId];
+      nextPinned = existingPinned.filter((id) => id !== itemId);
+    }
+
+    setBusy(true);
+    await pushAdminCmsPatch({
+      sectionOrder: {
+        ...(cms.sectionOrder || {}),
+        [pageKey]: [...nextVisible, ...otherSaved],
+      },
+      pinnedIds: nextPinned,
+    });
+    setBusy(false);
+  };
+
+  return (
+    <div
+      className="inline-flex flex-wrap items-center gap-1 rounded-full bg-black/85 border border-[#C59B27]/60 px-1.5 py-0.5 text-[10px] font-bold text-[#FAF7F0] shadow-md z-30"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        disabled={busy || idx === 0}
+        onClick={(e) => applyReorder(e, "first")}
+        title="Pin / Move to First"
+        className="px-1.5 py-0.5 rounded-full hover:bg-[#C59B27]/25 text-[#E5C158] disabled:opacity-35 transition"
+      >
+        ⭐ First
+      </button>
+      <button
+        type="button"
+        disabled={busy || !canMovePrev}
+        onClick={(e) => applyReorder(e, "prev")}
+        title="Move Previous / Left"
+        aria-label="Move card earlier"
+        className="px-1.5 py-0.5 rounded-full hover:bg-white/15 disabled:opacity-35 transition"
+      >
+        ◀
+      </button>
+      <button
+        type="button"
+        disabled={busy || !canMoveNext}
+        onClick={(e) => applyReorder(e, "next")}
+        title="Move Next / Right"
+        aria-label="Move card later"
+        className="px-1.5 py-0.5 rounded-full hover:bg-white/15 disabled:opacity-35 transition"
+      >
+        ▶
+      </button>
+      <button
+        type="button"
+        disabled={busy || idx === allIds.length - 1}
+        onClick={(e) => applyReorder(e, "last")}
+        title="Move to End of List"
+        className="px-1.5 py-0.5 rounded-full hover:bg-white/15 disabled:opacity-35 transition"
+      >
+        📥 Last
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={(e) => applyReorder(e, "hide")}
+        title="Hide / Archive Card"
+        className="px-1.5 py-0.5 rounded-full hover:bg-red-500/25 text-red-300 disabled:opacity-35 transition"
+      >
+        👁️ Hide
+      </button>
+    </div>
+  );
+}
+
+export interface InlineSectionBannerProps {
+  sectionId: string;
+  pageKey: string;
+  defaultTitle: string;
+}
+
+export function InlineSectionBanner({
+  sectionId,
+  pageKey,
+  defaultTitle,
+}: InlineSectionBannerProps) {
+  const cms = useCmsSiteState();
+  const canEdit = useVerifiedLiveEdit();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [title, setTitle] = useState("");
+  const [gurmukhi, setGurmukhi] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [badge, setBadge] = useState("");
+  const [description, setDescription] = useState("");
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  if (!canEdit) return null;
+
+  const sectionMap = (cms.sectionLayoutMap || {}) as Record<
+    string,
+    SectionLayoutInfo
+  >;
+  const sec = sectionMap[sectionId] || {};
+  const align = sec.titleAlign || "left";
+  const widthMode = sec.widthMode || "full";
+
+  const updateSectionLayout = async (patch: Partial<SectionLayoutInfo>) => {
+    await pushAdminCmsPatch({
+      sectionLayoutMap: {
+        ...sectionMap,
+        [sectionId]: {
+          ...sec,
+          ...patch,
+        },
+      },
+    });
+  };
+
+  const handleCreateTopic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim()) return;
+    setSaving(true);
+    setFeedback(null);
+
+    const id = `topic-${pageKey}-${Date.now()}`;
+    const created: CmsCustomTopic = {
+      id,
+      title: title.trim(),
+      gurmukhi: gurmukhi.trim() || undefined,
+      subtitle: subtitle.trim() || undefined,
+      badge: badge.trim() || undefined,
+      description: description.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingList = cms.customTopics?.[pageKey] || [];
+    const existingOrder = cms.sectionOrder?.[pageKey] || [];
+
+    const ok = await pushAdminCmsPatch({
+      customTopics: {
+        ...(cms.customTopics || {}),
+        [pageKey]: [created, ...existingList],
+      },
+      sectionOrder: {
+        ...(cms.sectionOrder || {}),
+        [pageKey]: [id, ...existingOrder.filter((x) => x !== id)],
+      },
+    });
+
+    setSaving(false);
+    setFeedback(ok ? "✓ Topic added & synced globally" : "✓ Added locally (offline)");
+    setTitle("");
+    setGurmukhi("");
+    setSubtitle("");
+    setBadge("");
+    setDescription("");
+    window.setTimeout(() => {
+      setFeedback(null);
+      setIsModalOpen(false);
+    }, 650);
+  };
+
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      className="rounded-2xl border-2 border-dashed border-[#C59B27]/70 bg-[#111318]/95 text-[#FAF7F0] px-4 py-3 shadow-lg space-y-2"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="px-2 py-0.5 rounded-full bg-[#C59B27]/20 border border-[#C59B27]/50 text-[#E5C158] font-extrabold uppercase tracking-wider text-[10px]">
+            📍 Section Locator
+          </span>
+          <span className="font-bold text-[#FAF7F0]">{defaultTitle}</span>
+          <span className="text-[11px] opacity-65 font-mono">
+            ({pageKey} • #{sectionId})
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+          {/* Title Alignment */}
+          <div className="inline-flex items-center gap-1 rounded-xl bg-black/50 border border-white/15 p-0.5">
+            <span className="px-1.5 text-[10px] font-bold opacity-70 uppercase">
+              Align:
+            </span>
+            {(["left", "center", "right"] as const).map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => void updateSectionLayout({ titleAlign: a })}
+                className={`px-2 py-0.5 rounded-lg capitalize font-bold transition ${
+                  align === a
+                    ? "bg-[#C59B27] text-[#18181B]"
+                    : "text-[#FAF7F0]/80 hover:text-white"
+                }`}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+
+          {/* Container Width */}
+          <div className="inline-flex items-center gap-1 rounded-xl bg-black/50 border border-white/15 p-0.5">
+            <span className="px-1.5 text-[10px] font-bold opacity-70 uppercase">
+              Width:
+            </span>
+            {(["compact", "contained", "full"] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => void updateSectionLayout({ widthMode: w })}
+                className={`px-2 py-0.5 rounded-lg capitalize font-bold transition ${
+                  widthMode === w
+                    ? "bg-[#C59B27] text-[#18181B]"
+                    : "text-[#FAF7F0]/80 hover:text-white"
+                }`}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="px-3 py-1 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-extrabold text-[11px] shadow-sm hover:opacity-95 transition"
+          >
+            + Add New Topic Card to This Page
+          </button>
+        </div>
+      </div>
+
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-2xl border-2 border-[#C59B27] bg-[#111318] text-[#FAF7F0] p-5 shadow-2xl space-y-3 text-xs"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="text-sm font-extrabold text-[#E5C158]">
+                + Add New Topic Card ({pageKey})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-2 py-0.5 rounded border border-white/20 hover:border-[#C59B27]"
+              >
+                Close ✕
+              </button>
+            </div>
+
+            {feedback && (
+              <div className="rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-3 py-2 text-emerald-300 font-bold">
+                {feedback}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateTopic} className="space-y-2.5">
+              <div>
+                <label className="block text-[11px] font-bold opacity-80 mb-0.5">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Topic headline..."
+                  className="w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold opacity-80 mb-0.5">
+                    Gurmukhi (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={gurmukhi}
+                    onChange={(e) => setGurmukhi(e.target.value)}
+                    placeholder="ੴ"
+                    className="w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold opacity-80 mb-0.5">
+                    Badge / Category
+                  </label>
+                  <input
+                    type="text"
+                    value={badge}
+                    onChange={(e) => setBadge(e.target.value)}
+                    placeholder="Featured Research"
+                    className="w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold opacity-80 mb-0.5">
+                  Subtitle / Byline / Era
+                </label>
+                <input
+                  type="text"
+                  value={subtitle}
+                  onChange={(e) => setSubtitle(e.target.value)}
+                  placeholder="Learn Sikhi Archive"
+                  className="w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold opacity-80 mb-0.5">
+                  Description / Summary *
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Write the topic summary or full dispatch..."
+                  className="w-full rounded-lg border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg border border-white/20 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-extrabold"
+                >
+                  {saving ? "Publishing..." : "Publish Card Now"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
