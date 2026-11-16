@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { useAuth } from "@/components/auth-provider";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
@@ -697,6 +698,36 @@ function SangatHubContent() {
   const [authGateActionLabel, setAuthGateActionLabel] = useState<string | null>(
     null
   );
+  const [emailVerified, setEmailVerified] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const syncVerified = async () => {
+      if (!user) {
+        if (active) setEmailVerified(false);
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        if (active) setEmailVerified(true);
+        return;
+      }
+      try {
+        const { data } = await supabase.auth.getUser();
+        const confirmed = Boolean(
+          data?.user?.email_confirmed_at ||
+            (data?.user as { confirmed_at?: string } | undefined)?.confirmed_at
+        );
+        if (active) setEmailVerified(confirmed);
+      } catch {
+        if (active) setEmailVerified(false);
+      }
+    };
+    void syncVerified();
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   // Mode 1: Substack Blogs State
   const [blogs, setBlogs] = useState<SangatBlogArticle[]>(INITIAL_BLOGS);
@@ -1035,14 +1066,32 @@ function SangatHubContent() {
     }
   };
 
+  const secCfg = cms.securityConfig || {};
+  const isIdentityHidden = Boolean(secCfg.hideSubmitterIdentity);
+  const isMaintenancePaused =
+    !isStealthAdmin && Boolean(secCfg.readOnlyMaintenanceMode);
+  const displayContributor = (name: string) =>
+    isIdentityHidden ? "Sangat Contributor" : name;
+
   /**
    * Strict Authentication Gate helper:
-   * Public visitors can browse everything, but publishing or commenting
-   * requires a signed-in Supabase user.
+   * Respects Admin securityConfig (maintenance lock, sign-in, email verification).
    */
   const requireSignedIn = (actionLabel: string, callback: () => void) => {
+    if (isMaintenancePaused) {
+      setShareToast("Community submissions are temporarily paused by the Admin.");
+      window.setTimeout(() => setShareToast(null), 3500);
+      return;
+    }
     if (!user) {
       setAuthGateActionLabel(actionLabel);
+      return;
+    }
+    if (secCfg.requireEmailVerification && !emailVerified && !isStealthAdmin) {
+      setShareToast(
+        "Email verification is required by the Admin. Please verify your email inbox first."
+      );
+      window.setTimeout(() => setShareToast(null), 4000);
       return;
     }
     callback();
@@ -1232,20 +1281,45 @@ function SangatHubContent() {
     setShareError(null);
   };
 
-  const handlePublishShare = (e: React.FormEvent) => {
+  const handlePublishShare = async (e: React.FormEvent) => {
     e.preventDefault();
     setShareError(null);
 
-    if (!user && !isStealthAdmin) {
+    if (isMaintenancePaused) {
+      setShareError("Community submissions are temporarily paused by the Admin.");
+      return;
+    }
+
+    if (
+      !isStealthAdmin &&
+      (secCfg.requireSignInForSubmissions || secCfg.requireEmailVerification) &&
+      !user
+    ) {
       setIsShareOpen(false);
       setAuthGateActionLabel("Publish to SikhStack & SikhInterest");
       return;
     }
 
-    const authorSlug = slugifyName(profile.displayName);
-    const cleanImage = shareImageUrl?.trim() || null;
+    if (
+      !isStealthAdmin &&
+      secCfg.requireEmailVerification &&
+      user &&
+      !emailVerified
+    ) {
+      setShareError(
+        "Verified email required by the Admin. Please verify your email address before submitting."
+      );
+      return;
+    }
 
-    if (!isStealthAdmin) {
+    const authorDisplay = isIdentityHidden
+      ? "Sangat Contributor"
+      : profile.displayName || "Sangat Member";
+    const authorSlug = slugifyName(authorDisplay);
+    const cleanImage = shareImageUrl?.trim() || null;
+    const requiresApproval = !isStealthAdmin && secCfg.requireAdminApproval !== false;
+
+    if (requiresApproval) {
       if (shareTab === "curate") {
         let normalizedUrl = "";
         try {
@@ -1260,18 +1334,24 @@ function SangatHubContent() {
           setShareError("Title and a short summary are required.");
           return;
         }
-        void pushSiteSync({
+        const ok = await pushSiteSync({
           action: "submit_for_approval",
           submission: {
             type: "post",
             title: curateTitle.trim(),
-            subtitle: curatePublisher.trim() || getDomain(normalizedUrl),
+            subtitle: isIdentityHidden
+              ? getDomain(normalizedUrl)
+              : curatePublisher.trim() || getDomain(normalizedUrl),
             description: curateSummary.trim(),
             url: normalizedUrl,
             image: cleanImage || undefined,
-            submittedBy: profile.displayName || "Sangat Member",
+            submittedBy: authorDisplay,
           },
         });
+        if (!ok) {
+          setShareError("Community submissions are temporarily paused or unavailable.");
+          return;
+        }
         setShareToast("✓ Submitted for Admin approval! It will appear once reviewed.");
         window.setTimeout(() => setShareToast(null), 3500);
         resetShareForm();
@@ -1283,7 +1363,7 @@ function SangatHubContent() {
         setShareError("Title and body are required.");
         return;
       }
-      void pushSiteSync({
+      const ok = await pushSiteSync({
         action: "submit_for_approval",
         submission: {
           type: "post",
@@ -1292,9 +1372,13 @@ function SangatHubContent() {
           description: writeBody.trim(),
           url: "https://learnsikhi.com",
           image: cleanImage || undefined,
-          submittedBy: profile.displayName || "Sangat Member",
+          submittedBy: authorDisplay,
         },
       });
+      if (!ok) {
+        setShareError("Community submissions are temporarily paused or unavailable.");
+        return;
+      }
       setShareToast("✓ Submitted for Admin approval! It will appear once reviewed.");
       window.setTimeout(() => setShareToast(null), 3500);
       resetShareForm();
@@ -1323,7 +1407,7 @@ function SangatHubContent() {
         publisher: curatePublisher.trim() || getDomain(normalizedUrl),
         summary: curateSummary.trim(),
         category: curateCategory,
-        curatedBy: profile.displayName,
+        curatedBy: authorDisplay,
         createdAt: "Just now",
         imageUrl: cleanImage,
         focalPoint: shareFocalPoint,
@@ -1365,7 +1449,7 @@ function SangatHubContent() {
       const words = writeBody.trim().split(/\s+/).length;
       const created: SangatBlogArticle = {
         id: `blog-${Date.now()}`,
-        authorName: profile.displayName,
+        authorName: authorDisplay,
         authorHandle: authorSlug,
         authorRole: profile.roleBadge,
         authorBio: profile.bio,
@@ -1420,7 +1504,7 @@ function SangatHubContent() {
       }
       const created: SangatVisualPin = {
         id: `pin-${Date.now()}`,
-        authorName: profile.displayName,
+        authorName: authorDisplay,
         authorHandle: authorSlug,
         authorRole: profile.roleBadge,
         authorBio: profile.bio,
@@ -2190,16 +2274,31 @@ function SangatHubContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  resetShareForm();
-                  setIsShareOpen(true);
-                }}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
-              >
-                + Share Article or Link
-              </button>
+              {isMaintenancePaused ? (
+                <span className="px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs font-bold text-amber-700 dark:text-amber-300">
+                  🛡️ Community Submissions Paused
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      !isStealthAdmin &&
+                      (secCfg.requireSignInForSubmissions ||
+                        secCfg.requireEmailVerification) &&
+                      !user
+                    ) {
+                      setAuthGateActionLabel("Submit an Essay or Link");
+                      return;
+                    }
+                    resetShareForm();
+                    setIsShareOpen(true);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                >
+                  + Share Article or Link
+                </button>
+              )}
 
               <button
                 type="button"
@@ -2348,7 +2447,7 @@ function SangatHubContent() {
                     />
                     <div>
                       <p className="text-sm font-serif font-bold group-hover:underline">
-                        {activeBlog.authorName}
+                        {displayContributor(activeBlog.authorName)}
                       </p>
                       <p
                         style={{ color: "var(--theme-text-muted)" }}
@@ -2455,7 +2554,7 @@ function SangatHubContent() {
                             />
                             <div>
                               <span className="text-xs font-bold">
-                                {com.authorName}
+                                {displayContributor(com.authorName)}
                               </span>{" "}
                               <span
                                 style={{ color: "var(--theme-text-muted)" }}
@@ -2503,7 +2602,7 @@ function SangatHubContent() {
                                     size="sm"
                                   />
                                   <span className="text-xs font-bold">
-                                    {rep.authorName}
+                                    {displayContributor(rep.authorName)}
                                   </span>
                                   <span className="text-[10px] text-[#C59B27]">
                                     â€¢ {rep.createdAt}
@@ -2644,7 +2743,9 @@ function SangatHubContent() {
                                 {item.title}
                               </h3>
 
-                              <p className="text-xs font-semibold opacity-75">By {item.byline}</p>
+                              <p className="text-xs font-semibold opacity-75">
+                                By {displayContributor(item.byline)}
+                              </p>
 
                               <p className={`${cardBodyCls} opacity-80 leading-relaxed line-clamp-2`}>
                                 {item.preview}
@@ -2777,8 +2878,10 @@ function SangatHubContent() {
                   {readingItem.title}
                 </h2>
                 <p className="text-xs opacity-75 mt-1">
-                  By {readingItem.byline}
-                  {readingItem.kind === "link" ? ` • Shared by ${readingItem.link.curatedBy}` : ""}
+                  By {displayContributor(readingItem.byline)}
+                  {readingItem.kind === "link"
+                    ? ` • Shared by ${displayContributor(readingItem.link.curatedBy)}`
+                    : ""}
                 </p>
               </div>
               <button
@@ -2993,6 +3096,16 @@ function SangatHubContent() {
             </div>
 
             <form onSubmit={handlePublishShare} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+              {!isStealthAdmin && secCfg.requireEmailVerification && user && !emailVerified && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                  Verified email required by the Admin before submitting. Please confirm your email address via Supabase auth.
+                </div>
+              )}
+              {isIdentityHidden && (
+                <div className="rounded-xl border border-[#C59B27]/35 bg-[#C59B27]/10 px-3.5 py-2 text-[11px] font-semibold">
+                  Privacy Shield Active: Contributor names are displayed publicly as &ldquo;Sangat Contributor&rdquo;.
+                </div>
+              )}
               {shareError && (
                 <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-xs font-semibold text-red-700 dark:text-red-300">
                   {shareError}

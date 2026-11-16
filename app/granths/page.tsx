@@ -4,10 +4,13 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { useAuth } from "@/components/auth-provider";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
   useCmsSiteState,
+  checkVerifiedAdminStatus,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
@@ -713,8 +716,66 @@ export default function GranthsAndKirtanPage() {
     }
   };
 
+  const { user } = useAuth();
   const cms = useCmsSiteState();
   const layoutCfg = cms.layoutConfig || {};
+  const secCfg = cms.securityConfig || {};
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const syncAdmin = async () => {
+      const ok = await checkVerifiedAdminStatus();
+      if (active) setIsAdmin(ok);
+    };
+    void syncAdmin();
+    window.addEventListener("learnsikhi-admin-change", syncAdmin);
+    return () => {
+      active = false;
+      window.removeEventListener("learnsikhi-admin-change", syncAdmin);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const syncVerified = async () => {
+      if (!user) {
+        if (active) setEmailVerified(false);
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        if (active) setEmailVerified(true);
+        return;
+      }
+      try {
+        const { data } = await supabase.auth.getUser();
+        const confirmed = Boolean(
+          data?.user?.email_confirmed_at ||
+            (data?.user as { confirmed_at?: string } | undefined)?.confirmed_at
+        );
+        if (active) setEmailVerified(confirmed);
+      } catch {
+        if (active) setEmailVerified(false);
+      }
+    };
+    void syncVerified();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const allowGuestKirtan = isAdmin || secCfg.allowGuestKirtanPlay !== false;
+  const isMaintenancePaused = !isAdmin && Boolean(secCfg.readOnlyMaintenanceMode);
+  const needsSignInForSub =
+    !isAdmin &&
+    Boolean(secCfg.requireSignInForSubmissions || secCfg.requireEmailVerification) &&
+    !user;
+  const needsEmailVerificationForSub =
+    !isAdmin && Boolean(secCfg.requireEmailVerification) && Boolean(user) && !emailVerified;
+  const hideIdentity = Boolean(secCfg.hideSubmitterIdentity);
+
   const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
   const headingSizeCls = resolveCmsHeadingClass(layoutCfg.headingScale);
   const bodySizeCls = resolveCmsBodyClass(layoutCfg.bodyScale);
@@ -1079,29 +1140,37 @@ export default function GranthsAndKirtanPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 pt-1">
-                  <input
-                    ref={localFileInputRef}
-                    type="file"
-                    accept="audio/*,.mp3,.wav,.m4a,.ogg"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files.length > 0) {
-                        const added = addLocalAudioFiles(e.target.files);
-                        showRequestToast(
-                          `Loaded ${added.length} local track${added.length > 1 ? "s" : ""} — now playing "${added[0].title}".`
-                        );
-                        e.target.value = "";
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => localFileInputRef.current?.click()}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold shadow-sm hover:brightness-105 transition"
-                  >
-                    📂 Play / Upload Local MP3 Files (e.g., Bhai Avtar Singh)
-                  </button>
+                  {allowGuestKirtan ? (
+                    <>
+                      <input
+                        ref={localFileInputRef}
+                        type="file"
+                        accept="audio/*,.mp3,.wav,.m4a,.ogg"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            const added = addLocalAudioFiles(e.target.files);
+                            showRequestToast(
+                              `Loaded ${added.length} local track${added.length > 1 ? "s" : ""} — now playing "${added[0].title}".`
+                            );
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => localFileInputRef.current?.click()}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold shadow-sm hover:brightness-105 transition"
+                      >
+                        📂 Play / Upload Local MP3 Files (e.g., Bhai Avtar Singh)
+                      </button>
+                    </>
+                  ) : (
+                    <span className="px-3.5 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs font-bold text-amber-300">
+                      🔒 Custom Audio Uploads Paused by Admin
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => startReadingInstrumental()}
@@ -1109,16 +1178,22 @@ export default function GranthsAndKirtanPage() {
                   >
                     🎻 25% Reading Mode
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSubMsg(null);
-                      setIsSubmitApprovalOpen(true);
-                    }}
-                    className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-[#C59B27] transition"
-                  >
-                    + Suggest Shabad / Drive Link
-                  </button>
+                  {isMaintenancePaused ? (
+                    <span className="px-3.5 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs font-bold text-amber-300">
+                      🛡️ Submissions Paused (Read-Only)
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubMsg(null);
+                        setIsSubmitApprovalOpen(true);
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-[#C59B27] transition"
+                    >
+                      + Suggest Shabad / Drive Link
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1929,115 +2004,160 @@ export default function GranthsAndKirtanPage() {
                 </div>
               )}
 
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!subTitle.trim() || !subUrl.trim()) return;
-                  try {
-                    const res = await fetch("/api/site-frames", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        action: "submit_for_approval",
-                        submission: {
-                          type: subType,
-                          title: subTitle.trim(),
-                          subtitle: subSubtitle.trim() || undefined,
-                          url: subUrl.trim(),
-                          submittedBy: subBy.trim() || "Sangat Member",
-                        },
-                      }),
-                      cache: "no-store",
-                    });
-                    if (!res.ok) throw new Error("Failed");
-                    setSubMsg("✓ Submitted to the Admin Approval Queue!");
-                    setSubTitle("");
-                    setSubSubtitle("");
-                    setSubUrl("");
-                  } catch {
-                    setSubMsg("Could not submit right now. Please try again.");
-                  }
-                }}
-                className="space-y-3 text-sm"
-              >
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold mb-1">Type</label>
-                    <select
-                      value={subType}
-                      onChange={(e) => setSubType(e.target.value as "kirtan" | "pdf" | "post")}
-                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
-                    >
-                      <option value="kirtan">Kirtan Shabad Audio</option>
-                      <option value="pdf">Granth / Pothi PDF</option>
-                      <option value="post">Article / Link</option>
-                    </select>
+              {isMaintenancePaused ? (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                  Community submissions are temporarily paused by the Admin.
+                </div>
+              ) : needsSignInForSub ? (
+                <div className="space-y-3 rounded-xl border border-[#C59B27]/40 bg-[#C59B27]/10 p-4 text-xs">
+                  <p className="font-semibold">
+                    The Admin requires account sign-in before submitting a Shabad or PDF resource.
+                  </p>
+                  <Link
+                    href="/auth?next=/granths"
+                    className="inline-block px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-extrabold"
+                  >
+                    Sign In / Sign Up →
+                  </Link>
+                </div>
+              ) : needsEmailVerificationForSub ? (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                  Verified email is required by the Admin before submitting. Please confirm your email address via your verification inbox link.
+                </div>
+              ) : (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!subTitle.trim() || !subUrl.trim()) return;
+                    try {
+                      const res = await fetch("/api/site-frames", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "submit_for_approval",
+                          submission: {
+                            type: subType,
+                            title: subTitle.trim(),
+                            subtitle: subSubtitle.trim() || undefined,
+                            url: subUrl.trim(),
+                            submittedBy: hideIdentity
+                              ? "Sangat Contributor"
+                              : subBy.trim() || "Sangat Member",
+                          },
+                        }),
+                        cache: "no-store",
+                      });
+                      const data = await res.json().catch(() => null);
+                      if (!res.ok || !data?.ok) {
+                        throw new Error(data?.error || "Submission rejected.");
+                      }
+                      if (data.publishedDirectly && Array.isArray(data.kirtanTracks)) {
+                        setRemoteKirtanTracks(data.kirtanTracks);
+                        setSubMsg("✓ Published directly to Granths & Kirtan!");
+                      } else {
+                        setSubMsg("✓ Submitted to the Admin Approval Queue!");
+                      }
+                      setSubTitle("");
+                      setSubSubtitle("");
+                      setSubUrl("");
+                    } catch (err) {
+                      setSubMsg(
+                        err instanceof Error
+                          ? err.message
+                          : "Could not submit right now. Please try again."
+                      );
+                    }
+                  }}
+                  className="space-y-3 text-sm"
+                >
+                  {hideIdentity && (
+                    <div className="rounded-xl border border-[#C59B27]/35 bg-[#C59B27]/10 px-3 py-2 text-[11px] font-semibold">
+                      Privacy Shield Active: Submitter identity is hidden publicly (&ldquo;Sangat Contributor&rdquo;).
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold mb-1">Type</label>
+                      <select
+                        value={subType}
+                        onChange={(e) => setSubType(e.target.value as "kirtan" | "pdf" | "post")}
+                        className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                      >
+                        <option value="kirtan">Kirtan Shabad Audio</option>
+                        <option value="pdf">Granth / Pothi PDF</option>
+                        <option value="post">Article / Link</option>
+                      </select>
+                    </div>
+                    {!hideIdentity && (
+                      <div>
+                        <label className="block text-xs font-bold mb-1">Your Name</label>
+                        <input
+                          type="text"
+                          value={subBy}
+                          onChange={(e) => setSubBy(e.target.value)}
+                          placeholder="Sangat Member"
+                          className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                        />
+                      </div>
+                    )}
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold mb-1">Your Name</label>
+                    <label className="block text-xs font-bold mb-1">Title *</label>
                     <input
                       type="text"
-                      value={subBy}
-                      onChange={(e) => setSubBy(e.target.value)}
-                      placeholder="Sangat Member"
+                      required
+                      value={subTitle}
+                      onChange={(e) => setSubTitle(e.target.value)}
+                      placeholder="e.g. Asa Di Vaar — Bhai Avtar Singh Ji"
                       className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-bold mb-1">Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={subTitle}
-                    onChange={(e) => setSubTitle(e.target.value)}
-                    placeholder="e.g. Asa Di Vaar — Bhai Avtar Singh Ji"
-                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Ragi / Author (optional)</label>
+                    <input
+                      type="text"
+                      value={subSubtitle}
+                      onChange={(e) => setSubSubtitle(e.target.value)}
+                      placeholder="e.g. Bhai Avtar Singh Ji"
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold mb-1">Ragi / Author (optional)</label>
-                  <input
-                    type="text"
-                    value={subSubtitle}
-                    onChange={(e) => setSubSubtitle(e.target.value)}
-                    placeholder="e.g. Bhai Avtar Singh Ji"
-                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">
+                      Google Drive Link or Audio/PDF URL *
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      value={subUrl}
+                      onChange={(e) => setSubUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/.../view"
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold mb-1">
-                    Google Drive Link or Audio/PDF URL *
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    value={subUrl}
-                    onChange={(e) => setSubUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/.../view"
-                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsSubmitApprovalOpen(false)}
-                    className="px-4 py-2 rounded-xl border text-xs font-bold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold"
-                  >
-                    Submit for Approval
-                  </button>
-                </div>
-              </form>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsSubmitApprovalOpen(false)}
+                      className="px-4 py-2 rounded-xl border text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold"
+                    >
+                      {secCfg.requireAdminApproval === false
+                        ? "Publish Now"
+                        : "Submit for Approval"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         )}

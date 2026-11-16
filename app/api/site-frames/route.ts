@@ -558,6 +558,19 @@ export async function POST(req: Request) {
       });
     }
 
+    const { state: current } = await readGlobalState();
+    const auth = await verifyAdminRequest(req, body);
+
+    if (current.securityConfig?.readOnlyMaintenanceMode && !auth.verified) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Community submissions are temporarily paused by the Admin",
+        },
+        { status: 403 }
+      );
+    }
+
     if (body.action === "submit_for_approval") {
       const sub =
         body.submission && typeof body.submission === "object"
@@ -569,8 +582,67 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      const { state: current } = await readGlobalState();
       const now = new Date().toISOString();
+      const submittedBy = current.securityConfig?.hideSubmitterIdentity
+        ? "Sangat Contributor"
+        : sub.submittedBy?.trim() || "Sangat Member";
+
+      if (current.securityConfig?.requireAdminApproval === false) {
+        if (sub.type === "kirtan") {
+          const track: KirtanTrackRecord = {
+            id: `kirtan-${Date.now()}`,
+            title: sub.title.trim(),
+            ragi: sub.subtitle?.trim() || submittedBy,
+            raag: "Community Kirtan",
+            sourceUrl: sub.url.trim(),
+            imageUrl: sub.image?.trim() || undefined,
+            createdAt: now,
+          };
+          const nextState: SiteFramesPayload = {
+            ...current,
+            kirtanTracks: [track, ...current.kirtanTracks],
+            updatedAt: now,
+          };
+          const source = await writeGlobalState(nextState);
+          return NextResponse.json({
+            ok: true,
+            publishedDirectly: true,
+            source,
+            storageMode: source === "supabase" ? "supabase" : "fallback",
+            ...nextState,
+          });
+        }
+
+        const directLink = {
+          id: `link-${Date.now()}`,
+          url: sub.url.trim(),
+          title: sub.title.trim(),
+          publisher: sub.subtitle?.trim() || submittedBy,
+          summary: sub.description?.trim() || sub.title.trim(),
+          category: "essays",
+          curatedBy: submittedBy,
+          createdAt: "Published",
+          imageUrl: sub.image?.trim() || null,
+          isUserCreated: true,
+        };
+        const nextState: SiteFramesPayload = {
+          ...current,
+          customPosts: {
+            ...current.customPosts,
+            links: mergePostsById(current.customPosts.links, [directLink]),
+          },
+          updatedAt: now,
+        };
+        const source = await writeGlobalState(nextState);
+        return NextResponse.json({
+          ok: true,
+          publishedDirectly: true,
+          source,
+          storageMode: source === "supabase" ? "supabase" : "fallback",
+          ...nextState,
+        });
+      }
+
       const entry: PendingSubmission = {
         id: sub.id || `sub-${Date.now()}`,
         type: sub.type === "kirtan" || sub.type === "pdf" ? sub.type : "post",
@@ -579,7 +651,7 @@ export async function POST(req: Request) {
         description: sub.description?.trim() || undefined,
         url: sub.url.trim(),
         image: sub.image?.trim() || undefined,
-        submittedBy: sub.submittedBy?.trim() || "Sangat Member",
+        submittedBy,
         createdAt: now,
       };
       const nextState: SiteFramesPayload = {
@@ -590,6 +662,7 @@ export async function POST(req: Request) {
       const source = await writeGlobalState(nextState);
       return NextResponse.json({
         ok: true,
+        publishedDirectly: false,
         source,
         storageMode: source === "supabase" ? "supabase" : "fallback",
         submission: entry,
@@ -614,20 +687,15 @@ export async function POST(req: Request) {
       Array.isArray(body.pendingSubmissions) ||
       Boolean(body.sectionLayoutMap);
 
-    if (mutatesProtectedFramework) {
-      const auth = await verifyAdminRequest(req, body);
-      if (!auth.verified) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "Unauthorized: Admin sign-in (Student1313@learnsikhi.com) required.",
-          },
-          { status: 401 }
-        );
-      }
+    if (mutatesProtectedFramework && !auth.verified) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Unauthorized: Admin sign-in (Student1313@learnsikhi.com) required.",
+        },
+        { status: 401 }
+      );
     }
-
-    const { state: current } = await readGlobalState();
     const now = new Date().toISOString();
 
     const nextFrames: Record<string, FrameRecord> = { ...current.frames };
@@ -686,14 +754,16 @@ export async function POST(req: Request) {
         blogs: mergePostsById(current.customPosts.blogs, incomingPosts?.blogs),
         pins: mergePostsById(current.customPosts.pins, incomingPosts?.pins),
       },
-      deletedIds: Array.isArray(body.deletedIds)
-        ? Array.from(
-            new Set([
-              ...current.deletedIds,
-              ...body.deletedIds.filter((id): id is string => typeof id === "string"),
-            ])
-          )
-        : current.deletedIds,
+      deletedIds: body.replaceDeletedIds === true && Array.isArray(body.deletedIds)
+        ? body.deletedIds.filter((id): id is string => typeof id === "string")
+        : Array.isArray(body.deletedIds)
+          ? Array.from(
+              new Set([
+                ...current.deletedIds,
+                ...body.deletedIds.filter((id): id is string => typeof id === "string"),
+              ])
+            )
+          : current.deletedIds,
       heroBannerUrl:
         body.heroBannerUrl !== undefined
           ? typeof body.heroBannerUrl === "string"
