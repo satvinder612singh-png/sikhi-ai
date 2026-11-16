@@ -23,6 +23,7 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
   useGodModeTextValue,
@@ -996,7 +997,13 @@ export default function GranthsAndKirtanPage() {
         {activeTab === "kirtan" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
             {/* Left Column: Live 24/7 Sri Harmandir Sahib Broadcast & Active Player Card */}
-            <div className="lg:col-span-5 w-full min-w-0 rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-8 shadow-md space-y-6 lg:sticky lg:top-24">
+            <SlidePresentationCanvas
+              id="granths-audio-player-canvas"
+              pageKey="granths"
+              label="Kirtan Audio Player"
+              className="lg:col-span-5 w-full min-w-0"
+            >
+            <div className="w-full min-w-0 rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-8 shadow-md space-y-6">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27] px-3 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/40">
                   VERIFIED ARCHIVE.ORG KIRTAN
@@ -1194,9 +1201,16 @@ export default function GranthsAndKirtanPage() {
                 </div>
               </div>
             </div>
+            </SlidePresentationCanvas>
 
             {/* Right Column: Educational Kirtan & 31 Ragas Hub + Verified / Local Tracks */}
-            <div className="lg:col-span-7 w-full min-w-0 space-y-6">
+            <SlidePresentationCanvas
+              id="granths-playlist-canvas"
+              pageKey="granths"
+              label="Kirtan & 31 Ragas Hub"
+              className="lg:col-span-7 w-full min-w-0"
+            >
+            <div className="w-full min-w-0 space-y-6">
               <div className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] text-[#FAF6EE] p-6 space-y-4 w-full min-w-0">
                 <div className="space-y-1.5 w-full min-w-0">
                   <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
@@ -1597,6 +1611,7 @@ export default function GranthsAndKirtanPage() {
                 </div>
               </div>
             </div>
+            </SlidePresentationCanvas>
           </div>
         )}
 
@@ -1656,6 +1671,11 @@ export default function GranthsAndKirtanPage() {
             </GodModeBox>
 
             {/* Granth Cards Grid (Max 3 per row) */}
+            <SlidePresentationCanvas
+              id="granths-library-canvas"
+              pageKey="granths"
+              label="Granth BookReader Grid"
+            >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredGranths.map((granth) => (
                 <article
@@ -1734,6 +1754,7 @@ export default function GranthsAndKirtanPage() {
                 </article>
               ))}
             </div>
+            </SlidePresentationCanvas>
           </div>
         )}
 

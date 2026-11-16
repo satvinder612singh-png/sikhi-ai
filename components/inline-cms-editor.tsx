@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "@/components/auth-provider";
 import {
   useAdminEditMode,
@@ -1424,105 +1425,243 @@ export function GodModeText({
   );
 }
 
-export interface GodModeBoxProps {
+export interface SlideCanvasState {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  widthPreset?: "1/3" | "1/2" | "3/4" | "full" | "custom";
+  rotation?: number;
+  zIndex?: number;
+  lockAspectRatio?: boolean;
+  alignSelf?: "left" | "center" | "right";
+  textColor?: string;
+  bgColor?: string;
+  borderColor?: string;
+}
+
+export interface SlidePresentationCanvasProps {
   id: string;
   pageKey?: string;
   label?: string;
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  isFloatingWidget?: boolean;
+  extraInspectorContent?: React.ReactNode;
 }
 
-export function GodModeBox({
+type ResizeHandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+const HANDLE_DEFS: {
+  dir: ResizeHandleDir;
+  posClass: string;
+  cursorClass: string;
+}[] = [
+  { dir: "nw", posClass: "-top-1.5 -left-1.5", cursorClass: "cursor-nwse-resize" },
+  {
+    dir: "n",
+    posClass: "-top-1.5 left-1/2 -translate-x-1/2",
+    cursorClass: "cursor-ns-resize",
+  },
+  { dir: "ne", posClass: "-top-1.5 -right-1.5", cursorClass: "cursor-nesw-resize" },
+  {
+    dir: "e",
+    posClass: "top-1/2 -right-1.5 -translate-y-1/2",
+    cursorClass: "cursor-ew-resize",
+  },
+  { dir: "se", posClass: "-bottom-1.5 -right-1.5", cursorClass: "cursor-nwse-resize" },
+  {
+    dir: "s",
+    posClass: "-bottom-1.5 left-1/2 -translate-x-1/2",
+    cursorClass: "cursor-ns-resize",
+  },
+  { dir: "sw", posClass: "-bottom-1.5 -left-1.5", cursorClass: "cursor-nesw-resize" },
+  {
+    dir: "w",
+    posClass: "top-1/2 -left-1.5 -translate-y-1/2",
+    cursorClass: "cursor-ew-resize",
+  },
+];
+
+export function SlidePresentationCanvas({
   id,
   label,
   children,
   className = "",
   style,
-}: GodModeBoxProps) {
+  isFloatingWidget = false,
+  extraInspectorContent,
+}: SlidePresentationCanvasProps) {
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [resizing, setResizing] = useState(false);
-  const [liveDrag, setLiveDrag] = useState<{ x: number; y: number } | null>(null);
-  const [liveSize, setLiveSize] = useState<{ w: number; h: number } | null>(null);
+  const [selected, setSelected] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [activeOp, setActiveOp] = useState<
+    "idle" | "drag" | "resize" | "rotate"
+  >("idle");
+  const [liveOverride, setLiveOverride] = useState<Partial<SlideCanvasState> | null>(
+    null
+  );
 
-  const saved = (
+  const legacySaved = (
     (cms.sectionLayoutMap || {})[`__god_box_${id}`] || {}
   ) as GodModeBoxRecord;
+  const slideSaved = (
+    (cms.sectionLayoutMap || {})[`__slide_canvas_${id}`] || {}
+  ) as SlideCanvasState;
 
-  const persistBox = async (patch: Partial<GodModeBoxRecord>) => {
+  const saved: SlideCanvasState = {
+    x: slideSaved.x ?? legacySaved.offsetX ?? 0,
+    y: slideSaved.y ?? legacySaved.offsetY ?? 0,
+    width: slideSaved.width ?? legacySaved.customWidthPx,
+    height: slideSaved.height ?? legacySaved.minHeightPx,
+    widthPreset: slideSaved.widthPreset ?? legacySaved.widthPreset,
+    rotation: slideSaved.rotation ?? 0,
+    zIndex: slideSaved.zIndex,
+    lockAspectRatio: Boolean(slideSaved.lockAspectRatio),
+    alignSelf: slideSaved.alignSelf ?? legacySaved.alignSelf,
+    textColor: slideSaved.textColor,
+    bgColor: slideSaved.bgColor,
+    borderColor: slideSaved.borderColor,
+  };
+
+  useEffect(() => {
+    if (!canEdit) {
+      setSelected(false);
+      setInspectorOpen(false);
+    }
+  }, [canEdit]);
+
+  const persistCanvas = async (patch: Partial<SlideCanvasState>) => {
+    const nextMerged: SlideCanvasState = {
+      ...saved,
+      ...patch,
+    };
     await pushAdminCmsPatch({
       sectionLayoutMap: {
         ...(cms.sectionLayoutMap || {}),
-        [`__god_box_${id}`]: {
-          ...saved,
-          ...patch,
-        },
+        [`__slide_canvas_${id}`]: nextMerged,
       },
     });
+  };
+
+  const setDraggingBodyLock = (locked: boolean) => {
+    if (typeof document === "undefined") return;
+    if (locked) document.body.classList.add("god-mode-dragging");
+    else document.body.classList.remove("god-mode-dragging");
   };
 
   const handleDragStart = (e: React.PointerEvent) => {
     if (!canEdit) return;
     e.preventDefault();
     e.stopPropagation();
+    setSelected(true);
     const startX = e.clientX;
     const startY = e.clientY;
-    const baseX = saved.offsetX || 0;
-    const baseY = saved.offsetY || 0;
+    const baseX = saved.x || 0;
+    const baseY = saved.y || 0;
     let latestX = baseX;
     let latestY = baseY;
-    setDragging(true);
+    setActiveOp("drag");
+    setDraggingBodyLock(true);
 
     const onMove = (ev: PointerEvent) => {
       latestX = Math.round(baseX + (ev.clientX - startX));
       latestY = Math.round(baseY + (ev.clientY - startY));
-      setLiveDrag({ x: latestX, y: latestY });
+      setLiveOverride({ x: latestX, y: latestY });
     };
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      setDragging(false);
-      setLiveDrag(null);
-      void persistBox({ offsetX: latestX, offsetY: latestY });
+      setActiveOp("idle");
+      setDraggingBodyLock(false);
+      setLiveOverride(null);
+      void persistCanvas({ x: latestX, y: latestY });
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   };
 
-  const handleResizeStart = (e: React.PointerEvent) => {
+  const handleResizeStart = (e: React.PointerEvent, dir: ResizeHandleDir) => {
     if (!canEdit) return;
     e.preventDefault();
     e.stopPropagation();
+    setSelected(true);
     const el = boxRef.current;
-    const rect = el ? el.getBoundingClientRect() : { width: 400, height: 120 };
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const baseW = saved.customWidthPx || Math.round(rect.width);
-    const baseH = saved.minHeightPx || Math.round(rect.height);
-    let latestW = baseW;
-    let latestH = baseH;
-    setResizing(true);
+    const rect = el ? el.getBoundingClientRect() : { width: 380, height: 140 };
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const baseX = saved.x || 0;
+    const baseY = saved.y || 0;
+    const baseW = saved.width || Math.round(rect.width);
+    const baseH = saved.height || Math.round(rect.height);
+    const aspect = baseW / Math.max(40, baseH);
+
+    let nextX = baseX;
+    let nextY = baseY;
+    let nextW = baseW;
+    let nextH = baseH;
+
+    setActiveOp("resize");
+    setDraggingBodyLock(true);
 
     const onMove = (ev: PointerEvent) => {
-      latestW = Math.max(180, Math.round(baseW + (ev.clientX - startX)));
-      latestH = Math.max(48, Math.round(baseH + (ev.clientY - startY)));
-      setLiveSize({ w: latestW, h: latestH });
+      const dx = ev.clientX - startMouseX;
+      const dy = ev.clientY - startMouseY;
+
+      let w = baseW;
+      let h = baseH;
+      let x = baseX;
+      let y = baseY;
+
+      if (dir.includes("e")) w = Math.max(160, Math.round(baseW + dx));
+      if (dir.includes("s")) h = Math.max(48, Math.round(baseH + dy));
+      if (dir.includes("w")) {
+        const candidateW = Math.max(160, Math.round(baseW - dx));
+        x = Math.round(baseX + (baseW - candidateW));
+        w = candidateW;
+      }
+      if (dir.includes("n")) {
+        const candidateH = Math.max(48, Math.round(baseH - dy));
+        y = Math.round(baseY + (baseH - candidateH));
+        h = candidateH;
+      }
+
+      if (saved.lockAspectRatio && (dir.length === 2 || dir === "e" || dir === "w")) {
+        h = Math.max(48, Math.round(w / aspect));
+      } else if (saved.lockAspectRatio && (dir === "n" || dir === "s")) {
+        w = Math.max(160, Math.round(h * aspect));
+      }
+
+      nextX = x;
+      nextY = y;
+      nextW = w;
+      nextH = h;
+      setLiveOverride({
+        x: nextX,
+        y: nextY,
+        width: nextW,
+        height: nextH,
+        widthPreset: "custom",
+      });
     };
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      setResizing(false);
-      setLiveSize(null);
-      void persistBox({
+      setActiveOp("idle");
+      setDraggingBodyLock(false);
+      setLiveOverride(null);
+      void persistCanvas({
+        x: nextX,
+        y: nextY,
+        width: nextW,
+        height: nextH,
         widthPreset: "custom",
-        customWidthPx: latestW,
-        minHeightPx: latestH,
       });
     };
 
@@ -1530,17 +1669,62 @@ export function GodModeBox({
     window.addEventListener("pointerup", onUp);
   };
 
-  const ox = liveDrag ? liveDrag.x : saved.offsetX || 0;
-  const oy = liveDrag ? liveDrag.y : saved.offsetY || 0;
+  const handleRotateStart = (e: React.PointerEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelected(true);
+    const el = boxRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let nextRot = saved.rotation || 0;
+
+    setActiveOp("rotate");
+    setDraggingBodyLock(true);
+
+    const onMove = (ev: PointerEvent) => {
+      const deg =
+        (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI + 90;
+      let normalized = Math.round(((deg + 180) % 360 + 360) % 360 - 180);
+      if (Math.abs(normalized) <= 4) normalized = 0;
+      else if (Math.abs(normalized - 90) <= 4) normalized = 90;
+      else if (Math.abs(normalized + 90) <= 4) normalized = -90;
+      nextRot = normalized;
+      setLiveOverride({ rotation: nextRot });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setActiveOp("idle");
+      setDraggingBodyLock(false);
+      setLiveOverride(null);
+      void persistCanvas({ rotation: nextRot });
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const curX = liveOverride?.x ?? saved.x ?? 0;
+  const curY = liveOverride?.y ?? saved.y ?? 0;
+  const curW =
+    liveOverride?.width ??
+    (saved.widthPreset === "custom" ? saved.width : undefined);
+  const curH = liveOverride?.height ?? saved.height;
+  const curRot = liveOverride?.rotation ?? saved.rotation ?? 0;
+  const curZ = saved.zIndex;
 
   const presetWidthCls =
-    saved.widthPreset === "1/3"
+    !curW && saved.widthPreset === "1/3"
       ? "w-full md:w-1/3"
-      : saved.widthPreset === "1/2"
+      : !curW && saved.widthPreset === "1/2"
         ? "w-full md:w-1/2"
-        : saved.widthPreset === "3/4"
+        : !curW && saved.widthPreset === "3/4"
           ? "w-full md:w-3/4"
-          : saved.widthPreset === "full"
+          : !curW && saved.widthPreset === "full"
             ? "w-full"
             : "";
 
@@ -1553,118 +1737,416 @@ export function GodModeBox({
           ? "mr-auto"
           : "";
 
-  const customW =
-    liveSize?.w ?? (saved.widthPreset === "custom" ? saved.customWidthPx : undefined);
-  const customH = liveSize?.h ?? saved.minHeightPx;
+  const computeNextZ = (dir: "front" | "back"): number => {
+    const entries = Object.values(cms.sectionLayoutMap || {}) as SlideCanvasState[];
+    const zs = entries
+      .map((item) => (typeof item?.zIndex === "number" ? item.zIndex : 20))
+      .filter((n) => Number.isFinite(n));
+    const maxZ = zs.length > 0 ? Math.max(...zs) : 20;
+    const minZ = zs.length > 0 ? Math.min(...zs) : 20;
+    if (dir === "front") return Math.max((curZ ?? 20) + 10, maxZ + 1);
+    return Math.max(0, Math.min((curZ ?? 20) - 10, minZ - 1));
+  };
 
-  const boxStyle: React.CSSProperties = {
+  const canvasStyle: React.CSSProperties = {
     ...style,
-    ...(customW ? { width: `${customW}px`, maxWidth: "100%" } : {}),
-    ...(customH ? { minHeight: `${customH}px` } : {}),
-    ...(ox !== 0 || oy !== 0
-      ? { transform: `translate3d(${ox}px, ${oy}px, 0)` }
+    ...(curW ? { width: `${curW}px`, maxWidth: isFloatingWidget ? "95vw" : "100%" } : {}),
+    ...(curH ? { minHeight: `${curH}px` } : {}),
+    ...(typeof curZ === "number" ? { zIndex: curZ } : {}),
+    ...(saved.textColor ? { color: saved.textColor } : {}),
+    ...(saved.bgColor ? { backgroundColor: saved.bgColor, borderRadius: "1rem" } : {}),
+    ...(saved.borderColor
+      ? { border: `2px solid ${saved.borderColor}`, borderRadius: "1rem" }
       : {}),
   };
 
   return (
-    <div
+    <motion.div
       ref={boxRef}
-      style={boxStyle}
+      animate={{
+        x: curX,
+        y: curY,
+        rotate: curRot,
+      }}
+      transition={
+        activeOp !== "idle"
+          ? { duration: 0 }
+          : { type: "spring", stiffness: 360, damping: 32, mass: 0.5 }
+      }
+      style={canvasStyle}
+      onClick={() => {
+        if (canEdit) setSelected(true);
+      }}
       className={[
         "god-mode-box",
         presetWidthCls,
         alignCls,
-        canEdit ? "god-mode-box-active" : "",
-        dragging || resizing ? "god-mode-box-dragging" : "",
+        canEdit
+          ? selected
+            ? "slide-canvas-frame rounded-2xl p-1"
+            : "god-mode-box-active"
+          : "",
+        activeOp !== "idle" ? "god-mode-box-dragging" : "",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
       {canEdit && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-black/85 border border-[#d4af37]/55 px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-md"
-        >
-          <div className="flex flex-wrap items-center gap-1">
+        <>
+          {/* Top Rotation Handle + Connector Stem */}
+          <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-40">
             <button
               type="button"
-              onPointerDown={handleDragStart}
-              title="Drag to move anywhere on screen"
-              className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#d4af37]/20 text-[#E5C158] border border-[#d4af37]/40 select-none"
+              onPointerDown={handleRotateStart}
+              title="Drag to rotate element"
+              aria-label={`Rotate ${label || id}`}
+              className="pointer-events-auto h-5 w-5 rounded-full bg-white border-2 border-[#2563EB] text-[#2563EB] text-[10px] font-black flex items-center justify-center shadow hover:scale-110 cursor-grab active:cursor-grabbing"
             >
-              ⋮⋮ Drag {label || id}
+              ↻
             </button>
-            {(["1/3", "1/2", "3/4", "full"] as const).map((wp) => (
-              <button
-                key={wp}
-                type="button"
-                onClick={() =>
-                  void persistBox({ widthPreset: wp, customWidthPx: undefined })
-                }
-                className={`px-1.5 py-0.5 rounded ${
-                  saved.widthPreset === wp
-                    ? "bg-[#d4af37] text-[#18181B]"
-                    : "hover:bg-white/15 opacity-80"
-                }`}
-              >
-                {wp === "full" ? "w-full" : `w-${wp}`}
-              </button>
-            ))}
+            <span className="h-2.5 w-0.5 bg-[#2563EB]/85" />
           </div>
 
-          <div className="flex items-center gap-1">
-            {(["left", "center", "right"] as const).map((al) => (
+          {/* 8-Way Resize Nodes (4 Corners + 4 Edge Midpoints) */}
+          {HANDLE_DEFS.map((h) => (
+            <button
+              key={h.dir}
+              type="button"
+              aria-label={`Resize ${h.dir} handle`}
+              onPointerDown={(e) => handleResizeStart(e, h.dir)}
+              className={`slide-canvas-handle ${h.posClass} ${h.cursorClass}`}
+            />
+          ))}
+
+          {/* Top Floating Drag & Inspector Pill */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-[#0F172A]/92 border border-[#2563EB]/75 px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-lg"
+          >
+            <div className="flex flex-wrap items-center gap-1">
               <button
-                key={al}
                 type="button"
-                onClick={() => void persistBox({ alignSelf: al })}
-                className={`px-1.5 py-0.5 rounded capitalize ${
-                  saved.alignSelf === al
-                    ? "bg-[#d4af37] text-[#18181B]"
-                    : "hover:bg-white/15 opacity-80"
+                onPointerDown={handleDragStart}
+                title="Drag anywhere on screen"
+                className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/25 text-[#93C5FD] border border-[#2563EB]/50 select-none"
+              >
+                ⋮⋮ Drag {label || id}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelected(true);
+                  setInspectorOpen((v) => !v);
+                }}
+                className={`px-2 py-0.5 rounded border transition ${
+                  inspectorOpen
+                    ? "bg-[#2563EB] text-white border-[#60A5FA]"
+                    : "border-white/20 text-[#E5C158] hover:border-[#d4af37]"
                 }`}
               >
-                {al}
+                ⚙️ Inspector
               </button>
-            ))}
-            {(ox !== 0 || oy !== 0 || saved.widthPreset || saved.minHeightPx) && (
-              <button
-                type="button"
-                onClick={() =>
-                  void persistBox({
-                    offsetX: 0,
-                    offsetY: 0,
-                    widthPreset: undefined,
-                    customWidthPx: undefined,
-                    minHeightPx: undefined,
-                    alignSelf: undefined,
-                  })
-                }
-                className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
-              >
-                ↺ Reset
-              </button>
-            )}
+            </div>
+
+            <div className="flex items-center gap-1 opacity-90">
+              <span className="font-mono text-[9px] text-sky-200 hidden sm:inline">
+                ({curX}, {curY})
+                {curW ? ` ${curW}px` : ""}
+                {curRot ? ` ${curRot}°` : ""}
+              </span>
+              {(curX !== 0 ||
+                curY !== 0 ||
+                curRot !== 0 ||
+                saved.width ||
+                saved.height ||
+                saved.widthPreset ||
+                saved.textColor ||
+                saved.bgColor ||
+                saved.borderColor) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void persistCanvas({
+                      x: 0,
+                      y: 0,
+                      width: undefined,
+                      height: undefined,
+                      widthPreset: undefined,
+                      rotation: 0,
+                      zIndex: undefined,
+                      alignSelf: undefined,
+                      textColor: undefined,
+                      bgColor: undefined,
+                      borderColor: undefined,
+                    })
+                  }
+                  className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
+                >
+                  ↺ Reset
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {children}
 
-      {canEdit && (
-        <span
-          role="slider"
-          aria-label={`Resize ${label || id}`}
-          aria-valuenow={customW || 100}
-          tabIndex={0}
-          onPointerDown={handleResizeStart}
-          title="Drag corner to resize box"
-          className="god-mode-resize-handle"
-        >
-          ↘
-        </span>
-      )}
-    </div>
+      {/* Floating Figma-Style Canvas Inspector Portal */}
+      {canEdit &&
+        inspectorOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="fixed right-4 top-20 z-[100] w-[320px] max-w-[calc(100vw-32px)] max-h-[82vh] overflow-y-auto rounded-2xl border-2 border-[#2563EB] bg-[#0B101B]/98 text-[#FAF7F0] p-4 shadow-2xl shadow-black/60 backdrop-blur-md space-y-3 text-xs"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-400">
+                  Figma Canvas Inspector
+                </p>
+                <p className="font-bold truncate text-sm">{label || id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectorOpen(false)}
+                className="px-2 py-0.5 rounded border border-white/20 text-[11px] hover:border-sky-400"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* X / Y / Rotation */}
+            <div className="grid grid-cols-3 gap-2">
+              <label className="space-y-0.5">
+                <span className="text-[10px] opacity-70 font-bold">X (px)</span>
+                <input
+                  type="number"
+                  value={curX}
+                  onChange={(e) =>
+                    void persistCanvas({ x: Number(e.target.value) || 0 })
+                  }
+                  className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+                />
+              </label>
+              <label className="space-y-0.5">
+                <span className="text-[10px] opacity-70 font-bold">Y (px)</span>
+                <input
+                  type="number"
+                  value={curY}
+                  onChange={(e) =>
+                    void persistCanvas({ y: Number(e.target.value) || 0 })
+                  }
+                  className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+                />
+              </label>
+              <label className="space-y-0.5">
+                <span className="text-[10px] opacity-70 font-bold">Rotate°</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  value={curRot}
+                  onChange={(e) =>
+                    void persistCanvas({ rotation: Number(e.target.value) || 0 })
+                  }
+                  className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+                />
+              </label>
+            </div>
+
+            {/* W / H + Aspect Ratio Lock */}
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-0.5">
+                  <span className="text-[10px] opacity-70 font-bold">
+                    Width (px)
+                  </span>
+                  <input
+                    type="number"
+                    min={160}
+                    placeholder="Auto"
+                    value={curW ?? ""}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      void persistCanvas(
+                        val > 0
+                          ? { width: val, widthPreset: "custom" }
+                          : { width: undefined, widthPreset: undefined }
+                      );
+                    }}
+                    className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+                  />
+                </label>
+                <label className="space-y-0.5">
+                  <span className="text-[10px] opacity-70 font-bold">
+                    Min Height (px)
+                  </span>
+                  <input
+                    type="number"
+                    min={40}
+                    placeholder="Auto"
+                    value={curH ?? ""}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      void persistCanvas({ height: val > 0 ? val : undefined });
+                    }}
+                    className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex gap-1">
+                  {(["1/3", "1/2", "3/4", "full"] as const).map((wp) => (
+                    <button
+                      key={wp}
+                      type="button"
+                      onClick={() =>
+                        void persistCanvas({ widthPreset: wp, width: undefined })
+                      }
+                      className={`px-2 py-0.5 rounded border text-[10px] font-bold ${
+                        saved.widthPreset === wp
+                          ? "border-[#2563EB] bg-[#2563EB] text-white"
+                          : "border-white/20 opacity-75"
+                      }`}
+                    >
+                      {wp}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void persistCanvas({ lockAspectRatio: !saved.lockAspectRatio })
+                  }
+                  className={`px-2 py-0.5 rounded border text-[10px] font-bold ${
+                    saved.lockAspectRatio
+                      ? "border-[#d4af37] bg-[#d4af37]/25 text-[#E5C158]"
+                      : "border-white/20 opacity-75"
+                  }`}
+                >
+                  🔒 Aspect: {saved.lockAspectRatio ? "Locked" : "Free"}
+                </button>
+              </div>
+            </div>
+
+            {/* Z-Index Layering */}
+            <div className="space-y-1 pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase opacity-75">
+                  Layering (Z-Index: {curZ ?? "Auto"})
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => void persistCanvas({ zIndex: computeNextZ("front") })}
+                  className="py-1.5 rounded-lg border border-sky-500/40 bg-sky-500/15 text-sky-300 font-bold text-[11px] hover:bg-sky-500/25"
+                >
+                  ⬆️ Bring to Front
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void persistCanvas({ zIndex: computeNextZ("back") })}
+                  className="py-1.5 rounded-lg border border-white/20 bg-white/5 font-bold text-[11px] hover:bg-white/15"
+                >
+                  ⬇️ Send to Back
+                </button>
+              </div>
+            </div>
+
+            {/* Text, Background & Border Colors */}
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <span className="block text-[10px] font-bold uppercase opacity-75">
+                Box Colors
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { key: "textColor", label: "Text", def: "#FAF7F0" },
+                    { key: "bgColor", label: "Background", def: "#141B2D" },
+                    { key: "borderColor", label: "Border", def: "#d4af37" },
+                  ] as const
+                ).map((c) => (
+                  <div key={c.key} className="space-y-0.5 text-center">
+                    <span className="block text-[10px] opacity-75">{c.label}</span>
+                    <div className="flex items-center justify-center gap-1">
+                      <input
+                        type="color"
+                        value={
+                          /^#[0-9a-f]{6}$/i.test(saved[c.key] || "")
+                            ? saved[c.key]
+                            : c.def
+                        }
+                        onChange={(e) =>
+                          void persistCanvas({ [c.key]: e.target.value })
+                        }
+                        className="w-7 h-7 rounded border-0 bg-transparent p-0 cursor-pointer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void persistCanvas({ [c.key]: undefined })}
+                        className="text-[10px] underline opacity-70"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {extraInspectorContent && (
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                {extraInspectorContent}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() =>
+                  void persistCanvas({
+                    x: 0,
+                    y: 0,
+                    width: undefined,
+                    height: undefined,
+                    widthPreset: undefined,
+                    rotation: 0,
+                    zIndex: undefined,
+                    lockAspectRatio: false,
+                    alignSelf: undefined,
+                    textColor: undefined,
+                    bgColor: undefined,
+                    borderColor: undefined,
+                  })
+                }
+                className="px-3 py-1.5 rounded-lg border border-red-500/40 text-red-300 font-bold text-[11px]"
+              >
+                ↺ Reset Canvas
+              </button>
+              <button
+                type="button"
+                onClick={() => setInspectorOpen(false)}
+                className="px-3.5 py-1.5 rounded-lg bg-[#2563EB] text-white font-bold text-[11px]"
+              >
+                Done ✓
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+    </motion.div>
   );
+}
+
+export type GodModeBoxProps = SlidePresentationCanvasProps;
+
+export function GodModeBox(props: GodModeBoxProps) {
+  return <SlidePresentationCanvas {...props} />;
 }

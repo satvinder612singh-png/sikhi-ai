@@ -121,6 +121,18 @@ export function Header({ solid = false }: { solid?: boolean }) {
   }, [user?.email]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (isStealthAdmin && liveEditMode) {
+      document.body.classList.add("god-mode-active");
+    } else {
+      document.body.classList.remove("god-mode-active");
+    }
+    return () => {
+      document.body.classList.remove("god-mode-active");
+    };
+  }, [isStealthAdmin, liveEditMode]);
+
+  useEffect(() => {
     try {
       const manualOverride = window.localStorage.getItem(VISITOR_THEME_KEY);
       if (manualOverride) return;

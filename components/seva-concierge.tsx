@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import {
-  useKirtanAudio,
-  PURATAN_KIRTAN_TRACKS,
-} from "@/components/kirtan-audio-context";
+import { useKirtanAudio, PURATAN_KIRTAN_TRACKS } from "@/components/kirtan-audio-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  useCmsSiteState,
+  pushAdminCmsPatch,
+} from "@/components/editable-heritage-image";
+import { SlidePresentationCanvas } from "@/components/inline-cms-editor";
 
 export type IntentRouteItem = {
   id: string;
@@ -229,7 +231,13 @@ const TOPIC_CATEGORIES = [
   "Personal Sangat Support / Ardas",
 ];
 
-function ConciergeCore({ compact = false }: { compact?: boolean }) {
+function ConciergeCore({
+  compact = false,
+  customPlaceholder,
+}: {
+  compact?: boolean;
+  customPlaceholder?: string;
+}) {
   const [mode, setMode] = useState<"intent" | "form">("intent");
   const [selectedIntentId, setSelectedIntentId] = useState<string>("new-to-sikhi");
   const [searchInput, setSearchInput] = useState("");
@@ -387,7 +395,10 @@ function ConciergeCore({ compact = false }: { compact?: boolean }) {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Type what you need (e.g. 'I need peace', 'Mai Bhago', 'Prof Sahib Singh PDF', 'Raag Asa')..."
+              placeholder={
+                customPlaceholder ||
+                "Type what you need (e.g. 'I need peace', 'Mai Bhago', 'Prof Sahib Singh PDF', 'Raag Asa')..."
+              }
               aria-label="What are you looking for today?"
               className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-4 py-3 text-xs sm:text-sm focus:outline-none focus:border-[#C59B27]"
             />
@@ -664,16 +675,146 @@ export function SevaPathFinderInline() {
   );
 }
 
+interface SupportPanelConfig {
+  greetingText?: string;
+  headerTitle?: string;
+  placeholderText?: string;
+  themeColor?: string;
+  defaultOpen?: boolean;
+}
+
 /**
  * Floating bottom-right Seva Concierge widget rendered globally across all routes
  */
 export function SevaConcierge() {
-  const [open, setOpen] = useState(false);
+  const cms = useCmsSiteState();
+  const supportCfg = (
+    (cms.sectionLayoutMap || {}).__support_panel_config || {}
+  ) as SupportPanelConfig;
+
+  const [open, setOpen] = useState(Boolean(supportCfg.defaultOpen));
+  const [hasAppliedDefaultOpen, setHasAppliedDefaultOpen] = useState(false);
   const { isMiniPlayerVisible } = useKirtanAudio();
 
+  useEffect(() => {
+    if (!hasAppliedDefaultOpen && typeof supportCfg.defaultOpen === "boolean") {
+      setOpen(supportCfg.defaultOpen);
+      setHasAppliedDefaultOpen(true);
+    }
+  }, [supportCfg.defaultOpen, hasAppliedDefaultOpen]);
+
+  const updateSupportConfig = async (patch: Partial<SupportPanelConfig>) => {
+    await pushAdminCmsPatch({
+      sectionLayoutMap: {
+        ...(cms.sectionLayoutMap || {}),
+        __support_panel_config: {
+          ...supportCfg,
+          ...patch,
+        },
+      },
+    });
+  };
+
+  const greeting = supportCfg.greetingText || "What are you looking for?";
+  const headerTitle =
+    supportCfg.headerTitle || "ੴ · ਸੇਵਾ ਮਾਰਗ-ਦਰਸ਼ਕ (Seva Concierge)";
+  const panelColor = supportCfg.themeColor || undefined;
+
+  const supportInspector = (
+    <div className="space-y-2.5 text-xs">
+      <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#E5C158]">
+        Support Panel God Mode
+      </p>
+      <label className="block space-y-0.5">
+        <span className="text-[10px] opacity-75 font-bold">
+          Greeting Bubble Text
+        </span>
+        <input
+          type="text"
+          value={greeting}
+          onChange={(e) =>
+            void updateSupportConfig({ greetingText: e.target.value })
+          }
+          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+        />
+      </label>
+      <label className="block space-y-0.5">
+        <span className="text-[10px] opacity-75 font-bold">
+          Panel Header Text
+        </span>
+        <input
+          type="text"
+          value={headerTitle}
+          onChange={(e) =>
+            void updateSupportConfig({ headerTitle: e.target.value })
+          }
+          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+        />
+      </label>
+      <label className="block space-y-0.5">
+        <span className="text-[10px] opacity-75 font-bold">
+          Search Input Placeholder
+        </span>
+        <input
+          type="text"
+          value={
+            supportCfg.placeholderText ||
+            "Type what you need (e.g. 'I need peace', 'Mai Bhago', 'Prof Sahib Singh PDF', 'Raag Asa')..."
+          }
+          onChange={(e) =>
+            void updateSupportConfig({ placeholderText: e.target.value })
+          }
+          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
+        />
+      </label>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <label className="flex items-center gap-1.5">
+          <span className="text-[10px] opacity-75 font-bold">Panel Accent</span>
+          <input
+            type="color"
+            value={
+              /^#[0-9a-f]{6}$/i.test(panelColor || "") ? panelColor : "#1B2A20"
+            }
+            onChange={(e) =>
+              void updateSupportConfig({ themeColor: e.target.value })
+            }
+            className="w-6 h-6 rounded border-0 bg-transparent p-0 cursor-pointer"
+          />
+          <button
+            type="button"
+            onClick={() => void updateSupportConfig({ themeColor: undefined })}
+            className="text-[10px] underline opacity-70"
+          >
+            Reset
+          </button>
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            const nextDefault = !supportCfg.defaultOpen;
+            setOpen(nextDefault);
+            void updateSupportConfig({ defaultOpen: nextDefault });
+          }}
+          className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${
+            supportCfg.defaultOpen
+              ? "border-emerald-500 bg-emerald-500/20 text-emerald-300"
+              : "border-white/20 opacity-80"
+          }`}
+        >
+          Default: {supportCfg.defaultOpen ? "Open" : "Closed"}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <div
-      className={`fixed right-5 z-40 transition-all duration-300 ${
+    <SlidePresentationCanvas
+      id="support-widget-canvas"
+      pageKey="global"
+      label="Support Panel"
+      isFloatingWidget={true}
+      extraInspectorContent={supportInspector}
+      className={`fixed right-5 z-40 ${
         isMiniPlayerVisible ? "bottom-24" : "bottom-5"
       }`}
     >
@@ -681,6 +822,7 @@ export function SevaConcierge() {
         <div
           role="dialog"
           aria-label="Seva Concierge and Path-Finder"
+          style={panelColor ? { backgroundColor: panelColor } : undefined}
           className="w-[92vw] max-w-lg rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] p-5 shadow-2xl backdrop-blur-md animate-fade-in-up"
         >
           <div className="flex items-center justify-between border-b border-[#C59B27]/25 pb-2.5 mb-3">
@@ -688,7 +830,7 @@ export function SevaConcierge() {
               lang="pa"
               className="font-gurmukhi text-xs font-bold text-[#C59B27]"
             >
-              ੴ · ਸੇਵਾ ਮਾਰਗ-ਦਰਸ਼ਕ (Seva Concierge)
+              {headerTitle}
             </span>
             <button
               type="button"
@@ -699,13 +841,17 @@ export function SevaConcierge() {
               ✕ Minimize
             </button>
           </div>
-          <ConciergeCore compact={true} />
+          <ConciergeCore
+            compact={true}
+            customPlaceholder={supportCfg.placeholderText}
+          />
         </div>
       ) : (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open Seva Concierge — What are you looking for?"
+          aria-label={`Open Seva Concierge — ${greeting}`}
+          style={panelColor ? { backgroundColor: panelColor } : undefined}
           className="flex items-center gap-2.5 rounded-full border-2 border-[#C59B27] bg-[#1B2A20] px-4 py-3 text-xs sm:text-sm font-bold shadow-xl hover:scale-[1.02] transition"
         >
           <span
@@ -714,9 +860,9 @@ export function SevaConcierge() {
           >
             ੴ
           </span>
-          <span>What are you looking for?</span>
+          <span>{greeting}</span>
         </button>
       )}
-    </div>
+    </SlidePresentationCanvas>
   );
 }

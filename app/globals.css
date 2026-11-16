@@ -541,6 +541,60 @@ a.from-\[\#C59B27\] {
     user-select: none;
   }
 
+  /* ============================================================================
+     FIGMA / SLIDES 8-HANDLE CANVAS ENGINE & GOD-MODE DOT GRID
+     ============================================================================ */
+  body.god-mode-active {
+    background-image: radial-gradient(
+      rgba(212, 175, 55, 0.24) 1px,
+      transparent 1px
+    );
+    background-size: 20px 20px;
+  }
+
+  body.god-mode-dragging,
+  body.god-mode-dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
+  .cursor-nwse-resize {
+    cursor: nwse-resize;
+  }
+  .cursor-nesw-resize {
+    cursor: nesw-resize;
+  }
+  .cursor-ns-resize {
+    cursor: ns-resize;
+  }
+  .cursor-ew-resize {
+    cursor: ew-resize;
+  }
+
+  .slide-canvas-frame {
+    border: 2px solid rgba(37, 99, 235, 0.85);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45),
+      0 18px 40px -12px rgba(37, 99, 235, 0.22);
+  }
+
+  .slide-canvas-handle {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border-radius: 9999px;
+    background: #ffffff;
+    border: 2px solid #2563eb;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    z-index: 46;
+    touch-action: none;
+    transition: transform 0.14s ease, background-color 0.14s ease;
+  }
+
+  .slide-canvas-handle:hover {
+    transform: scale(1.25);
+    background: #eff6ff;
+  }
+
   .gold-divider-rule {
     background: linear-gradient(
       90deg,

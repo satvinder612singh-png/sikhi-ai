@@ -7,6 +7,16 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
 import { useKirtanAudio } from "@/components/kirtan-audio-context";
+import {
+  useCmsSiteState,
+  resolveCmsFontFamily,
+  getPageTransitionClass,
+} from "@/components/editable-heritage-image";
+import {
+  SlidePresentationCanvas,
+  GodModeText,
+  InlineSectionBanner,
+} from "@/components/inline-cms-editor";
 
 type BaniCategory = "morning" | "evening" | "extended";
 
@@ -427,6 +437,10 @@ function NitnemReaderContent() {
     router.replace(`/nitnem?bani=${item.id}`, { scroll: false });
   };
 
+  const cms = useCmsSiteState();
+  const layoutCfg = cms.layoutConfig || {};
+  const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
+
   const currentSection = sections[currentPageIdx] || sections[0];
   const displayedSections = continuousView
     ? sections
@@ -435,32 +449,65 @@ function NitnemReaderContent() {
     : [];
 
   return (
-    <div className="min-h-screen bg-[#FAF6EE] text-[#171917] flex flex-col">
+    <div
+      style={{
+        backgroundColor: layoutCfg.pageBgColor || "#FAF6EE",
+        color: layoutCfg.bodyTextColor || "#171917",
+        fontFamily: pageFont,
+      }}
+      className={`min-h-screen flex flex-col ${getPageTransitionClass(layoutCfg.pageTransition)}`}
+    >
       <Header solid />
 
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <InlineSectionBanner
+          sectionId="nitnem-reader"
+          pageKey="nitnem"
+          defaultTitle="Nitnem & Sacred Bani Reader"
+        />
+      </div>
+
       {/* Top Hero Banner */}
+      <SlidePresentationCanvas
+        id="nitnem-hero-canvas"
+        pageKey="nitnem"
+        label="Nitnem Hero Banner"
+      >
       <section className="border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2 max-w-3xl">
               <div className="inline-flex flex-wrap items-center gap-2.5">
-                <span
+                <GodModeText
+                  id="nitnem-hero-gurmukhi"
+                  pageKey="nitnem"
+                  tag="span"
                   lang="pa"
+                  defaultText="ਨਿਤਨੇਮ ਅਤੇ ਬਾਣੀ ਪੋਥੀ"
                   className="font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded bg-[var(--theme-card-darker)] text-[#E5C158] border border-[#C59B27]/45"
-                >
-                  ਨਿਤਨੇਮ ਅਤੇ ਬਾਣੀ ਪੋਥੀ
-                </span>
-                <span className="text-xs uppercase tracking-[0.22em] text-[#D97706] font-semibold">
-                  Complete BaniDB Reader • Padchhed &amp; Larivaar
-                </span>
+                />
+                <GodModeText
+                  id="nitnem-hero-badge"
+                  pageKey="nitnem"
+                  tag="span"
+                  defaultText="Complete BaniDB Reader • Padchhed & Larivaar"
+                  className="text-xs uppercase tracking-[0.22em] text-[#D97706] font-semibold"
+                />
               </div>
-              <h1 className="text-3xl sm:text-5xl font-serif font-bold text-[var(--text-primary)]">
-                Nitnem, Sukhmani Sahib &amp; Sacred Bani Reader
-              </h1>
-              <p className="text-sm sm:text-base text-[var(--theme-text-muted)] leading-relaxed">
-                Read every Pauri, Chhand, and Ashtpadi with customizable Gurmukhi font size,
-                Padchhed/Larivaar script toggle, Punjabi Viakhia (Teeka), and English translation.
-              </p>
+              <GodModeText
+                id="nitnem-hero-title"
+                pageKey="nitnem"
+                tag="h1"
+                defaultText="Nitnem, Sukhmani Sahib & Sacred Bani Reader"
+                className="text-3xl sm:text-5xl font-serif font-bold text-[var(--text-primary)]"
+              />
+              <GodModeText
+                id="nitnem-hero-desc"
+                pageKey="nitnem"
+                tag="p"
+                defaultText="Read every Pauri, Chhand, and Ashtpadi with customizable Gurmukhi font size, Padchhed/Larivaar script toggle, Punjabi Viakhia (Teeka), and English translation."
+                className="text-sm sm:text-base text-[var(--theme-text-muted)] leading-relaxed"
+              />
             </div>
 
             <div className="flex flex-wrap items-center gap-3 shrink-0">
@@ -578,10 +625,16 @@ function NitnemReaderContent() {
           </div>
         </div>
       </section>
+      </SlidePresentationCanvas>
 
       {/* Main Distraction-Free Reader Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-        {/* Sticky Reader Controls Bar */}
+        {/* Reader Controls & Font-Size Toggles Bar */}
+        <SlidePresentationCanvas
+          id="nitnem-controls-canvas"
+          pageKey="nitnem"
+          label="Reader Controls Bar"
+        >
         <div className="p-5 rounded-2xl bg-[#1B2A20] border-2 border-[#C59B27] text-[#FAF6EE] shadow-xl space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#C59B27]/30">
             <div>
@@ -757,8 +810,14 @@ function NitnemReaderContent() {
             </div>
           </div>
         </div>
+        </SlidePresentationCanvas>
 
-        {/* Loading State */}
+        {/* Bani Pauri Reader Canvas */}
+        <SlidePresentationCanvas
+          id="nitnem-reader-canvas"
+          pageKey="nitnem"
+          label="Bani Pauri Reader"
+        >
         {loadingBani ? (
           <div className="p-10 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/40 text-center text-[#E5C158] animate-pulse">
             Loading complete {selectedBani.title} verses from BaniDB Sanctuary…
@@ -867,9 +926,16 @@ function NitnemReaderContent() {
             ))}
           </div>
         )}
+        </SlidePresentationCanvas>
       </main>
 
-      <Footer />
+      <SlidePresentationCanvas
+        id="nitnem-footer-canvas"
+        pageKey="nitnem"
+        label="Nitnem Footer"
+      >
+        <Footer />
+      </SlidePresentationCanvas>
     </div>
   );
 }

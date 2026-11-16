@@ -28,6 +28,7 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
   useGodModeTextValue,
@@ -2395,6 +2396,11 @@ function SangatHubContent() {
         {/* ================================================================
             MAIN DISPATCH FEED OR FULL ESSAY READER
         ================================================================ */}
+        <SlidePresentationCanvas
+          id="sangat-feed-canvas"
+          pageKey="sangat"
+          label="Main Dispatches & Essays Section"
+        >
         <div className="space-y-8">
           {activeBlog ? (
               /* Full Article Reader View + Threaded Comments */
@@ -2910,6 +2916,7 @@ function SangatHubContent() {
               </div>
             )}
           </div>
+        </SlidePresentationCanvas>
       </main>
 
       {/* ================================================================
