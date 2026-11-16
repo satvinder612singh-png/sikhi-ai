@@ -6,12 +6,30 @@ import { useEffect, useId, useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useAuth } from "@/components/auth-provider";
+import {
+  useCmsSiteState,
+  checkVerifiedAdminStatus,
+  clearAdminAuthTokens,
+} from "@/components/editable-heritage-image";
 
-const ADMIN_STORAGE_KEY = "learnsikhi_founder_admin_v1";
-const ADMIN_EMAIL_STORAGE_KEY = "learnsikhi_active_email_v1";
+const VISITOR_THEME_KEY = "learn_sikhi_theme_v2";
 
-function isStealthAdminEmail(email?: string | null): boolean {
-  return Boolean(email && email.trim().toLowerCase().endsWith("student1313@learnsikhi.com"));
+function resolveDefaultThemeId(raw?: string, pageBg?: string): string | null {
+  const val = (raw || "").trim().toLowerCase();
+  if (val === "ivory" || val === "sunlit ivory" || val === "light") return "ivory";
+  if (val === "marble" || val === "harmandir marble") return "marble";
+  if (val === "indigo" || val === "midnight darbar" || val === "dark") return "indigo";
+  if (val === "terracotta" || val === "puratan parchment") return "terracotta";
+  if (val === "obsidian" || val === "royal maroon") return "obsidian";
+
+  if (pageBg && /^#[0-9a-f]{6}$/i.test(pageBg)) {
+    const r = parseInt(pageBg.slice(1, 3), 16);
+    const g = parseInt(pageBg.slice(3, 5), 16);
+    const b = parseInt(pageBg.slice(5, 7), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.45 ? "indigo" : "ivory";
+  }
+  return null;
 }
 
 /**
@@ -33,49 +51,60 @@ const focusRing =
 
 export function Header({ solid = false }: { solid?: boolean }) {
   const { user, signOut } = useAuth();
+  const cms = useCmsSiteState();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [isStealthAdmin, setIsStealthAdmin] = useState(false);
   const menuId = useId();
 
   useEffect(() => {
-    const syncAdminState = () => {
-      try {
-        const storedEmail = window.localStorage.getItem(ADMIN_EMAIL_STORAGE_KEY);
-        const emailUnlocked = isStealthAdminEmail(user?.email) || isStealthAdminEmail(storedEmail);
-        if (emailUnlocked) {
-          window.localStorage.setItem(ADMIN_STORAGE_KEY, "true");
-          setIsStealthAdmin(true);
-        } else {
-          if (window.localStorage.getItem(ADMIN_STORAGE_KEY) === "true" && !storedEmail && !user?.email) {
-            window.localStorage.removeItem(ADMIN_STORAGE_KEY);
-          }
-          setIsStealthAdmin(false);
-        }
-      } catch {
-        setIsStealthAdmin(isStealthAdminEmail(user?.email));
-      }
+    let active = true;
+    const syncAdminState = async () => {
+      const ok = await checkVerifiedAdminStatus();
+      if (active) setIsStealthAdmin(ok);
     };
 
-    syncAdminState();
-    window.addEventListener("storage", syncAdminState);
-    window.addEventListener("focus", syncAdminState);
-    window.addEventListener("learnsikhi-admin-change", syncAdminState);
+    void syncAdminState();
+    const onSync = () => {
+      void syncAdminState();
+    };
+    window.addEventListener("storage", onSync);
+    window.addEventListener("focus", onSync);
+    window.addEventListener("learnsikhi-admin-change", onSync);
     return () => {
-      window.removeEventListener("storage", syncAdminState);
-      window.removeEventListener("focus", syncAdminState);
-      window.removeEventListener("learnsikhi-admin-change", syncAdminState);
+      active = false;
+      window.removeEventListener("storage", onSync);
+      window.removeEventListener("focus", onSync);
+      window.removeEventListener("learnsikhi-admin-change", onSync);
     };
   }, [user?.email]);
 
-  const handleSignOut = async () => {
+  useEffect(() => {
     try {
-      window.localStorage.removeItem(ADMIN_STORAGE_KEY);
-      window.localStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
-      window.dispatchEvent(new Event("learnsikhi-admin-change"));
+      const manualOverride = window.localStorage.getItem(VISITOR_THEME_KEY);
+      if (manualOverride) return;
+      const cfg = cms.layoutConfig as {
+        defaultSiteTheme?: string;
+        pageBgColor?: string;
+        headingTextColor?: string;
+      };
+      const targetTheme = resolveDefaultThemeId(cfg?.defaultSiteTheme, cfg?.pageBgColor);
+      if (targetTheme) {
+        document.documentElement.setAttribute("data-theme", targetTheme);
+      }
+      if (cfg?.pageBgColor) {
+        document.documentElement.style.setProperty("--bg-primary", cfg.pageBgColor);
+      }
+      if (cfg?.headingTextColor) {
+        document.documentElement.style.setProperty("--text-primary", cfg.headingTextColor);
+      }
     } catch {
-      // ignore storage errors
+      // ignore DOM/storage errors
     }
+  }, [cms.layoutConfig]);
+
+  const handleSignOut = async () => {
+    clearAdminAuthTokens();
     setIsStealthAdmin(false);
     await signOut();
   };

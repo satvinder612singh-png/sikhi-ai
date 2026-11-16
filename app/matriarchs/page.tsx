@@ -366,9 +366,44 @@ export default function MatriarchsPage() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
         {/* Hero Banner */}
-        <section className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm">
+        {(() => {
+          const matSec = (
+            cms as unknown as {
+              sectionLayoutMap?: Record<
+                string,
+                {
+                  titleAlign?: "left" | "center" | "right";
+                  widthMode?: "full" | "contained" | "compact";
+                  customTitle?: string;
+                  customSubtitle?: string;
+                  hidden?: boolean;
+                }
+              >;
+            }
+          ).sectionLayoutMap?.["matriarchs-archive"];
+          if (matSec?.hidden) return null;
+          const alignCls =
+            matSec?.titleAlign === "center"
+              ? "text-center mx-auto"
+              : matSec?.titleAlign === "right"
+                ? "text-right ml-auto"
+                : "text-left";
+          const widthCls =
+            matSec?.widthMode === "compact"
+              ? "max-w-3xl mx-auto"
+              : matSec?.widthMode === "contained"
+                ? "max-w-5xl mx-auto"
+                : "w-full";
+          return (
+        <section
+          style={{
+            backgroundColor: layoutCfg.cardBgColor || undefined,
+            borderColor: layoutCfg.accentColor || undefined,
+          }}
+          className={`rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm ${widthCls}`}
+        >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-            <div className="space-y-3 max-w-3xl">
+            <div className={`space-y-3 max-w-3xl ${alignCls}`}>
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
                   SOVEREIGN EQUALITY ARCHIVE • ANG 473 &amp; ANG 967
@@ -377,14 +412,15 @@ export default function MatriarchsPage() {
                   ਸੋ ਕਿਉ ਮੰਦਾ ਆਖੀਐ ਜਿਤੁ ਜੰਮਹਿ ਰਾਜਾਨ
                 </span>
               </div>
-              <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight">
-                The Unsung Matriarchs &amp; Warriors of the Panth
+              <h1
+                style={{ color: layoutCfg.headingTextColor || undefined }}
+                className="text-3xl sm:text-5xl font-serif font-bold tracking-tight"
+              >
+                {matSec?.customTitle || "The Unsung Matriarchs & Warriors of the Panth"}
               </h1>
               <p className="text-sm sm:text-base text-[#4A554E] leading-relaxed">
-                Over five centuries before modern gender movements, Guru Nanak Dev Ji declared the
-                sovereign dignity of women on Ang 473. Explore 13 foundational Sikh women—spiritual
-                pioneers, battlefield commanders, scriptural scholars, and martyrs from 1469 to
-                1984—with primary historical citations.
+                {matSec?.customSubtitle ||
+                  "Over five centuries before modern gender movements, Guru Nanak Dev Ji declared the sovereign dignity of women on Ang 473. Explore 13 foundational Sikh women—spiritual pioneers, battlefield commanders, scriptural scholars, and martyrs from 1469 to 1984—with primary historical citations."}
               </p>
             </div>
 
@@ -404,6 +440,8 @@ export default function MatriarchsPage() {
             </div>
           </div>
         </section>
+          );
+        })()}
 
         {/* Category Filter Pills & Search Bar */}
         <section className="p-6 rounded-2xl bg-[#1B2A20] border border-[#C59B27]/35 flex flex-col lg:flex-row lg:items-center justify-between gap-4">

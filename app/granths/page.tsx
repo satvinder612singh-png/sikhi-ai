@@ -5,6 +5,7 @@ import Link from "next/link";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
+import { EditableHeritageImage } from "@/components/editable-heritage-image";
 import { AnimatedModal } from "@/components/animated-modal";
 import { SikhiIcon } from "@/components/sikhi-icons";
 import {
@@ -418,6 +419,58 @@ const SGGS_31_RAAGS: RaagInfo[] = [
   { order: 31, name: "Jaijawanti", gurmukhi: "ਜੈਜਾਵੰਤੀ", angRange: "1352–1353", pehar: "Night", timeWindow: "9 PM – 12 AM", ras: "Victorious composure (Guru Tegh Bahadur Ji)", gurus: "Guru Tegh Bahadur Ji" },
 ];
 
+function resolvePlayableAudioUrl(rawUrl: string): string {
+  const trimmed = (rawUrl || "").trim();
+  if (!trimmed) return "";
+  const lower = trimmed.toLowerCase();
+  if (lower.includes("drive.google.com") || lower.includes("docs.google.com")) {
+    return `/api/media-stream?url=${encodeURIComponent(trimmed)}`;
+  }
+  if (lower.includes("dropbox.com")) {
+    try {
+      const parsed = new URL(trimmed);
+      parsed.searchParams.delete("dl");
+      parsed.searchParams.set("raw", "1");
+      return parsed.toString();
+    } catch {
+      return trimmed.includes("?")
+        ? trimmed.replace(/([?&])dl=\d/g, "$1raw=1")
+        : `${trimmed}?raw=1`;
+    }
+  }
+  return trimmed;
+}
+
+type RemoteKirtanTrack = {
+  id: string;
+  title: string;
+  gurmukhi?: string;
+  ragi: string;
+  raag?: string;
+  sourceUrl: string;
+  duration?: string;
+  imageUrl?: string;
+  imageKey?: string;
+};
+
+type RemoteKirtanEdit = {
+  title?: string;
+  gurmukhi?: string;
+  ragi?: string;
+  raag?: string;
+  sourceUrl?: string;
+  imageUrl?: string;
+  deleted?: boolean;
+};
+
+type RemoteSectionLayout = {
+  titleAlign?: "left" | "center" | "right";
+  widthMode?: "full" | "contained" | "compact";
+  customTitle?: string;
+  customSubtitle?: string;
+  hidden?: boolean;
+};
+
 export default function GranthsAndKirtanPage() {
   const [activeTab, setActiveTab] = useState<"kirtan" | "granths">("kirtan");
   const [kirtanCollectionFilter, setKirtanCollectionFilter] = useState<string>("All");
@@ -441,6 +494,40 @@ export default function GranthsAndKirtanPage() {
   const [angVerses, setAngVerses] = useState<LiveAngVerse[]>([]);
   const [loadingAng, setLoadingAng] = useState(false);
   const [larivaarMode, setLarivaarMode] = useState(false);
+
+  // Remote Kirtan Vault, Edits, Frames & Approval Queue Submission State
+  const [remoteKirtanTracks, setRemoteKirtanTracks] = useState<RemoteKirtanTrack[]>([]);
+  const [remoteKirtanEdits, setRemoteKirtanEdits] = useState<Record<string, RemoteKirtanEdit>>({});
+  const [remoteFrames, setRemoteFrames] = useState<Record<string, { src?: string; hidden?: boolean }>>({});
+  const [sectionLayoutMap, setSectionLayoutMap] = useState<Record<string, RemoteSectionLayout>>({});
+  const [isSubmitApprovalOpen, setIsSubmitApprovalOpen] = useState(false);
+  const [subType, setSubType] = useState<"kirtan" | "pdf" | "post">("kirtan");
+  const [subTitle, setSubTitle] = useState("");
+  const [subSubtitle, setSubSubtitle] = useState("");
+  const [subUrl, setSubUrl] = useState("");
+  const [subBy, setSubBy] = useState("");
+  const [subMsg, setSubMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || typeof data !== "object") return;
+        if (Array.isArray(data.kirtanTracks)) setRemoteKirtanTracks(data.kirtanTracks);
+        if (data.kirtanEdits && typeof data.kirtanEdits === "object") {
+          setRemoteKirtanEdits(data.kirtanEdits);
+        }
+        if (data.frames && typeof data.frames === "object") {
+          setRemoteFrames(data.frames);
+        }
+        if (data.sectionLayoutMap && typeof data.sectionLayoutMap === "object") {
+          setSectionLayoutMap(data.sectionLayoutMap);
+        }
+      })
+      .catch(() => {
+        // ignore offline errors
+      });
+  }, []);
 
   const {
     tracks,
@@ -483,16 +570,68 @@ export default function GranthsAndKirtanPage() {
   }, [raagFilterPehar, raagSearch]);
 
   const filteredKirtanTracks = useMemo(() => {
-    const sourceList =
+    const convertedRemote: (KirtanTrack & { imageUrl?: string; imageKey?: string })[] =
+      remoteKirtanTracks.map((rt, idx) => {
+        const playable = resolvePlayableAudioUrl(rt.sourceUrl);
+        return {
+          id: rt.id,
+          numeral: String(idx + 2),
+          category: "Verified Local & Approved Audio",
+          title: rt.title,
+          gurmukhiTitle: rt.gurmukhi || "ਗੁਰਮਤਿ ਕੀਰਤਨ",
+          ragi: rt.ragi,
+          raag: rt.raag || "Gurmat Kirtan",
+          angCitation: "5TB Drive Vault",
+          tantiSaaj: "Puratan Kirtan Archive",
+          timeOfDay: "All Pehars",
+          durationLabel: rt.duration || "Stream",
+          durationSec: 0,
+          audioUrl: playable,
+          directArchiveMp3Url: playable,
+          archiveEmbedUrl: "",
+          externalArchiveUrl: rt.sourceUrl,
+          raagNotes: `Streamed directly via LearnSikhi Media Proxy (${rt.ragi}).`,
+          historicalContext: "",
+          isCustomOrLocal: true,
+          imageUrl: rt.imageUrl,
+          imageKey: rt.imageKey || `kirtan-art-${rt.id}`,
+        };
+      });
+
+    const baseSource: (KirtanTrack & { imageUrl?: string; imageKey?: string })[] =
       kirtanCollectionFilter === "Live 24/7 Gurdwara Broadcasts"
         ? liveStreams
         : kirtanCollectionFilter === "All"
-        ? tracks
-        : tracks.filter((t) => t.category === kirtanCollectionFilter);
+          ? [...convertedRemote, ...tracks]
+          : kirtanCollectionFilter === "Verified Local & Approved Audio"
+            ? [
+                ...convertedRemote,
+                ...tracks.filter((t) => t.category === kirtanCollectionFilter),
+              ]
+            : tracks.filter((t) => t.category === kirtanCollectionFilter);
+
+    const editedSource = baseSource
+      .filter((t) => !remoteKirtanEdits[t.id]?.deleted)
+      .map((t) => {
+        const ed = remoteKirtanEdits[t.id];
+        if (!ed) return t;
+        const playable = ed.sourceUrl ? resolvePlayableAudioUrl(ed.sourceUrl) : t.audioUrl;
+        return {
+          ...t,
+          title: ed.title || t.title,
+          gurmukhiTitle: ed.gurmukhi || t.gurmukhiTitle,
+          ragi: ed.ragi || t.ragi,
+          raag: ed.raag || t.raag,
+          audioUrl: playable,
+          directArchiveMp3Url: ed.sourceUrl ? playable : t.directArchiveMp3Url,
+          externalArchiveUrl: ed.sourceUrl || t.externalArchiveUrl,
+          imageUrl: ed.imageUrl ?? t.imageUrl,
+        };
+      });
 
     const q = kirtanQuery.trim().toLowerCase();
-    if (!q) return sourceList;
-    return sourceList.filter(
+    if (!q) return editedSource;
+    return editedSource.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
         t.ragi.toLowerCase().includes(q) ||
@@ -500,7 +639,14 @@ export default function GranthsAndKirtanPage() {
         t.tantiSaaj.toLowerCase().includes(q) ||
         t.gurmukhiTitle.includes(q)
     );
-  }, [kirtanCollectionFilter, kirtanQuery, liveStreams, tracks]);
+  }, [
+    kirtanCollectionFilter,
+    kirtanQuery,
+    liveStreams,
+    tracks,
+    remoteKirtanTracks,
+    remoteKirtanEdits,
+  ]);
 
   const fetchLiveAng = useCallback(async (angNumber: number) => {
     const clamped = Math.max(1, Math.min(1430, angNumber));
@@ -571,26 +717,35 @@ export default function GranthsAndKirtanPage() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10 pb-28">
         {/* Page Header */}
-        <section className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-3xl">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
-                  SANCTUARY ARCHIVE • PURATAN KIRTAN &amp; GRANTH BOOKREADER
-                </span>
-                <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
-                  ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ
-                </span>
-              </div>
-              <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight">
-                Puratan Raag Darbar &amp; Interactive Granths
-              </h1>
-              <p className="text-sm sm:text-base text-[#4A554E] leading-relaxed">
-                Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi
-                (proxied directly from Archive.org with an Embedded Playlist toggle) or open our
-                Dual-Mode Interactive BookReader &amp; Live Ang 1–1430 Darpan Viewer.
-              </p>
-            </div>
+        {(() => {
+          const hubSec = sectionLayoutMap["granths-kirtan-hub"] || {};
+          if (hubSec.hidden) return null;
+          const alignCls =
+            hubSec.titleAlign === "center"
+              ? "text-center items-center"
+              : hubSec.titleAlign === "right"
+                ? "text-right items-end"
+                : "text-left items-start";
+          return (
+            <section className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-8 md:p-10 shadow-sm">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className={`space-y-3 max-w-3xl flex flex-col ${alignCls}`}>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]">
+                      SANCTUARY ARCHIVE • PURATAN KIRTAN &amp; GRANTH BOOKREADER
+                    </span>
+                    <span lang="pa" className="font-gurmukhi text-sm text-[#D97706]">
+                      ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ
+                    </span>
+                  </div>
+                  <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-tight">
+                    {hubSec.customTitle || "Puratan Raag Darbar & Interactive Granths"}
+                  </h1>
+                  <p className="text-sm sm:text-base text-[#4A554E] leading-relaxed">
+                    {hubSec.customSubtitle ||
+                      "Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi (proxied directly from Archive.org or our 5TB Drive Vault) or open our Dual-Mode Interactive BookReader & Live Ang 1–1430 Darpan Viewer."}
+                  </p>
+                </div>
 
             {/* Tab Switcher */}
             <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] shrink-0">
@@ -626,6 +781,8 @@ export default function GranthsAndKirtanPage() {
             </div>
           </div>
         </section>
+          );
+        })()}
 
         {/* ================================================================
             TAB A: PURATAN KIRTAN & RAAG DARBAR PLAYER
@@ -882,10 +1039,13 @@ export default function GranthsAndKirtanPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsCustomModalOpen(true)}
+                    onClick={() => {
+                      setSubMsg(null);
+                      setIsSubmitApprovalOpen(true);
+                    }}
                     className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-[#C59B27] transition"
                   >
-                    + Suggest a Shabad
+                    + Suggest Shabad / Drive Link
                   </button>
                 </div>
               </div>
@@ -926,6 +1086,11 @@ export default function GranthsAndKirtanPage() {
               <div className="space-y-4">
                 {filteredKirtanTracks.map((track) => {
                   const active = currentTrack.id === track.id;
+                  const imgKey = track.imageKey || `kirtan-art-${track.id}`;
+                  const storedFrame = remoteFrames[imgKey];
+                  const hasPicture =
+                    !storedFrame?.hidden &&
+                    Boolean(storedFrame?.src || track.imageUrl);
                   return (
                     <div
                       key={track.id}
@@ -944,6 +1109,14 @@ export default function GranthsAndKirtanPage() {
                           : "bg-[#F3ECE0] text-[#171917] border-[#C59B27]/35 hover:border-[#C59B27]"
                       }`}
                     >
+                      {hasPicture && (
+                        <EditableHeritageImage
+                          imageKey={imgKey}
+                          defaultSrc={storedFrame?.src || track.imageUrl || ""}
+                          alt={track.title}
+                          defaultOrientation="natural"
+                        />
+                      )}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <span
@@ -1610,6 +1783,148 @@ export default function GranthsAndKirtanPage() {
             </div>
           )}
         </AnimatedModal>
+
+        {/* Submit Kirtan / PDF / Resource for Admin Approval Queue */}
+        {isSubmitApprovalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
+            onClick={() => setIsSubmitApprovalOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg rounded-2xl bg-[#FAF7F0] dark:bg-[#111318] text-[#18181B] dark:text-[#FAF7F0] border border-[#C59B27]/40 p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-[#C59B27]/20 pb-3">
+                <h3 className="text-lg font-serif font-bold">
+                  Submit Shabad or Resource for Approval
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitApprovalOpen(false)}
+                  className="px-2.5 py-1 rounded-lg border text-xs font-bold"
+                >
+                  Close ✕
+                </button>
+              </div>
+
+              {subMsg && (
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  {subMsg}
+                </div>
+              )}
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!subTitle.trim() || !subUrl.trim()) return;
+                  try {
+                    const res = await fetch("/api/site-frames", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        action: "submit_for_approval",
+                        submission: {
+                          type: subType,
+                          title: subTitle.trim(),
+                          subtitle: subSubtitle.trim() || undefined,
+                          url: subUrl.trim(),
+                          submittedBy: subBy.trim() || "Sangat Member",
+                        },
+                      }),
+                      cache: "no-store",
+                    });
+                    if (!res.ok) throw new Error("Failed");
+                    setSubMsg("✓ Submitted to the Admin Approval Queue!");
+                    setSubTitle("");
+                    setSubSubtitle("");
+                    setSubUrl("");
+                  } catch {
+                    setSubMsg("Could not submit right now. Please try again.");
+                  }
+                }}
+                className="space-y-3 text-sm"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Type</label>
+                    <select
+                      value={subType}
+                      onChange={(e) => setSubType(e.target.value as "kirtan" | "pdf" | "post")}
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                    >
+                      <option value="kirtan">Kirtan Shabad Audio</option>
+                      <option value="pdf">Granth / Pothi PDF</option>
+                      <option value="post">Article / Link</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">Your Name</label>
+                    <input
+                      type="text"
+                      value={subBy}
+                      onChange={(e) => setSubBy(e.target.value)}
+                      placeholder="Sangat Member"
+                      className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={subTitle}
+                    onChange={(e) => setSubTitle(e.target.value)}
+                    placeholder="e.g. Asa Di Vaar — Bhai Avtar Singh Ji"
+                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Ragi / Author (optional)</label>
+                  <input
+                    type="text"
+                    value={subSubtitle}
+                    onChange={(e) => setSubSubtitle(e.target.value)}
+                    placeholder="e.g. Bhai Avtar Singh Ji"
+                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">
+                    Google Drive Link or Audio/PDF URL *
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={subUrl}
+                    onChange={(e) => setSubUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/.../view"
+                    className="w-full rounded-xl border border-[#C59B27]/35 bg-transparent px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSubmitApprovalOpen(false)}
+                    className="px-4 py-2 rounded-xl border text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold"
+                  >
+                    Submit for Approval
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />

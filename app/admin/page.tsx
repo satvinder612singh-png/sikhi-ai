@@ -27,8 +27,53 @@ import {
   SHAHEEDS,
 } from "@/lib/sikhi-foundations-data";
 
-type AdminTab = "order" | "topics" | "graphics" | "vault";
+type AdminTab = "order" | "topics" | "graphics" | "kirtan" | "queue" | "vault";
 type PageKey = "sangat" | "foundations" | "matriarchs";
+
+interface KirtanTrackRecord {
+  id: string;
+  title: string;
+  gurmukhi?: string;
+  ragi: string;
+  raag?: string;
+  sourceUrl: string;
+  duration?: string;
+  imageUrl?: string;
+  imageKey?: string;
+  createdAt: string;
+}
+
+interface KirtanTrackEdit {
+  title?: string;
+  gurmukhi?: string;
+  ragi?: string;
+  raag?: string;
+  sourceUrl?: string;
+  imageUrl?: string;
+  deleted?: boolean;
+}
+
+interface PendingSubmission {
+  id: string;
+  type: "post" | "kirtan" | "pdf";
+  title: string;
+  subtitle?: string;
+  description?: string;
+  url: string;
+  image?: string;
+  submittedBy: string;
+  createdAt: string;
+}
+
+interface SectionLayoutEntry {
+  page?: string;
+  positionOrder?: number;
+  titleAlign?: "left" | "center" | "right";
+  widthMode?: "full" | "contained" | "compact";
+  customTitle?: string;
+  customSubtitle?: string;
+  hidden?: boolean;
+}
 
 type TopicEdit = CmsTopicEdit;
 type CustomTopic = CmsCustomTopic;
@@ -120,6 +165,10 @@ interface SiteFramesState {
   topicEdits: Record<string, TopicEdit>;
   customTopics: Record<string, CustomTopic[]>;
   layoutConfig: LayoutConfig;
+  kirtanTracks: KirtanTrackRecord[];
+  kirtanEdits: Record<string, KirtanTrackEdit>;
+  pendingSubmissions: PendingSubmission[];
+  sectionLayoutMap: Record<string, SectionLayoutEntry>;
   storageMode?: string;
   updatedAt?: string;
 }
@@ -160,6 +209,15 @@ const BUILTIN_ITEMS: Record<PageKey, { id: string; label: string; sub?: string }
   ],
 };
 
+const SECTION_LOCATOR_IDS: { id: string; label: string }[] = [
+  { id: "granths-kirtan-hub", label: "Granths & Kirtan Hub" },
+  { id: "granths-shabad-list", label: "Granths Shabad Playlist" },
+  { id: "granths-pothi-library", label: "Granths Pothi & PDF Library" },
+  { id: "sangat-hero", label: "Home / Sangat Hero" },
+  { id: "foundations-deck", label: "Foundations Slide Deck" },
+  { id: "matriarchs-archive", label: "Sikh Women Archive" },
+];
+
 const EMPTY_STATE: SiteFramesState = {
   frames: {},
   customPosts: { links: [], blogs: [], pins: [] },
@@ -175,6 +233,10 @@ const EMPTY_STATE: SiteFramesState = {
     heroHeight: "standard",
     accentStyle: "classic-gold",
   },
+  kirtanTracks: [],
+  kirtanEdits: {},
+  pendingSubmissions: [],
+  sectionLayoutMap: {},
 };
 
 export default function AdminStudioPage() {
@@ -223,6 +285,29 @@ export default function AdminStudioPage() {
   const [editBorderColor, setEditBorderColor] = useState("");
   const [editFontScale, setEditFontScale] = useState<CmsFontScale>("md");
 
+  // Tab 5: Kirtan & 5TB Drive Manager state
+  const [newShabadTitle, setNewShabadTitle] = useState("");
+  const [newShabadGurmukhi, setNewShabadGurmukhi] = useState("");
+  const [newShabadRagi, setNewShabadRagi] = useState("");
+  const [newShabadRaag, setNewShabadRaag] = useState("");
+  const [newShabadUrl, setNewShabadUrl] = useState("");
+  const [newShabadDuration, setNewShabadDuration] = useState("");
+  const [newShabadArtKey, setNewShabadArtKey] = useState(() => `kirtan-art-${Date.now()}`);
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [trackDraftTitle, setTrackDraftTitle] = useState("");
+  const [trackDraftRagi, setTrackDraftRagi] = useState("");
+  const [trackDraftRaag, setTrackDraftRaag] = useState("");
+  const [trackDraftUrl, setTrackDraftUrl] = useState("");
+
+  // Section Title Alignment & Locator state
+  const [selectedSectionId, setSelectedSectionId] = useState("granths-kirtan-hub");
+  const [secAlign, setSecAlign] = useState<"left" | "center" | "right">("left");
+  const [secWidth, setSecWidth] = useState<"full" | "contained" | "compact">("full");
+  const [secOrderNum, setSecOrderNum] = useState<number>(1);
+  const [secCustomTitle, setSecCustomTitle] = useState("");
+  const [secCustomSubtitle, setSecCustomSubtitle] = useState("");
+  const [secHidden, setSecHidden] = useState(false);
+
   useEffect(() => {
     try {
       const flag = window.localStorage.getItem(ADMIN_FLAG_KEY) === "true";
@@ -258,6 +343,12 @@ export default function AdminStudioPage() {
             ...EMPTY_STATE.layoutConfig,
             ...(data.layoutConfig || {}),
           },
+          kirtanTracks: Array.isArray(data.kirtanTracks) ? data.kirtanTracks : [],
+          kirtanEdits: data.kirtanEdits || {},
+          pendingSubmissions: Array.isArray(data.pendingSubmissions)
+            ? data.pendingSubmissions
+            : [],
+          sectionLayoutMap: data.sectionLayoutMap || {},
         });
       }
     } catch {
@@ -314,6 +405,10 @@ export default function AdminStudioPage() {
         topicEdits: data.topicEdits || prev.topicEdits,
         customTopics: data.customTopics || prev.customTopics,
         layoutConfig: data.layoutConfig || prev.layoutConfig,
+        kirtanTracks: data.kirtanTracks || prev.kirtanTracks,
+        kirtanEdits: data.kirtanEdits || prev.kirtanEdits,
+        pendingSubmissions: data.pendingSubmissions || prev.pendingSubmissions,
+        sectionLayoutMap: data.sectionLayoutMap || prev.sectionLayoutMap,
       }));
       setStatusBanner({ kind: "ok", text: successMsg });
       window.setTimeout(() => {
@@ -598,6 +693,168 @@ export default function AdminStudioPage() {
     );
   };
 
+  useEffect(() => {
+    const entry = siteState.sectionLayoutMap?.[selectedSectionId] || {};
+    setSecAlign(entry.titleAlign || "left");
+    setSecWidth(entry.widthMode || "full");
+    setSecOrderNum(typeof entry.positionOrder === "number" ? entry.positionOrder : 1);
+    setSecCustomTitle(entry.customTitle || "");
+    setSecCustomSubtitle(entry.customSubtitle || "");
+    setSecHidden(Boolean(entry.hidden));
+  }, [selectedSectionId, siteState.sectionLayoutMap]);
+
+  const handleSaveSectionLocator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await postStudioUpdate(
+      {
+        sectionLayoutMap: {
+          [selectedSectionId]: {
+            titleAlign: secAlign,
+            widthMode: secWidth,
+            positionOrder: secOrderNum,
+            customTitle: secCustomTitle.trim() || undefined,
+            customSubtitle: secCustomSubtitle.trim() || undefined,
+            hidden: secHidden,
+          },
+        },
+      },
+      `✓ Saved layout & alignment for "${selectedSectionId}"`
+    );
+  };
+
+  const handleAddShabadTrack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newShabadTitle.trim() || !newShabadUrl.trim()) return;
+    const id = `kirtan-${Date.now()}`;
+    const uploadedImg = siteState.frames?.[newShabadArtKey]?.src || undefined;
+    const created: KirtanTrackRecord = {
+      id,
+      title: newShabadTitle.trim(),
+      gurmukhi: newShabadGurmukhi.trim() || undefined,
+      ragi: newShabadRagi.trim() || "Puratan Hazoori Ragi",
+      raag: newShabadRaag.trim() || "Gurmat Kirtan",
+      sourceUrl: newShabadUrl.trim(),
+      duration: newShabadDuration.trim() || undefined,
+      imageUrl: uploadedImg,
+      imageKey: uploadedImg ? newShabadArtKey : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    await postStudioUpdate(
+      { kirtanTracks: [created, ...(siteState.kirtanTracks || [])] },
+      `✓ Published Shabad "${created.title}" to Granths & Kirtan`
+    );
+    setNewShabadTitle("");
+    setNewShabadGurmukhi("");
+    setNewShabadRagi("");
+    setNewShabadRaag("");
+    setNewShabadUrl("");
+    setNewShabadDuration("");
+    setNewShabadArtKey(`kirtan-art-${Date.now()}`);
+  };
+
+  const handleSaveTrackEdit = async (trackId: string) => {
+    const isCustom = siteState.kirtanTracks.some((t) => t.id === trackId);
+    if (isCustom) {
+      const nextTracks = siteState.kirtanTracks.map((t) =>
+        t.id === trackId
+          ? {
+              ...t,
+              title: trackDraftTitle.trim() || t.title,
+              ragi: trackDraftRagi.trim() || t.ragi,
+              raag: trackDraftRaag.trim() || t.raag,
+              sourceUrl: trackDraftUrl.trim() || t.sourceUrl,
+            }
+          : t
+      );
+      await postStudioUpdate(
+        { kirtanTracks: nextTracks },
+        `✓ Updated track "${trackDraftTitle || trackId}"`
+      );
+    } else {
+      await postStudioUpdate(
+        {
+          kirtanEdits: {
+            [trackId]: {
+              title: trackDraftTitle.trim() || undefined,
+              ragi: trackDraftRagi.trim() || undefined,
+              raag: trackDraftRaag.trim() || undefined,
+              sourceUrl: trackDraftUrl.trim() || undefined,
+            },
+          },
+        },
+        `✓ Saved track override for "${trackId}"`
+      );
+    }
+    setEditingTrackId(null);
+  };
+
+  const handleDeleteTrack = async (trackId: string) => {
+    const isCustom = siteState.kirtanTracks.some((t) => t.id === trackId);
+    if (isCustom) {
+      await postStudioUpdate(
+        { kirtanTracks: siteState.kirtanTracks.filter((t) => t.id !== trackId) },
+        `✓ Deleted track "${trackId}"`
+      );
+    } else {
+      await postStudioUpdate(
+        { kirtanEdits: { [trackId]: { deleted: true } } },
+        `✓ Hid track "${trackId}"`
+      );
+    }
+  };
+
+  const handleApproveSubmission = async (sub: PendingSubmission) => {
+    const remaining = (siteState.pendingSubmissions || []).filter((s) => s.id !== sub.id);
+    if (sub.type === "kirtan") {
+      const track: KirtanTrackRecord = {
+        id: `kirtan-${Date.now()}`,
+        title: sub.title,
+        ragi: sub.subtitle || sub.submittedBy || "Community Kirtan",
+        raag: "Approved Community Recording",
+        sourceUrl: sub.url,
+        imageUrl: sub.image || undefined,
+        createdAt: new Date().toISOString(),
+      };
+      await postStudioUpdate(
+        {
+          pendingSubmissions: remaining,
+          kirtanTracks: [track, ...(siteState.kirtanTracks || [])],
+        },
+        `✓ Approved & published Kirtan "${sub.title}"`
+      );
+    } else {
+      const newLink = {
+        id: `link-${Date.now()}`,
+        url: sub.url,
+        title: sub.title,
+        publisher: sub.subtitle || sub.submittedBy || "Approved Source",
+        summary: sub.description || sub.title,
+        category: "essays",
+        curatedBy: sub.submittedBy || "Sangat Member",
+        createdAt: "Approved",
+        imageUrl: sub.image || null,
+        isUserCreated: true,
+      };
+      await postStudioUpdate(
+        {
+          pendingSubmissions: remaining,
+          customPosts: {
+            links: [newLink],
+          },
+        },
+        `✓ Approved & published "${sub.title}"`
+      );
+    }
+  };
+
+  const handleRejectSubmission = async (subId: string) => {
+    const remaining = (siteState.pendingSubmissions || []).filter((s) => s.id !== subId);
+    await postStudioUpdate(
+      { pendingSubmissions: remaining },
+      "✓ Submission rejected & removed from queue"
+    );
+  };
+
   return (
     <div
       style={{
@@ -743,8 +1000,16 @@ export default function AdminStudioPage() {
                     { id: "topics", label: "2. Topics & Descriptions CMS" },
                     { id: "graphics", label: "3. Graphics, Typography & Colors" },
                     {
+                      id: "kirtan",
+                      label: `4. Kirtan & 5TB Drive (${(siteState.kirtanTracks || []).length})`,
+                    },
+                    {
+                      id: "queue",
+                      label: `5. Approval Queue (${(siteState.pendingSubmissions || []).length})`,
+                    },
+                    {
                       id: "vault",
-                      label: `4. Paintings & Media Vault (${Object.keys(siteState.frames).length})`,
+                      label: `6. Paintings Vault (${Object.keys(siteState.frames).length})`,
                     },
                   ] as const
                 ).map((t) => (
@@ -1702,6 +1967,148 @@ export default function AdminStudioPage() {
                   </div>
                 </div>
 
+                {/* Section Title Alignment & Locator Controls */}
+                <form
+                  onSubmit={handleSaveSectionLocator}
+                  className="pt-4 border-t border-[#C59B27]/20 space-y-4"
+                >
+                  <div>
+                    <h3 className="text-base font-serif font-bold">
+                      Section Title Alignment &amp; Locator
+                    </h3>
+                    <p className="text-xs opacity-75">
+                      Control title alignment, container width, custom headers, and section visibility across pages.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1">Target Section</label>
+                      <select
+                        value={selectedSectionId}
+                        onChange={(e) => setSelectedSectionId(e.target.value)}
+                        style={{
+                          backgroundColor: "var(--bg-primary)",
+                          borderColor: "var(--border-subtle)",
+                        }}
+                        className="w-full rounded-xl border px-3 py-2 text-xs font-semibold"
+                      >
+                        {SECTION_LOCATOR_IDS.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1">Title Alignment</label>
+                      <div className="flex gap-1.5">
+                        {(["left", "center", "right"] as const).map((al) => (
+                          <button
+                            key={al}
+                            type="button"
+                            onClick={() => setSecAlign(al)}
+                            className={`flex-1 py-2 rounded-lg border text-[11px] font-bold capitalize ${
+                              secAlign === al
+                                ? "border-[#C59B27] bg-[#C59B27]/15 text-[#9A7418] dark:text-[#E5C158]"
+                                : "border-[#C59B27]/25 opacity-75"
+                            }`}
+                          >
+                            {al}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1">Width Mode</label>
+                      <select
+                        value={secWidth}
+                        onChange={(e) =>
+                          setSecWidth(e.target.value as "full" | "contained" | "compact")
+                        }
+                        style={{
+                          backgroundColor: "var(--bg-primary)",
+                          borderColor: "var(--border-subtle)",
+                        }}
+                        className="w-full rounded-xl border px-3 py-2 text-xs font-semibold"
+                      >
+                        <option value="full">Full Width</option>
+                        <option value="contained">Contained</option>
+                        <option value="compact">Compact</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1">Position Order</label>
+                      <input
+                        type="number"
+                        value={secOrderNum}
+                        onChange={(e) => setSecOrderNum(Number(e.target.value))}
+                        style={{
+                          backgroundColor: "var(--bg-primary)",
+                          borderColor: "var(--border-subtle)",
+                        }}
+                        className="w-full rounded-xl border px-3 py-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1">
+                        Custom Section Title (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={secCustomTitle}
+                        onChange={(e) => setSecCustomTitle(e.target.value)}
+                        placeholder="Override default heading..."
+                        style={{
+                          backgroundColor: "var(--bg-primary)",
+                          borderColor: "var(--border-subtle)",
+                        }}
+                        className="w-full rounded-xl border px-3 py-2 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold mb-1">
+                        Custom Subtitle (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={secCustomSubtitle}
+                        onChange={(e) => setSecCustomSubtitle(e.target.value)}
+                        placeholder="Override default subtitle..."
+                        style={{
+                          backgroundColor: "var(--bg-primary)",
+                          borderColor: "var(--border-subtle)",
+                        }}
+                        className="w-full rounded-xl border px-3 py-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={secHidden}
+                        onChange={(e) => setSecHidden(e.target.checked)}
+                        className="accent-[#C59B27]"
+                      />
+                      Hide this section from public view
+                    </label>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold uppercase tracking-wider"
+                    >
+                      Save Section Alignment &amp; Locator
+                    </button>
+                  </div>
+                </form>
+
                 {/* Global Hero Banner Uploaders */}
                 <div className="pt-4 border-t border-[#C59B27]/20 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -1732,7 +2139,390 @@ export default function AdminStudioPage() {
               </section>
             )}
 
-            {/* TAB 4: PAINTINGS & MEDIA VAULT */}
+            {/* TAB 4: KIRTAN & 5TB DRIVE MANAGER */}
+            {activeTab === "kirtan" && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <section
+                  style={{
+                    backgroundColor: "var(--bg-surface)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="rounded-3xl border p-6 space-y-4"
+                >
+                  <div>
+                    <h2 className="text-xl font-serif font-bold">
+                      Add New Shabad / Kirtan Track
+                    </h2>
+                    <p className="text-xs opacity-75">
+                      Paste any 5TB Google Drive share link or direct MP3 URL. Instant range-streaming via <code>/api/media-stream</code> uses zero Supabase storage.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAddShabadTrack} className="space-y-3.5">
+                    <div>
+                      <label className="block text-xs font-bold mb-1">
+                        Google Drive Share Link or MP3 URL *
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        value={newShabadUrl}
+                        onChange={(e) => setNewShabadUrl(e.target.value)}
+                        placeholder="https://drive.google.com/file/d/.../view"
+                        style={{
+                          backgroundColor: "var(--bg-primary)",
+                          borderColor: "var(--border-subtle)",
+                        }}
+                        className="w-full rounded-xl border px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold mb-1">Shabad Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={newShabadTitle}
+                          onChange={(e) => setNewShabadTitle(e.target.value)}
+                          placeholder="e.g. Asa Di Vaar — Pauri 1"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold mb-1">
+                          Gurmukhi Title (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newShabadGurmukhi}
+                          onChange={(e) => setNewShabadGurmukhi(e.target.value)}
+                          placeholder="ਆਸਾ ਕੀ ਵਾਰ"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold mb-1">Ragi / Jatha</label>
+                        <input
+                          type="text"
+                          value={newShabadRagi}
+                          onChange={(e) => setNewShabadRagi(e.target.value)}
+                          placeholder="Bhai Avtar Singh Ji"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold mb-1">Raag</label>
+                        <input
+                          type="text"
+                          value={newShabadRaag}
+                          onChange={(e) => setNewShabadRaag(e.target.value)}
+                          placeholder="Raag Asa"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold mb-1">Duration</label>
+                        <input
+                          type="text"
+                          value={newShabadDuration}
+                          onChange={(e) => setNewShabadDuration(e.target.value)}
+                          placeholder="14:20"
+                          style={{
+                            backgroundColor: "var(--bg-primary)",
+                            borderColor: "var(--border-subtle)",
+                          }}
+                          className="w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold">
+                        Optional Artwork / Picture for this Shabad (leave blank for clean text-only card)
+                      </label>
+                      <EditableHeritageImage
+                        imageKey={newShabadArtKey}
+                        defaultSrc=""
+                        alt={newShabadTitle || "Shabad artwork"}
+                        defaultOrientation="natural"
+                        allowUserEdit={true}
+                        fallbackNode={
+                          <div className="h-24 w-full rounded-xl border border-dashed border-[#C59B27]/40 flex items-center justify-center text-xs opacity-70">
+                            Optional: Click &ldquo;⚙️ Upload / Frame Painting&rdquo;
+                          </div>
+                        }
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold uppercase tracking-wider"
+                    >
+                      + Publish Shabad to Granths &amp; Kirtan
+                    </button>
+                  </form>
+                </section>
+
+                <section
+                  style={{
+                    backgroundColor: "var(--bg-surface)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="rounded-3xl border p-6 space-y-4"
+                >
+                  <div>
+                    <h2 className="text-xl font-serif font-bold">
+                      Manage Existing Shabads
+                    </h2>
+                    <p className="text-xs opacity-75">
+                      Rename Shabads, update Ragi/Raag, swap Google Drive links, attach/remove artwork, or delete.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      ...(siteState.kirtanTracks || []),
+                      {
+                        id: "live-harmandir-sahib-amritsar",
+                        title:
+                          siteState.kirtanEdits?.["live-harmandir-sahib-amritsar"]?.title ||
+                          "Sri Harmandir Sahib (Darbar Sahib) Live 24/7 Stream",
+                        ragi:
+                          siteState.kirtanEdits?.["live-harmandir-sahib-amritsar"]?.ragi ||
+                          "Hazoori Ragi Jathas • SGPC",
+                        raag:
+                          siteState.kirtanEdits?.["live-harmandir-sahib-amritsar"]?.raag ||
+                          "Live 24/7 Kirtan",
+                        sourceUrl:
+                          siteState.kirtanEdits?.["live-harmandir-sahib-amritsar"]?.sourceUrl ||
+                          "https://live.sgpc.net:8443/;nocache=1",
+                      },
+                    ].map((tr) => {
+                      const isEditingTrack = editingTrackId === tr.id;
+                      const isDeleted = siteState.kirtanEdits?.[tr.id]?.deleted;
+                      if (isDeleted) return null;
+                      return (
+                        <div
+                          key={tr.id}
+                          style={{ borderColor: "var(--border-subtle)" }}
+                          className="rounded-2xl border p-4 space-y-3"
+                        >
+                          {isEditingTrack ? (
+                            <div className="space-y-2.5">
+                              <input
+                                type="text"
+                                value={trackDraftTitle}
+                                onChange={(e) => setTrackDraftTitle(e.target.value)}
+                                placeholder="Shabad Title"
+                                style={{
+                                  backgroundColor: "var(--bg-primary)",
+                                  borderColor: "var(--border-subtle)",
+                                }}
+                                className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  type="text"
+                                  value={trackDraftRagi}
+                                  onChange={(e) => setTrackDraftRagi(e.target.value)}
+                                  placeholder="Ragi"
+                                  style={{
+                                    backgroundColor: "var(--bg-primary)",
+                                    borderColor: "var(--border-subtle)",
+                                  }}
+                                  className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                                />
+                                <input
+                                  type="text"
+                                  value={trackDraftRaag}
+                                  onChange={(e) => setTrackDraftRaag(e.target.value)}
+                                  placeholder="Raag"
+                                  style={{
+                                    backgroundColor: "var(--bg-primary)",
+                                    borderColor: "var(--border-subtle)",
+                                  }}
+                                  className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                                />
+                              </div>
+                              <input
+                                type="url"
+                                value={trackDraftUrl}
+                                onChange={(e) => setTrackDraftUrl(e.target.value)}
+                                placeholder="Google Drive / MP3 URL"
+                                style={{
+                                  backgroundColor: "var(--bg-primary)",
+                                  borderColor: "var(--border-subtle)",
+                                }}
+                                className="w-full rounded-lg border px-2.5 py-1.5 text-xs"
+                              />
+                              <EditableHeritageImage
+                                imageKey={
+                                  ("imageKey" in tr && tr.imageKey) || `kirtan-art-${tr.id}`
+                                }
+                                defaultSrc={("imageUrl" in tr && tr.imageUrl) || ""}
+                                alt={tr.title}
+                                defaultOrientation="natural"
+                                allowUserEdit={true}
+                                fallbackNode={
+                                  <div className="h-20 w-full rounded-lg border border-dashed border-[#C59B27]/40 flex items-center justify-center text-[11px] opacity-70">
+                                    Optional Picture
+                                  </div>
+                                }
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void handleSaveTrackEdit(tr.id)}
+                                  className="px-3 py-1.5 rounded-lg bg-[#C59B27] text-[#18181B] text-xs font-bold"
+                                >
+                                  Save Changes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingTrackId(null)}
+                                  className="px-3 py-1.5 rounded-lg border text-xs font-bold"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold truncate">{tr.title}</p>
+                                <p className="text-[11px] opacity-75 truncate">
+                                  {tr.ragi} • {tr.raag || "Kirtan"}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingTrackId(tr.id);
+                                    setTrackDraftTitle(tr.title);
+                                    setTrackDraftRagi(tr.ragi);
+                                    setTrackDraftRaag(tr.raag || "");
+                                    setTrackDraftUrl(tr.sourceUrl);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg border border-[#C59B27]/40 text-xs font-bold"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteTrack(tr.id)}
+                                  className="px-2.5 py-1 rounded-lg border border-red-500/40 text-red-600 dark:text-red-400 text-xs font-bold"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* TAB 5: APPROVAL QUEUE */}
+            {activeTab === "queue" && (
+              <section
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="rounded-3xl border p-6 space-y-5"
+              >
+                <div>
+                  <h2 className="text-xl font-serif font-bold">
+                    Community Approval Queue
+                  </h2>
+                  <p className="text-xs opacity-75">
+                    Review Kirtan Shabads, PDFs, and curated resources submitted by the Sangat.
+                  </p>
+                </div>
+
+                {(siteState.pendingSubmissions || []).length === 0 ? (
+                  <div className="rounded-2xl border border-[#C59B27]/25 p-8 text-center text-sm opacity-75">
+                    No pending submissions in the queue.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {siteState.pendingSubmissions.map((sub) => (
+                      <div
+                        key={sub.id}
+                        style={{ borderColor: "var(--border-subtle)" }}
+                        className="rounded-2xl border p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[#C59B27]">
+                            <span>{sub.type}</span>
+                            <span>•</span>
+                            <span>Submitted by {sub.submittedBy}</span>
+                          </div>
+                          <h3 className="text-base font-bold">{sub.title}</h3>
+                          {sub.subtitle && (
+                            <p className="text-xs font-semibold opacity-80">{sub.subtitle}</p>
+                          )}
+                          {sub.description && (
+                            <p className="text-xs opacity-75">{sub.description}</p>
+                          )}
+                          <a
+                            href={sub.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-xs text-[#9A7418] dark:text-[#E5C158] underline break-all"
+                          >
+                            {sub.url} ↗
+                          </a>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void handleApproveSubmission(sub)}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition"
+                          >
+                            ✅ Approve &amp; Publish
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleRejectSubmission(sub.id)}
+                            className="px-4 py-2 rounded-xl border border-red-500/50 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-500/10 transition"
+                          >
+                            ❌ Reject &amp; Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* TAB 6: PAINTINGS & MEDIA VAULT */}
             {activeTab === "vault" && (
               <section
                 style={{

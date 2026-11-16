@@ -1229,7 +1229,7 @@ function SangatHubContent() {
     e.preventDefault();
     setShareError(null);
 
-    if (!user) {
+    if (!user && !isStealthAdmin) {
       setIsShareOpen(false);
       setAuthGateActionLabel("Publish to SikhStack & SikhInterest");
       return;
@@ -1237,6 +1237,63 @@ function SangatHubContent() {
 
     const authorSlug = slugifyName(profile.displayName);
     const cleanImage = shareImageUrl?.trim() || null;
+
+    if (!isStealthAdmin) {
+      if (shareTab === "curate") {
+        let normalizedUrl = "";
+        try {
+          const parsed = new URL(curateUrl.trim());
+          if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("bad");
+          normalizedUrl = parsed.toString();
+        } catch {
+          setShareError("Please paste a valid article link (https://…).");
+          return;
+        }
+        if (!curateTitle.trim() || !curateSummary.trim()) {
+          setShareError("Title and a short summary are required.");
+          return;
+        }
+        void pushSiteSync({
+          action: "submit_for_approval",
+          submission: {
+            type: "post",
+            title: curateTitle.trim(),
+            subtitle: curatePublisher.trim() || getDomain(normalizedUrl),
+            description: curateSummary.trim(),
+            url: normalizedUrl,
+            image: cleanImage || undefined,
+            submittedBy: profile.displayName || "Sangat Member",
+          },
+        });
+        setShareToast("✓ Submitted for Admin approval! It will appear once reviewed.");
+        window.setTimeout(() => setShareToast(null), 3500);
+        resetShareForm();
+        setIsShareOpen(false);
+        return;
+      }
+
+      if (!writeTitle.trim() || !writeBody.trim()) {
+        setShareError("Title and body are required.");
+        return;
+      }
+      void pushSiteSync({
+        action: "submit_for_approval",
+        submission: {
+          type: "post",
+          title: writeTitle.trim(),
+          subtitle: writeSubtitle.trim() || undefined,
+          description: writeBody.trim(),
+          url: "https://learnsikhi.com",
+          image: cleanImage || undefined,
+          submittedBy: profile.displayName || "Sangat Member",
+        },
+      });
+      setShareToast("✓ Submitted for Admin approval! It will appear once reviewed.");
+      window.setTimeout(() => setShareToast(null), 3500);
+      resetShareForm();
+      setIsShareOpen(false);
+      return;
+    }
 
     if (shareTab === "curate") {
       let normalizedUrl = "";
@@ -1996,12 +2053,41 @@ function SangatHubContent() {
         {/* ================================================================
             PUBLICATION HEADER BAR + MINIMAL FEED TABS
         ================================================================ */}
+        {(() => {
+          const heroSec = (
+            cms as unknown as {
+              sectionLayoutMap?: Record<
+                string,
+                {
+                  titleAlign?: "left" | "center" | "right";
+                  widthMode?: "full" | "contained" | "compact";
+                  customTitle?: string;
+                  customSubtitle?: string;
+                  hidden?: boolean;
+                }
+              >;
+            }
+          ).sectionLayoutMap?.["sangat-hero"];
+          if (heroSec?.hidden) return null;
+          const alignCls =
+            heroSec?.titleAlign === "center"
+              ? "text-center mx-auto"
+              : heroSec?.titleAlign === "right"
+                ? "text-right ml-auto"
+                : "text-left";
+          const widthCls =
+            heroSec?.widthMode === "compact"
+              ? "max-w-3xl mx-auto"
+              : heroSec?.widthMode === "contained"
+                ? "max-w-5xl mx-auto"
+                : "w-full";
+          return (
         <section
           style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-subtle)",
+            backgroundColor: layoutCfg.cardBgColor || "var(--bg-surface)",
+            borderColor: layoutCfg.accentColor || "var(--border-subtle)",
           }}
-          className="relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6"
+          className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6 ${widthCls}`}
         >
           {/* Ambient Heritage Hero Backdrop */}
           {heroBannerUrl && (
@@ -2026,19 +2112,25 @@ function SangatHubContent() {
           )}
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="space-y-2 max-w-2xl">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]">
+            <div className={`space-y-2 max-w-2xl ${alignCls}`}>
+              <p
+                style={{ color: layoutCfg.accentColor || undefined }}
+                className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+              >
                 SIKHSTACK &amp; SIKHINTEREST
               </p>
-              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight">
-                SikhStack &amp; SikhInterest
+              <h1
+                style={{ color: layoutCfg.headingTextColor || undefined }}
+                className="text-3xl sm:text-4xl font-serif font-bold tracking-tight"
+              >
+                {heroSec?.customTitle || "SikhStack & SikhInterest"}
               </h1>
               <p
-                style={{ color: "var(--theme-text-muted)" }}
+                style={{ color: layoutCfg.bodyTextColor || "var(--theme-text-muted)" }}
                 className="text-sm sm:text-base leading-relaxed"
               >
-                Independent essays on Gurbani &amp; Sikh history, curated research links with
-                original source attribution, and SikhInterest visual heritage.
+                {heroSec?.customSubtitle ||
+                  "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage."}
               </p>
               {isStealthAdmin && (
                 <div className="pt-1">
@@ -2121,6 +2213,8 @@ function SangatHubContent() {
             })}
           </nav>
         </section>
+          );
+        })()}
 
         {shareToast && (
           <div className="p-3.5 rounded-2xl border border-[#C59B27] bg-[#C59B27]/15 text-xs font-bold text-[#C59B27] text-center">
@@ -2457,7 +2551,6 @@ function SangatHubContent() {
                                 imageKey={`sangat-feed-${item.kind}-${item.id}`}
                                 defaultSrc={imgSrc}
                                 alt={item.title}
-                                allowUserEdit={true}
                               />
                             )}
 
@@ -2640,7 +2733,6 @@ function SangatHubContent() {
                   defaultSrc={getItemImage(readingItem) || ""}
                   alt={readingItem.title}
                   defaultFit="contain-museum"
-                  allowUserEdit={true}
                 />
               )}
 

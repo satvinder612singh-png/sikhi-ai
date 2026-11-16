@@ -70,6 +70,51 @@ export interface LayoutConfig {
   accentColor?: string;
 }
 
+export interface KirtanTrackRecord {
+  id: string;
+  title: string;
+  gurmukhi?: string;
+  ragi: string;
+  raag?: string;
+  sourceUrl: string;
+  duration?: string;
+  imageUrl?: string;
+  imageKey?: string;
+  createdAt: string;
+}
+
+export interface KirtanTrackEdit {
+  title?: string;
+  gurmukhi?: string;
+  ragi?: string;
+  raag?: string;
+  sourceUrl?: string;
+  imageUrl?: string;
+  deleted?: boolean;
+}
+
+export interface PendingSubmission {
+  id: string;
+  type: "post" | "kirtan" | "pdf";
+  title: string;
+  subtitle?: string;
+  description?: string;
+  url: string;
+  image?: string;
+  submittedBy: string;
+  createdAt: string;
+}
+
+export interface SectionLayoutEntry {
+  page?: string;
+  positionOrder?: number;
+  titleAlign?: "left" | "center" | "right";
+  widthMode?: "full" | "contained" | "compact";
+  customTitle?: string;
+  customSubtitle?: string;
+  hidden?: boolean;
+}
+
 export interface SiteFramesPayload {
   frames: Record<string, FrameRecord>;
   customPosts: {
@@ -85,6 +130,10 @@ export interface SiteFramesPayload {
   topicEdits: Record<string, TopicEdit>;
   customTopics: Record<string, CustomTopic[]>;
   layoutConfig: LayoutConfig;
+  kirtanTracks: KirtanTrackRecord[];
+  kirtanEdits: Record<string, KirtanTrackEdit>;
+  pendingSubmissions: PendingSubmission[];
+  sectionLayoutMap: Record<string, SectionLayoutEntry>;
   updatedAt: string;
 }
 
@@ -107,6 +156,10 @@ const DEFAULT_STATE: SiteFramesPayload = {
     heroHeight: "standard",
     accentStyle: "classic-gold",
   },
+  kirtanTracks: [],
+  kirtanEdits: {},
+  pendingSubmissions: [],
+  sectionLayoutMap: {},
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -314,6 +367,20 @@ function normalizeState(raw: unknown): SiteFramesPayload {
             heroHeight: "standard",
             accentStyle: "classic-gold",
           },
+    kirtanTracks: Array.isArray(obj.kirtanTracks)
+      ? (obj.kirtanTracks as KirtanTrackRecord[])
+      : [],
+    kirtanEdits:
+      obj.kirtanEdits && typeof obj.kirtanEdits === "object"
+        ? (obj.kirtanEdits as Record<string, KirtanTrackEdit>)
+        : {},
+    pendingSubmissions: Array.isArray(obj.pendingSubmissions)
+      ? (obj.pendingSubmissions as PendingSubmission[])
+      : [],
+    sectionLayoutMap:
+      obj.sectionLayoutMap && typeof obj.sectionLayoutMap === "object"
+        ? (obj.sectionLayoutMap as Record<string, SectionLayoutEntry>)
+        : {},
     updatedAt:
       typeof obj.updatedAt === "string"
         ? obj.updatedAt
@@ -461,6 +528,44 @@ export async function POST(req: Request) {
       });
     }
 
+    if (body.action === "submit_for_approval") {
+      const sub =
+        body.submission && typeof body.submission === "object"
+          ? (body.submission as Partial<PendingSubmission>)
+          : null;
+      if (!sub || !sub.title?.trim() || !sub.url?.trim()) {
+        return NextResponse.json(
+          { ok: false, error: "Title and URL are required for submission." },
+          { status: 400 }
+        );
+      }
+      const { state: current } = await readGlobalState();
+      const now = new Date().toISOString();
+      const entry: PendingSubmission = {
+        id: sub.id || `sub-${Date.now()}`,
+        type: sub.type === "kirtan" || sub.type === "pdf" ? sub.type : "post",
+        title: sub.title.trim(),
+        subtitle: sub.subtitle?.trim() || undefined,
+        description: sub.description?.trim() || undefined,
+        url: sub.url.trim(),
+        image: sub.image?.trim() || undefined,
+        submittedBy: sub.submittedBy?.trim() || "Sangat Member",
+        createdAt: now,
+      };
+      const nextState: SiteFramesPayload = {
+        ...current,
+        pendingSubmissions: [entry, ...current.pendingSubmissions],
+        updatedAt: now,
+      };
+      const source = await writeGlobalState(nextState);
+      return NextResponse.json({
+        ok: true,
+        source,
+        storageMode: source === "supabase" ? "supabase" : "fallback",
+        submission: entry,
+      });
+    }
+
     const mutatesProtectedFramework =
       Boolean(body.frames) ||
       Boolean(body.frameUpdate) ||
@@ -472,7 +577,11 @@ export async function POST(req: Request) {
       Array.isArray(body.archivedIds) ||
       Boolean(body.topicEdits) ||
       Boolean(body.customTopics) ||
-      Boolean(body.layoutConfig);
+      Boolean(body.layoutConfig) ||
+      Array.isArray(body.kirtanTracks) ||
+      Boolean(body.kirtanEdits) ||
+      Array.isArray(body.pendingSubmissions) ||
+      Boolean(body.sectionLayoutMap);
 
     if (mutatesProtectedFramework) {
       const auth = await verifyAdminRequest(req, body);
@@ -599,6 +708,36 @@ export async function POST(req: Request) {
               ...(body.layoutConfig as LayoutConfig),
             }
           : current.layoutConfig,
+      kirtanTracks: Array.isArray(body.kirtanTracks)
+        ? (body.kirtanTracks as KirtanTrackRecord[])
+        : current.kirtanTracks,
+      kirtanEdits:
+        body.kirtanEdits && typeof body.kirtanEdits === "object"
+          ? Object.entries(
+              body.kirtanEdits as Record<string, KirtanTrackEdit>
+            ).reduce<Record<string, KirtanTrackEdit>>(
+              (acc, [k, v]) => {
+                acc[k] = { ...(acc[k] || {}), ...v };
+                return acc;
+              },
+              { ...current.kirtanEdits }
+            )
+          : current.kirtanEdits,
+      pendingSubmissions: Array.isArray(body.pendingSubmissions)
+        ? (body.pendingSubmissions as PendingSubmission[])
+        : current.pendingSubmissions,
+      sectionLayoutMap:
+        body.sectionLayoutMap && typeof body.sectionLayoutMap === "object"
+          ? Object.entries(
+              body.sectionLayoutMap as Record<string, SectionLayoutEntry>
+            ).reduce<Record<string, SectionLayoutEntry>>(
+              (acc, [k, v]) => {
+                acc[k] = { ...(acc[k] || {}), ...v };
+                return acc;
+              },
+              { ...current.sectionLayoutMap }
+            )
+          : current.sectionLayoutMap,
       updatedAt: now,
     };
 

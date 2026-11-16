@@ -1255,12 +1255,42 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
   })();
 
   const layoutCfg = cms.layoutConfig || {};
+  const deckSec = (
+    cms as unknown as {
+      sectionLayoutMap?: Record<
+        string,
+        {
+          titleAlign?: "left" | "center" | "right";
+          widthMode?: "full" | "contained" | "compact";
+          customTitle?: string;
+          customSubtitle?: string;
+          hidden?: boolean;
+        }
+      >;
+    }
+  ).sectionLayoutMap?.["foundations-deck"];
+  const deckAlignCls =
+    deckSec?.titleAlign === "center"
+      ? "text-center mx-auto"
+      : deckSec?.titleAlign === "right"
+        ? "text-right ml-auto"
+        : "text-left";
+  const deckWidthCls =
+    deckSec?.widthMode === "compact"
+      ? "max-w-3xl mx-auto"
+      : deckSec?.widthMode === "contained"
+        ? "max-w-5xl mx-auto"
+        : "";
   const customFoundations = applyCmsOrder(
     cms.customTopics?.foundations || [],
     (t) => t.id,
     "foundations",
     cms
   );
+
+  if (deckSec?.hidden) {
+    return null;
+  }
 
   return (
     <section
@@ -1276,18 +1306,19 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
         backgroundColor: layoutCfg.pageBgColor || undefined,
         color: layoutCfg.bodyTextColor || undefined,
       }}
-      className="space-y-6 outline-none transition-opacity duration-200 rounded-3xl"
+      className={`space-y-6 outline-none transition-opacity duration-200 rounded-3xl ${deckWidthCls}`}
     >
-      <div className="space-y-2">
+      <div className={`space-y-2 ${deckAlignCls}`}>
         <Eyebrow>Sikhi 101 • Start here</Eyebrow>
         <Heading
           style={{ color: layoutCfg.headingTextColor || undefined }}
           className="font-serif text-3xl sm:text-5xl font-bold tracking-tight"
         >
-          Who is a Sikh? &amp; Foundations of Sikhi
+          {deckSec?.customTitle || "Who is a Sikh? & Foundations of Sikhi"}
         </Heading>
-        <p className="max-w-3xl text-base" style={muted}>
-          Seven short slides, each with a painting, to understand the heart of Sikhi. Swipe, tap or use the arrow keys.
+        <p className={`max-w-3xl text-base ${deckSec?.titleAlign === "center" ? "mx-auto" : ""}`} style={muted}>
+          {deckSec?.customSubtitle ||
+            "Seven short slides, each with a painting, to understand the heart of Sikhi. Swipe, tap or use the arrow keys."}
         </p>
       </div>
 
@@ -1354,12 +1385,14 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
                   }}
                   className="rounded-2xl border p-4 space-y-2.5"
                 >
-                  <EditableHeritageImage
-                    imageKey={ct.imageKey || ct.id}
-                    defaultSrc=""
-                    alt={ov?.title || ct.title}
-                    defaultOrientation="natural"
-                  />
+                  {Boolean(cms.frames?.[ct.imageKey || ct.id]?.src) && (
+                    <EditableHeritageImage
+                      imageKey={ct.imageKey || ct.id}
+                      defaultSrc=""
+                      alt={ov?.title || ct.title}
+                      defaultOrientation="natural"
+                    />
+                  )}
                   {(ov?.gurmukhi || ct.gurmukhi) && (
                     <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>
                       {ov?.gurmukhi || ct.gurmukhi}
