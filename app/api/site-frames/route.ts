@@ -68,6 +68,17 @@ export interface LayoutConfig {
   headingTextColor?: string;
   bodyTextColor?: string;
   accentColor?: string;
+  defaultSiteTheme?: string;
+  pageTransition?: "fade" | "slide-up" | "scale-zoom" | "blur-reveal" | "none";
+}
+
+export interface SecurityConfig {
+  requireEmailVerification?: boolean;
+  requireSignInForSubmissions?: boolean;
+  requireAdminApproval?: boolean;
+  allowGuestKirtanPlay?: boolean;
+  readOnlyMaintenanceMode?: boolean;
+  hideSubmitterIdentity?: boolean;
 }
 
 export interface KirtanTrackRecord {
@@ -130,6 +141,7 @@ export interface SiteFramesPayload {
   topicEdits: Record<string, TopicEdit>;
   customTopics: Record<string, CustomTopic[]>;
   layoutConfig: LayoutConfig;
+  securityConfig: SecurityConfig;
   kirtanTracks: KirtanTrackRecord[];
   kirtanEdits: Record<string, KirtanTrackEdit>;
   pendingSubmissions: PendingSubmission[];
@@ -155,6 +167,15 @@ const DEFAULT_STATE: SiteFramesPayload = {
     feedLayout: "grid-3",
     heroHeight: "standard",
     accentStyle: "classic-gold",
+    pageTransition: "fade",
+  },
+  securityConfig: {
+    requireEmailVerification: false,
+    requireSignInForSubmissions: false,
+    requireAdminApproval: true,
+    allowGuestKirtanPlay: true,
+    readOnlyMaintenanceMode: false,
+    hideSubmitterIdentity: false,
   },
   kirtanTracks: [],
   kirtanEdits: {},
@@ -360,13 +381,22 @@ function normalizeState(raw: unknown): SiteFramesPayload {
             feedLayout: "grid-3",
             heroHeight: "standard",
             accentStyle: "classic-gold",
+            pageTransition: "fade",
             ...(obj.layoutConfig as LayoutConfig),
           }
         : {
             feedLayout: "grid-3",
             heroHeight: "standard",
             accentStyle: "classic-gold",
+            pageTransition: "fade",
           },
+    securityConfig:
+      obj.securityConfig && typeof obj.securityConfig === "object"
+        ? {
+            ...DEFAULT_STATE.securityConfig,
+            ...(obj.securityConfig as SecurityConfig),
+          }
+        : { ...DEFAULT_STATE.securityConfig },
     kirtanTracks: Array.isArray(obj.kirtanTracks)
       ? (obj.kirtanTracks as KirtanTrackRecord[])
       : [],
@@ -578,6 +608,7 @@ export async function POST(req: Request) {
       Boolean(body.topicEdits) ||
       Boolean(body.customTopics) ||
       Boolean(body.layoutConfig) ||
+      Boolean(body.securityConfig) ||
       Array.isArray(body.kirtanTracks) ||
       Boolean(body.kirtanEdits) ||
       Array.isArray(body.pendingSubmissions) ||
@@ -708,6 +739,13 @@ export async function POST(req: Request) {
               ...(body.layoutConfig as LayoutConfig),
             }
           : current.layoutConfig,
+      securityConfig:
+        body.securityConfig && typeof body.securityConfig === "object"
+          ? {
+              ...current.securityConfig,
+              ...(body.securityConfig as SecurityConfig),
+            }
+          : current.securityConfig,
       kirtanTracks: Array.isArray(body.kirtanTracks)
         ? (body.kirtanTracks as KirtanTrackRecord[])
         : current.kirtanTracks,

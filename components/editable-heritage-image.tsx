@@ -71,6 +71,13 @@ export interface CmsCustomTopic {
   createdAt: string;
 }
 
+export type CmsPageTransition =
+  | "fade"
+  | "slide-up"
+  | "scale-zoom"
+  | "blur-reveal"
+  | "none";
+
 export interface CmsLayoutConfig {
   feedLayout?: "grid-3" | "grid-2" | "editorial";
   heroHeight?: "compact" | "standard" | "cinema";
@@ -84,6 +91,17 @@ export interface CmsLayoutConfig {
   headingTextColor?: string;
   bodyTextColor?: string;
   accentColor?: string;
+  defaultSiteTheme?: string;
+  pageTransition?: CmsPageTransition;
+}
+
+export interface CmsSecurityConfig {
+  requireEmailVerification?: boolean;
+  requireSignInForSubmissions?: boolean;
+  requireAdminApproval?: boolean;
+  allowGuestKirtanPlay?: boolean;
+  readOnlyMaintenanceMode?: boolean;
+  hideSubmitterIdentity?: boolean;
 }
 
 export interface CmsSiteState {
@@ -97,6 +115,8 @@ export interface CmsSiteState {
   topicEdits: Record<string, CmsTopicEdit>;
   customTopics: Record<string, CmsCustomTopic[]>;
   layoutConfig: CmsLayoutConfig;
+  securityConfig?: CmsSecurityConfig;
+  sectionLayoutMap?: Record<string, unknown>;
   storageMode?: string;
   updatedAt?: string;
 }
@@ -118,6 +138,15 @@ export const EMPTY_CMS_STATE: CmsSiteState = {
     headingScale: "md",
     bodyScale: "md",
     gurmukhiScale: "md",
+    pageTransition: "fade",
+  },
+  securityConfig: {
+    requireEmailVerification: false,
+    requireSignInForSubmissions: false,
+    requireAdminApproval: true,
+    allowGuestKirtanPlay: true,
+    readOnlyMaintenanceMode: false,
+    hideSubmitterIdentity: false,
   },
 };
 
@@ -135,6 +164,8 @@ export function readCmsCache(): CmsSiteState | null {
       ...EMPTY_CMS_STATE,
       ...parsed,
       layoutConfig: { ...EMPTY_CMS_STATE.layoutConfig, ...(parsed.layoutConfig || {}) },
+      securityConfig: { ...EMPTY_CMS_STATE.securityConfig, ...(parsed.securityConfig || {}) },
+      sectionLayoutMap: parsed.sectionLayoutMap || {},
       sectionOrder: parsed.sectionOrder || {},
       pinnedIds: Array.isArray(parsed.pinnedIds) ? parsed.pinnedIds : [],
       archivedIds: Array.isArray(parsed.archivedIds) ? parsed.archivedIds : [],
@@ -154,6 +185,8 @@ export function writeCmsCache(data: Partial<CmsSiteState>): CmsSiteState {
     ...prev,
     ...data,
     layoutConfig: { ...prev.layoutConfig, ...(data.layoutConfig || {}) },
+    securityConfig: { ...prev.securityConfig, ...(data.securityConfig || {}) },
+    sectionLayoutMap: data.sectionLayoutMap ?? prev.sectionLayoutMap,
     sectionOrder: data.sectionOrder ?? prev.sectionOrder,
     pinnedIds: Array.isArray(data.pinnedIds) ? data.pinnedIds : prev.pinnedIds,
     archivedIds: Array.isArray(data.archivedIds) ? data.archivedIds : prev.archivedIds,
@@ -207,6 +240,100 @@ export function useCmsSiteState(): CmsSiteState {
   }, []);
 
   return cms;
+}
+
+const LIVE_EDIT_MODE_KEY = "learnsikhi_live_edit_mode_v1";
+const LIVE_EDIT_MODE_EVENT = "learnsikhi-edit-mode-change";
+
+export function useAdminEditMode(): [boolean, (next: boolean) => void] {
+  const [liveEditMode, setLiveEditModeState] = useState(false);
+
+  useEffect(() => {
+    const sync = () => {
+      try {
+        setLiveEditModeState(
+          window.localStorage.getItem(LIVE_EDIT_MODE_KEY) === "true"
+        );
+      } catch {
+        setLiveEditModeState(false);
+      }
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(LIVE_EDIT_MODE_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(LIVE_EDIT_MODE_EVENT, sync);
+    };
+  }, []);
+
+  const setLiveEditMode = (next: boolean) => {
+    setLiveEditModeState(next);
+    try {
+      window.localStorage.setItem(LIVE_EDIT_MODE_KEY, next ? "true" : "false");
+    } catch {
+      // ignore storage errors
+    }
+    try {
+      window.dispatchEvent(new Event(LIVE_EDIT_MODE_EVENT));
+    } catch {
+      // ignore
+    }
+  };
+
+  return [liveEditMode, setLiveEditMode];
+}
+
+export function getPageTransitionClass(transition?: string): string {
+  switch (transition) {
+    case "slide-up":
+      return "transition-all duration-300 ease-out animate-fade-in-up";
+    case "scale-zoom":
+      return "transition-all duration-300 ease-out scale-100 opacity-100";
+    case "blur-reveal":
+      return "transition-all duration-300 ease-out opacity-100 blur-0";
+    case "none":
+      return "";
+    case "fade":
+    default:
+      return "transition-opacity duration-300 ease-out opacity-100";
+  }
+}
+
+export async function pushAdminCmsPatch(
+  patch: Partial<CmsSiteState>
+): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  writeCmsCache(patch);
+  try {
+    const token = await getVerifiedAdminToken();
+    const xToken =
+      window.localStorage.getItem(ADMIN_VERIFIED_TOKEN_KEY) ||
+      (window.localStorage.getItem(ADMIN_STORAGE_KEY) === "true"
+        ? "verified_founder_1313"
+        : "");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (xToken) headers["x-admin-token"] = xToken;
+    else if (token) headers["x-admin-token"] = token;
+
+    const res = await fetch("/api/site-frames", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(patch),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data && typeof data === "object") {
+      writeCmsCache(data as Partial<CmsSiteState>);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function resolveCmsFontFamily(fontFamily?: CmsFontFamily): string | undefined {
