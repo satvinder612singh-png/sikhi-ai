@@ -544,12 +544,46 @@ a.from-\[\#C59B27\] {
   /* ============================================================================
      FIGMA / SLIDES 8-HANDLE CANVAS ENGINE & GOD-MODE DOT GRID
      ============================================================================ */
+  .god-mode-grid {
+    background-image: radial-gradient(
+      rgba(212, 175, 55, 0.28) 1.25px,
+      transparent 1.25px
+    );
+    background-size: 20px 20px;
+  }
+
   body.god-mode-active {
     background-image: radial-gradient(
       rgba(212, 175, 55, 0.24) 1px,
       transparent 1px
     );
     background-size: 20px 20px;
+  }
+
+  .smart-guide-v {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1.5px;
+    background: #ec4899;
+    box-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+    pointer-events: none;
+    z-index: 60;
+    transform: translateX(-50%);
+  }
+
+  .smart-guide-h {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1.5px;
+    background: #ec4899;
+    box-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+    pointer-events: none;
+    z-index: 60;
+    transform: translateY(-50%);
   }
 
   body.god-mode-dragging,

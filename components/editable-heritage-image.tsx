@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { SlidePresentationCanvas } from "@/components/inline-cms-editor";
 
 export type FrameOrientation =
   | "natural"
@@ -1150,115 +1151,151 @@ export function EditableHeritageImage({
 
   const zoomScale = Math.max(100, Math.min(150, settings.zoom)) / 100;
 
-  return (
-    <div className={`relative w-full group/frame ${className}`}>
-      <div
-        key={effectiveSrc || "empty-frame"}
-        className={`relative w-full overflow-hidden rounded-xl bg-[#111318] flex items-center justify-center ${aspectClass}`}
+  const renderInnerMedia = () => {
+    if (!hasVisibleImage) {
+      return fallbackNode && !isEditing ? (
+        <SlidePresentationCanvas
+          id={`heritage-caption-${imageKey}`}
+          isChild={true}
+          label="Caption / Emblem"
+          className="w-full"
+        >
+          <div className="w-full">{fallbackNode}</div>
+        </SlidePresentationCanvas>
+      ) : (
+        <SlidePresentationCanvas
+          id={`heritage-caption-${imageKey}`}
+          isChild={true}
+          label="Empty Caption"
+          className="w-full"
+        >
+          <div className="p-6 text-center text-xs text-[#FAF7F0]/70">
+            No image set. Paste a URL or upload a painting below.
+          </div>
+        </SlidePresentationCanvas>
+      );
+    }
+
+    return (
+      <SlidePresentationCanvas
+        id={`heritage-img-${imageKey}`}
+        isChild={true}
+        label="Image Layer"
+        className="w-full"
       >
-        {hasVisibleImage ? (
-          resolvedOrientation === "natural" ? (
+        {resolvedOrientation === "natural" ? (
+          <img
+            src={effectiveSrc}
+            alt={alt}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth && img.naturalHeight) {
+                setNaturalRatio(img.naturalWidth / img.naturalHeight);
+              }
+            }}
+            className="w-full h-auto max-h-[520px] object-contain block mx-auto"
+          />
+        ) : resolvedFit === "contain-museum" ? (
+          <>
             <img
               src={effectiveSrc}
-              alt={alt}
-              onLoad={(e) => {
-                const img = e.currentTarget;
-                if (img.naturalWidth && img.naturalHeight) {
-                  setNaturalRatio(img.naturalWidth / img.naturalHeight);
-                }
-              }}
-              className="w-full h-auto max-h-[520px] object-contain block mx-auto"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-35 pointer-events-none select-none"
             />
-          ) : resolvedFit === "contain-museum" ? (
-            <>
-              <img
-                src={effectiveSrc}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-35 pointer-events-none select-none"
-              />
-              <img
-                src={effectiveSrc}
-                alt={alt}
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  if (img.naturalWidth && img.naturalHeight) {
-                    setNaturalRatio(img.naturalWidth / img.naturalHeight);
-                  }
-                }}
-                style={{
-                  objectPosition: `${settings.posX}% ${settings.posY}%`,
-                  transform: `scale(${zoomScale})`,
-                }}
-                className="relative z-10 w-full h-full object-contain transition-transform duration-150"
-              />
-            </>
-          ) : (
             <img
               src={effectiveSrc}
               alt={alt}
-              draggable={false}
               onLoad={(e) => {
                 const img = e.currentTarget;
                 if (img.naturalWidth && img.naturalHeight) {
                   setNaturalRatio(img.naturalWidth / img.naturalHeight);
                 }
               }}
-              onPointerDown={(e) => {
-                if (!canEdit || !isEditing) return;
-                e.stopPropagation();
-                e.currentTarget.setPointerCapture(e.pointerId);
-                setDragOrigin({
-                  x: e.clientX,
-                  y: e.clientY,
-                  posX: settings.posX,
-                  posY: settings.posY,
-                });
-              }}
-              onPointerMove={(e) => {
-                if (!dragOrigin) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                const dx = ((e.clientX - dragOrigin.x) / Math.max(1, rect.width)) * 100;
-                const dy = ((e.clientY - dragOrigin.y) / Math.max(1, rect.height)) * 100;
-                updateSettings({
-                  posX: Math.round(Math.max(0, Math.min(100, dragOrigin.posX - dx))),
-                  posY: Math.round(Math.max(0, Math.min(100, dragOrigin.posY - dy))),
-                });
-              }}
-              onPointerUp={() => setDragOrigin(null)}
-              onPointerCancel={() => setDragOrigin(null)}
               style={{
                 objectPosition: `${settings.posX}% ${settings.posY}%`,
                 transform: `scale(${zoomScale})`,
               }}
-              className={`w-full h-full object-cover transition-transform duration-150 touch-none ${
-                canEdit && isEditing ? "cursor-grab active:cursor-grabbing select-none" : ""
-              }`}
+              className="relative z-10 w-full h-full object-contain transition-transform duration-150"
             />
-          )
-        ) : fallbackNode && !isEditing ? (
-          <div className="w-full">{fallbackNode}</div>
+          </>
         ) : (
-          <div className="p-6 text-center text-xs text-[#FAF7F0]/70">
-            No image set. Paste a URL or upload a painting below.
-          </div>
-        )}
-
-        {/* Frame / Reposition Pill Button */}
-        {canEdit && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditing((v) => !v);
+          <img
+            src={effectiveSrc}
+            alt={alt}
+            draggable={false}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth && img.naturalHeight) {
+                setNaturalRatio(img.naturalWidth / img.naturalHeight);
+              }
             }}
-            className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-black/80 text-[#E5C158] border border-[#C59B27]/60 text-[11px] font-bold shadow-md hover:bg-black transition"
-          >
-            {hasVisibleImage ? "⚙️ Frame / Reposition" : "⚙️ Upload / Frame Painting"}
-          </button>
+            onPointerDown={(e) => {
+              if (!canEdit || !isEditing) return;
+              e.stopPropagation();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              setDragOrigin({
+                x: e.clientX,
+                y: e.clientY,
+                posX: settings.posX,
+                posY: settings.posY,
+              });
+            }}
+            onPointerMove={(e) => {
+              if (!dragOrigin) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const dx = ((e.clientX - dragOrigin.x) / Math.max(1, rect.width)) * 100;
+              const dy = ((e.clientY - dragOrigin.y) / Math.max(1, rect.height)) * 100;
+              updateSettings({
+                posX: Math.round(Math.max(0, Math.min(100, dragOrigin.posX - dx))),
+                posY: Math.round(Math.max(0, Math.min(100, dragOrigin.posY - dy))),
+              });
+            }}
+            onPointerUp={() => setDragOrigin(null)}
+            onPointerCancel={() => setDragOrigin(null)}
+            style={{
+              objectPosition: `${settings.posX}% ${settings.posY}%`,
+              transform: `scale(${zoomScale})`,
+            }}
+            className={`w-full h-full object-cover transition-transform duration-150 touch-none ${
+              canEdit && isEditing ? "cursor-grab active:cursor-grabbing select-none" : ""
+            }`}
+          />
         )}
-      </div>
+      </SlidePresentationCanvas>
+    );
+  };
+
+  return (
+    <div className={`relative w-full group/frame ${className}`}>
+      <SlidePresentationCanvas
+        id={`heritage-frame-${imageKey}`}
+        isChild={true}
+        label="Border Frame"
+        className="w-full"
+      >
+        <div
+          key={effectiveSrc || "empty-frame"}
+          className={`relative w-full overflow-hidden rounded-xl bg-[#111318] flex items-center justify-center ${aspectClass}`}
+        >
+          {renderInnerMedia()}
+
+          {/* Frame / Reposition Pill Button */}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsEditing((v) => !v);
+              }}
+              className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-black/80 text-[#E5C158] border border-[#C59B27]/60 text-[11px] font-bold shadow-md hover:bg-black transition"
+            >
+              {hasVisibleImage ? "⚙️ Frame / Reposition" : "⚙️ Upload / Frame Painting"}
+            </button>
+          )}
+        </div>
+      </SlidePresentationCanvas>
 
       {/* Inline Frame Editor Popover */}
       {canEdit && isEditing && (

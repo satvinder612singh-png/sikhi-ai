@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/auth-provider";
@@ -1438,6 +1438,9 @@ export interface SlideCanvasState {
   textColor?: string;
   bgColor?: string;
   borderColor?: string;
+  snapStep?: 0 | 10 | 20;
+  scope?: "root" | "child";
+  parentId?: string;
 }
 
 export interface SlidePresentationCanvasProps {
@@ -1448,7 +1451,46 @@ export interface SlidePresentationCanvasProps {
   className?: string;
   style?: React.CSSProperties;
   isFloatingWidget?: boolean;
+  isChild?: boolean;
+  parentId?: string;
+  snapToGrid?: boolean | number;
   extraInspectorContent?: React.ReactNode;
+}
+
+const NestedFrameDepthContext = createContext<string | null>(null);
+const ACTIVE_ENTERED_FRAME_EVENT = "learnsikhi-entered-frame-change";
+let currentEnteredFrameId: string | null = null;
+
+function setEnteredFrameIdGlobal(nextId: string | null) {
+  currentEnteredFrameId = nextId;
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(ACTIVE_ENTERED_FRAME_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function useEnteredFrameId(): [string | null, (next: string | null) => void] {
+  const [enteredId, setEnteredId] = useState<string | null>(currentEnteredFrameId);
+
+  useEffect(() => {
+    const sync = () => setEnteredId(currentEnteredFrameId);
+    window.addEventListener(ACTIVE_ENTERED_FRAME_EVENT, sync);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && currentEnteredFrameId) {
+        setEnteredFrameIdGlobal(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener(ACTIVE_ENTERED_FRAME_EVENT, sync);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  return [enteredId, setEnteredFrameIdGlobal];
 }
 
 type ResizeHandleDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -1491,10 +1533,30 @@ export function SlidePresentationCanvas({
   className = "",
   style,
   isFloatingWidget = false,
+  isChild = false,
+  parentId: explicitParentId,
+  snapToGrid = true,
   extraInspectorContent,
 }: SlidePresentationCanvasProps) {
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
+  const contextParentId = useContext(NestedFrameDepthContext);
+  const resolvedParentId = explicitParentId ?? contextParentId;
+  const isChildNode = Boolean(isChild || resolvedParentId);
+  const [enteredFrameId, setEnteredFrameId] = useEnteredFrameId();
+
+  const isEnteredAsParent = !isChildNode && enteredFrameId === id;
+  const isInteractiveChild =
+    canEdit &&
+    isChildNode &&
+    (resolvedParentId ? enteredFrameId === resolvedParentId : true);
+  const showHandles = canEdit && (!isChildNode ? !isEnteredAsParent : isInteractiveChild);
+
+  const storageKey =
+    isChildNode && resolvedParentId
+      ? `__slide_child_${resolvedParentId}::${id}`
+      : `__slide_canvas_${id}`;
+
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [selected, setSelected] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -1504,45 +1566,70 @@ export function SlidePresentationCanvas({
   const [liveOverride, setLiveOverride] = useState<Partial<SlideCanvasState> | null>(
     null
   );
+  const [smartGuides, setSmartGuides] = useState<{
+    v: boolean;
+    h: boolean;
+    rect?: { top: number; left: number; width: number; height: number };
+  } | null>(null);
 
   const legacySaved = (
     (cms.sectionLayoutMap || {})[`__god_box_${id}`] || {}
   ) as GodModeBoxRecord;
   const slideSaved = (
-    (cms.sectionLayoutMap || {})[`__slide_canvas_${id}`] || {}
+    (cms.sectionLayoutMap || {})[storageKey] || {}
   ) as SlideCanvasState;
 
   const saved: SlideCanvasState = {
-    x: slideSaved.x ?? legacySaved.offsetX ?? 0,
-    y: slideSaved.y ?? legacySaved.offsetY ?? 0,
-    width: slideSaved.width ?? legacySaved.customWidthPx,
-    height: slideSaved.height ?? legacySaved.minHeightPx,
-    widthPreset: slideSaved.widthPreset ?? legacySaved.widthPreset,
+    x: slideSaved.x ?? (isChildNode ? 0 : legacySaved.offsetX ?? 0),
+    y: slideSaved.y ?? (isChildNode ? 0 : legacySaved.offsetY ?? 0),
+    width: slideSaved.width ?? (isChildNode ? undefined : legacySaved.customWidthPx),
+    height: slideSaved.height ?? (isChildNode ? undefined : legacySaved.minHeightPx),
+    widthPreset:
+      slideSaved.widthPreset ?? (isChildNode ? undefined : legacySaved.widthPreset),
     rotation: slideSaved.rotation ?? 0,
     zIndex: slideSaved.zIndex,
     lockAspectRatio: Boolean(slideSaved.lockAspectRatio),
-    alignSelf: slideSaved.alignSelf ?? legacySaved.alignSelf,
+    alignSelf: slideSaved.alignSelf ?? (isChildNode ? undefined : legacySaved.alignSelf),
     textColor: slideSaved.textColor,
     bgColor: slideSaved.bgColor,
     borderColor: slideSaved.borderColor,
+    snapStep:
+      slideSaved.snapStep !== undefined
+        ? slideSaved.snapStep
+        : typeof snapToGrid === "number"
+          ? snapToGrid >= 20
+            ? 20
+            : snapToGrid > 0
+              ? 10
+              : 0
+          : snapToGrid
+            ? 10
+            : 0,
   };
+
+  const activeSnapStep = saved.snapStep ?? 10;
 
   useEffect(() => {
     if (!canEdit) {
       setSelected(false);
       setInspectorOpen(false);
+      if (currentEnteredFrameId === id) {
+        setEnteredFrameIdGlobal(null);
+      }
     }
-  }, [canEdit]);
+  }, [canEdit, id]);
 
   const persistCanvas = async (patch: Partial<SlideCanvasState>) => {
     const nextMerged: SlideCanvasState = {
       ...saved,
       ...patch,
+      scope: isChildNode ? "child" : "root",
+      ...(resolvedParentId ? { parentId: resolvedParentId } : {}),
     };
     await pushAdminCmsPatch({
       sectionLayoutMap: {
         ...(cms.sectionLayoutMap || {}),
-        [`__slide_canvas_${id}`]: nextMerged,
+        [storageKey]: nextMerged,
       },
     });
   };
@@ -1554,7 +1641,7 @@ export function SlidePresentationCanvas({
   };
 
   const handleDragStart = (e: React.PointerEvent) => {
-    if (!canEdit) return;
+    if (!showHandles) return;
     e.preventDefault();
     e.stopPropagation();
     setSelected(true);
@@ -1562,15 +1649,76 @@ export function SlidePresentationCanvas({
     const startY = e.clientY;
     const baseX = saved.x || 0;
     const baseY = saved.y || 0;
+
+    // Measure element & parent container center for magnetic center-alignment guides
+    const el = boxRef.current;
+    const elRect = el ? el.getBoundingClientRect() : null;
+    const parentEl =
+      el && ((el.offsetParent as HTMLElement | null) || el.parentElement);
+    const parentRectRaw = parentEl ? parentEl.getBoundingClientRect() : null;
+
+    const exactCenterX =
+      elRect && parentRectRaw
+        ? Math.round(
+            baseX +
+              (parentRectRaw.left +
+                parentRectRaw.width / 2 -
+                (elRect.left + elRect.width / 2))
+          )
+        : null;
+    const exactCenterY =
+      elRect && parentRectRaw
+        ? Math.round(
+            baseY +
+              (parentRectRaw.top +
+                parentRectRaw.height / 2 -
+                (elRect.top + elRect.height / 2))
+          )
+        : null;
+
+    const guideRect = parentRectRaw
+      ? {
+          top: parentRectRaw.top,
+          left: parentRectRaw.left,
+          width: parentRectRaw.width,
+          height: parentRectRaw.height,
+        }
+      : undefined;
+
     let latestX = baseX;
     let latestY = baseY;
     setActiveOp("drag");
     setDraggingBodyLock(true);
 
     const onMove = (ev: PointerEvent) => {
-      latestX = Math.round(baseX + (ev.clientX - startX));
-      latestY = Math.round(baseY + (ev.clientY - startY));
+      const rawX = baseX + (ev.clientX - startX);
+      const rawY = baseY + (ev.clientY - startY);
+
+      let hitV = false;
+      let hitH = false;
+
+      if (exactCenterX !== null && Math.abs(rawX - exactCenterX) <= 12) {
+        latestX = exactCenterX;
+        hitV = true;
+      } else {
+        latestX =
+          activeSnapStep > 0
+            ? Math.round(rawX / activeSnapStep) * activeSnapStep
+            : Math.round(rawX);
+      }
+
+      if (exactCenterY !== null && Math.abs(rawY - exactCenterY) <= 12) {
+        latestY = exactCenterY;
+        hitH = true;
+      } else {
+        latestY =
+          activeSnapStep > 0
+            ? Math.round(rawY / activeSnapStep) * activeSnapStep
+            : Math.round(rawY);
+      }
+
       setLiveOverride({ x: latestX, y: latestY });
+      setSmartGuides(hitV || hitH ? { v: hitV, h: hitH, rect: guideRect } : null);
     };
 
     const onUp = () => {
@@ -1578,6 +1726,7 @@ export function SlidePresentationCanvas({
       window.removeEventListener("pointerup", onUp);
       setActiveOp("idle");
       setDraggingBodyLock(false);
+      setSmartGuides(null);
       setLiveOverride(null);
       void persistCanvas({ x: latestX, y: latestY });
     };
@@ -1587,7 +1736,7 @@ export function SlidePresentationCanvas({
   };
 
   const handleResizeStart = (e: React.PointerEvent, dir: ResizeHandleDir) => {
-    if (!canEdit) return;
+    if (!showHandles) return;
     e.preventDefault();
     e.stopPropagation();
     setSelected(true);
@@ -1609,6 +1758,11 @@ export function SlidePresentationCanvas({
     setActiveOp("resize");
     setDraggingBodyLock(true);
 
+    const snapVal = (v: number) =>
+      activeSnapStep > 0
+        ? Math.round(v / activeSnapStep) * activeSnapStep
+        : Math.round(v);
+
     const onMove = (ev: PointerEvent) => {
       const dx = ev.clientX - startMouseX;
       const dy = ev.clientY - startMouseY;
@@ -1618,23 +1772,23 @@ export function SlidePresentationCanvas({
       let x = baseX;
       let y = baseY;
 
-      if (dir.includes("e")) w = Math.max(160, Math.round(baseW + dx));
-      if (dir.includes("s")) h = Math.max(48, Math.round(baseH + dy));
+      if (dir.includes("e")) w = Math.max(80, snapVal(baseW + dx));
+      if (dir.includes("s")) h = Math.max(36, snapVal(baseH + dy));
       if (dir.includes("w")) {
-        const candidateW = Math.max(160, Math.round(baseW - dx));
+        const candidateW = Math.max(80, snapVal(baseW - dx));
         x = Math.round(baseX + (baseW - candidateW));
         w = candidateW;
       }
       if (dir.includes("n")) {
-        const candidateH = Math.max(48, Math.round(baseH - dy));
+        const candidateH = Math.max(36, snapVal(baseH - dy));
         y = Math.round(baseY + (baseH - candidateH));
         h = candidateH;
       }
 
       if (saved.lockAspectRatio && (dir.length === 2 || dir === "e" || dir === "w")) {
-        h = Math.max(48, Math.round(w / aspect));
+        h = Math.max(36, Math.round(w / aspect));
       } else if (saved.lockAspectRatio && (dir === "n" || dir === "s")) {
-        w = Math.max(160, Math.round(h * aspect));
+        w = Math.max(80, Math.round(h * aspect));
       }
 
       nextX = x;
@@ -1670,7 +1824,7 @@ export function SlidePresentationCanvas({
   };
 
   const handleRotateStart = (e: React.PointerEvent) => {
-    if (!canEdit) return;
+    if (!showHandles) return;
     e.preventDefault();
     e.stopPropagation();
     setSelected(true);
@@ -1760,6 +1914,14 @@ export function SlidePresentationCanvas({
       : {}),
   };
 
+  const frameContent = !isChildNode ? (
+    <NestedFrameDepthContext.Provider value={id}>
+      {children}
+    </NestedFrameDepthContext.Provider>
+  ) : (
+    children
+  );
+
   return (
     <motion.div
       ref={boxRef}
@@ -1775,24 +1937,52 @@ export function SlidePresentationCanvas({
       }
       style={canvasStyle}
       onClick={() => {
-        if (canEdit) setSelected(true);
+        if (showHandles) setSelected(true);
+      }}
+      onDoubleClick={(e) => {
+        if (!canEdit || isChildNode) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setEnteredFrameId(isEnteredAsParent ? null : id);
+        setSelected(false);
+        setInspectorOpen(false);
       }}
       className={[
         "god-mode-box",
         presetWidthCls,
         alignCls,
-        canEdit
-          ? selected
-            ? "slide-canvas-frame rounded-2xl p-1"
-            : "god-mode-box-active"
-          : "",
+        isEnteredAsParent
+          ? "god-mode-grid rounded-2xl border-2 border-dashed border-[#d4af37] p-1.5 overflow-visible"
+          : showHandles
+            ? selected
+              ? "slide-canvas-frame rounded-2xl p-1"
+              : "god-mode-box-active"
+            : "",
         activeOp !== "idle" ? "god-mode-box-dragging" : "",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {canEdit && (
+      {canEdit && isEnteredAsParent && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#111318]/95 border border-[#d4af37] px-3 py-1.5 text-[11px] font-bold text-[#FAF7F0] shadow-lg"
+        >
+          <span className="text-[#E5C158]">
+            🔍 Inside Frame: {label || id} — Click &amp; drag inner elements (Esc to exit)
+          </span>
+          <button
+            type="button"
+            onClick={() => setEnteredFrameId(null)}
+            className="px-2.5 py-0.5 rounded-lg bg-[#d4af37] text-[#18181B] font-extrabold text-[10px]"
+          >
+            Exit Frame ✓
+          </button>
+        </div>
+      )}
+
+      {showHandles && (
         <>
           {/* Top Rotation Handle + Connector Stem */}
           <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-40">
@@ -1822,16 +2012,20 @@ export function SlidePresentationCanvas({
           {/* Top Floating Drag & Inspector Pill */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-[#0F172A]/92 border border-[#2563EB]/75 px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-lg"
+            className={`mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-lg ${
+              isChildNode
+                ? "bg-[#1E1B4B]/95 border-[#A855F7]/80"
+                : "bg-[#0F172A]/92 border-[#2563EB]/75"
+            }`}
           >
             <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
                 onPointerDown={handleDragStart}
-                title="Drag anywhere on screen"
+                title="Drag anywhere (Magnetic Grid + Center Snapping ON)"
                 className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/25 text-[#93C5FD] border border-[#2563EB]/50 select-none"
               >
-                ⋮⋮ Drag {label || id}
+                ⋮⋮ {isChildNode ? "Child" : "Drag"} {label || id}
               </button>
               <button
                 type="button"
@@ -1848,6 +2042,19 @@ export function SlidePresentationCanvas({
               >
                 ⚙️ Inspector
               </button>
+              {!isChildNode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEnteredFrameId(id);
+                  }}
+                  title="Double-click frame or click here to move inner elements"
+                  className="px-1.5 py-0.5 rounded border border-[#d4af37]/45 text-[#E5C158] hover:bg-[#d4af37]/20"
+                >
+                  🔍 Enter
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-1 opacity-90">
@@ -1892,7 +2099,42 @@ export function SlidePresentationCanvas({
         </>
       )}
 
-      {children}
+      {frameContent}
+
+      {/* Smart Center-Alignment Laser Guides Portal */}
+      {smartGuides?.rect &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: `${smartGuides.rect.top}px`,
+              left: `${smartGuides.rect.left}px`,
+              width: `${smartGuides.rect.width}px`,
+              height: `${smartGuides.rect.height}px`,
+              pointerEvents: "none",
+              zIndex: 99,
+            }}
+          >
+            {smartGuides.v && (
+              <>
+                <div className="smart-guide-v" />
+                <span className="absolute top-2 left-1/2 -translate-x-1/2 rounded bg-pink-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow">
+                  CENTER X 50%
+                </span>
+              </>
+            )}
+            {smartGuides.h && (
+              <>
+                <div className="smart-guide-h" />
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 rounded bg-pink-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow">
+                  CENTER Y 50%
+                </span>
+              </>
+            )}
+          </div>,
+          document.body
+        )}
 
       {/* Floating Figma-Style Canvas Inspector Portal */}
       {canEdit &&
@@ -1907,7 +2149,9 @@ export function SlidePresentationCanvas({
             <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
               <div className="min-w-0">
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-400">
-                  Figma Canvas Inspector
+                  {isChildNode
+                    ? `🧩 Child Element (in ${resolvedParentId || "Card"})`
+                    : "🖼️ Root Frame (Figma Inspector)"}
                 </p>
                 <p className="font-bold truncate text-sm">{label || id}</p>
               </div>
@@ -1918,6 +2162,54 @@ export function SlidePresentationCanvas({
               >
                 ✕
               </button>
+            </div>
+
+            {/* Scope Context Switcher */}
+            {isChildNode && resolvedParentId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setInspectorOpen(false);
+                  setEnteredFrameId(null);
+                }}
+                className="w-full py-1.5 rounded-lg border border-purple-400/50 bg-purple-500/15 text-purple-200 font-bold text-[11px] hover:bg-purple-500/25"
+              >
+                ↑ Exit Child Scope Back to Root Frame
+              </button>
+            ) : !isChildNode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setInspectorOpen(false);
+                  setEnteredFrameId(id);
+                }}
+                className="w-full py-1.5 rounded-lg border border-[#d4af37]/50 bg-[#d4af37]/15 text-[#E5C158] font-bold text-[11px] hover:bg-[#d4af37]/25"
+              >
+                🔍 Double-Click / Enter Frame to Edit Inner Children
+              </button>
+            ) : null}
+
+            {/* Magnetic Grid Snap Toggle */}
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1.5">
+              <span className="text-[10px] font-bold opacity-80">
+                🧲 Grid Snap
+              </span>
+              <div className="flex gap-1">
+                {([10, 20, 0] as const).map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => void persistCanvas({ snapStep: step })}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      activeSnapStep === step
+                        ? "bg-[#2563EB] text-white"
+                        : "bg-white/10 opacity-75"
+                    }`}
+                  >
+                    {step === 0 ? "Off" : `${step}px`}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* X / Y / Rotation */}
