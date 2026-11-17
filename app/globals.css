@@ -720,6 +720,78 @@ a.from-\[\#C59B27\] {
   }
 }
 
+/* Equal-Height Grid Enforcement & Smooth Batch Snap Transition */
+.section-equal-heights {
+  align-items: stretch !important;
+  gap: 24px !important;
+}
+
+.section-equal-heights > [data-canvas-id] {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.section-equal-heights > [data-canvas-id] > :not(button):not(.slide-canvas-handle):not(.god-mode-type-tag) {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.god-mode-snap-animate {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    min-height 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    gap 0.25s ease !important;
+}
+
+/* Admin Live Device Viewport Preview Switcher */
+body[data-preview-viewport="laptop"] main,
+body[data-preview-viewport="laptop"] .min-h-screen > div:not(header):not([role="dialog"]),
+body[data-preview-viewport="laptop"] .min-h-screen > section {
+  max-width: 1280px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border: 2px solid rgba(59, 130, 246, 0.45);
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+  transition: max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+body[data-preview-viewport="mobile"] main,
+body[data-preview-viewport="mobile"] .min-h-screen > div:not(header):not([role="dialog"]),
+body[data-preview-viewport="mobile"] .min-h-screen > section {
+  max-width: 390px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  border: 3px solid rgba(212, 175, 55, 0.72);
+  border-radius: 2rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow-x: hidden !important;
+  transition: max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+body[data-preview-viewport="mobile"] main .grid,
+body[data-preview-viewport="mobile"] .min-h-screen > section .grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+body[data-preview-viewport="mobile"] .god-mode-box:not(.god-mode-floating-widget) {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body[data-preview-viewport="mobile"] .god-mode-desktop-freeform:not(.god-mode-floating-widget),
+body[data-preview-viewport="mobile"] .god-mode-text-editable[data-desktop-freeform="true"] {
+  transform: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 /* Cross-device responsive viewport clamping for free-form God Mode canvases */
 @media (max-width: 768px) {
   body:not(.god-mode-mobile-preview) .god-mode-box:not(.god-mode-floating-widget) {

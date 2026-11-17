@@ -26,7 +26,51 @@ type SectionLayoutInfo = {
   customTitle?: string;
   customSubtitle?: string;
   hidden?: boolean;
+  equalHeights?: boolean;
+  gapPx?: number;
 };
+
+export type AdminDeviceViewport = "full" | "laptop" | "mobile";
+const DEVICE_VIEWPORT_EVENT = "learnsikhi-device-viewport-change";
+let currentDeviceViewport: AdminDeviceViewport = "full";
+
+function setDeviceViewportGlobal(next: AdminDeviceViewport) {
+  currentDeviceViewport = next;
+  if (typeof document !== "undefined") {
+    if (next === "full") {
+      document.body.removeAttribute("data-preview-viewport");
+    } else {
+      document.body.setAttribute("data-preview-viewport", next);
+      if (next === "mobile") {
+        document.body.classList.remove("god-mode-mobile-preview");
+      }
+    }
+  }
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(DEVICE_VIEWPORT_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function useDevicePreviewViewport(): [
+  AdminDeviceViewport,
+  (next: AdminDeviceViewport) => void,
+] {
+  const [viewport, setViewport] = useState<AdminDeviceViewport>(
+    currentDeviceViewport
+  );
+
+  useEffect(() => {
+    const sync = () => setViewport(currentDeviceViewport);
+    window.addEventListener(DEVICE_VIEWPORT_EVENT, sync);
+    return () => window.removeEventListener(DEVICE_VIEWPORT_EVENT, sync);
+  }, []);
+
+  return [viewport, setDeviceViewportGlobal];
+}
 
 export function useVerifiedLiveEdit(): boolean {
   const { user } = useAuth();
@@ -875,16 +919,26 @@ export function InlineSectionBanner({
 }: InlineSectionBannerProps) {
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
+  const bannerRef = useRef<HTMLDivElement | null>(null);
+  const [deviceViewport, setDeviceViewport] = useDevicePreviewViewport();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [alignBusy, setAlignBusy] = useState<string | null>(null);
+  const [alignNotice, setAlignNotice] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [gurmukhi, setGurmukhi] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [badge, setBadge] = useState("");
   const [description, setDescription] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!canEdit && currentDeviceViewport !== "full") {
+      setDeviceViewportGlobal("full");
+    }
+  }, [canEdit]);
 
   if (!canEdit) return null;
 
@@ -897,6 +951,272 @@ export function InlineSectionBanner({
   const align = sec.titleAlign || "left";
   const widthMode = sec.widthMode || "full";
   const currentGrid = cms.layoutConfig?.feedLayout || "grid-3";
+
+  const flashAlignNotice = (msg: string) => {
+    setAlignNotice(msg);
+    window.setTimeout(() => {
+      setAlignNotice((prev) => (prev === msg ? null : prev));
+    }, 2000);
+  };
+
+  const applyBatchSnapSpring = (elements: HTMLElement[]) => {
+    elements.forEach((node) => node.classList.add("god-mode-snap-animate"));
+    window.setTimeout(() => {
+      elements.forEach((node) => node.classList.remove("god-mode-snap-animate"));
+    }, 320);
+  };
+
+  const collectSectionCardGroups = (): {
+    groups: { parentEl: HTMLElement; cards: HTMLElement[] }[];
+    allCards: HTMLElement[];
+  } => {
+    if (typeof document === "undefined") {
+      return { groups: [], allCards: [] };
+    }
+    const scopeRoot =
+      bannerRef.current?.closest("main") ||
+      bannerRef.current?.parentElement ||
+      document.body;
+    const raw = Array.from(
+      scopeRoot.querySelectorAll<HTMLElement>('[data-canvas-id][data-god-card="true"]')
+    ).filter((el) => {
+      if (el.getBoundingClientRect().width <= 0) return false;
+      const scope = el.getAttribute("data-canvas-scope");
+      return scope !== "micro";
+    });
+    const pageScoped = raw.filter(
+      (el) => el.getAttribute("data-canvas-page") === pageKey
+    );
+    const allCards = pageScoped.length > 0 ? pageScoped : raw;
+
+    const byParent = new Map<HTMLElement, HTMLElement[]>();
+    allCards.forEach((card) => {
+      const p = card.parentElement || scopeRoot;
+      const arr = byParent.get(p) || [];
+      arr.push(card);
+      byParent.set(p, arr);
+    });
+
+    const multiCardGroups: { parentEl: HTMLElement; cards: HTMLElement[] }[] = [];
+    byParent.forEach((cards, parentEl) => {
+      if (cards.length >= 2) {
+        multiCardGroups.push({ parentEl, cards });
+      }
+    });
+
+    if (multiCardGroups.length > 0) {
+      return {
+        groups: multiCardGroups,
+        allCards: multiCardGroups.flatMap((g) => g.cards),
+      };
+    }
+
+    const fallbackParent = allCards[0]?.parentElement || (scopeRoot as HTMLElement);
+    return {
+      groups: allCards.length > 0 ? [{ parentEl: fallbackParent, cards: allCards }] : [],
+      allCards,
+    };
+  };
+
+  const resolveCardStorageKey = (cardEl: HTMLElement): string => {
+    return (
+      cardEl.getAttribute("data-storage-key") ||
+      `__slide_canvas_${cardEl.getAttribute("data-canvas-id") || ""}`
+    );
+  };
+
+  const handleAutoAlignRow = async () => {
+    const { groups, allCards } = collectSectionCardGroups();
+    if (allCards.length === 0) {
+      flashAlignNotice("No cards found in section");
+      return;
+    }
+    setAlignBusy("auto");
+    applyBatchSnapSpring([
+      ...groups.map((g) => g.parentEl),
+      ...allCards,
+    ]);
+
+    const rawLayoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
+    const batchPatch: Record<string, unknown> = {
+      ...rawLayoutMap,
+      [sectionId]: {
+        ...sec,
+        equalHeights: true,
+        gapPx: 24,
+      },
+    };
+
+    groups.forEach(({ parentEl }) => {
+      parentEl.classList.add("section-equal-heights");
+    });
+
+    allCards.forEach((cardEl) => {
+      const storageKey = resolveCardStorageKey(cardEl);
+      const prev = ((rawLayoutMap[storageKey] || {}) as Record<string, unknown>);
+      cardEl.style.transform = "";
+      cardEl.style.minHeight = "";
+      cardEl.style.height = "";
+      batchPatch[storageKey] = {
+        ...prev,
+        x: 0,
+        y: 0,
+        xRatio: undefined,
+        transform: undefined,
+        height: undefined,
+        layoutAlign: undefined,
+        alignSelf: undefined,
+        equalHeightRow: true,
+        sectionId,
+      };
+    });
+
+    await pushAdminCmsPatch({
+      sectionLayoutMap: batchPatch,
+    });
+    setAlignBusy(null);
+    flashAlignNotice(`✨ Auto-Aligned ${allCards.length} cards`);
+  };
+
+  const handleMatchHeights = async () => {
+    const { groups, allCards } = collectSectionCardGroups();
+    if (allCards.length === 0) {
+      flashAlignNotice("No cards found in section");
+      return;
+    }
+    setAlignBusy("heights");
+    applyBatchSnapSpring(allCards);
+
+    const rawLayoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
+    const batchPatch: Record<string, unknown> = {
+      ...rawLayoutMap,
+    };
+
+    let matchedMaxH = 0;
+    groups.forEach(({ cards }) => {
+      const maxRectH = Math.max(
+        ...cards.map((c) => c.getBoundingClientRect().height),
+        80
+      );
+      const snappedH = Math.max(80, Math.ceil(maxRectH / 16) * 16);
+      matchedMaxH = Math.max(matchedMaxH, snappedH);
+
+      cards.forEach((cardEl) => {
+        const storageKey = resolveCardStorageKey(cardEl);
+        const prev = ((rawLayoutMap[storageKey] || {}) as Record<string, unknown>);
+        cardEl.style.minHeight = `${snappedH}px`;
+        batchPatch[storageKey] = {
+          ...prev,
+          height: snappedH,
+        };
+      });
+    });
+
+    await pushAdminCmsPatch({
+      sectionLayoutMap: batchPatch,
+    });
+    setAlignBusy(null);
+    flashAlignNotice(`📏 Matched ${allCards.length} cards to ${matchedMaxH}px`);
+  };
+
+  const handleDistributeEvenly = async () => {
+    const { groups, allCards } = collectSectionCardGroups();
+    if (allCards.length < 2) {
+      flashAlignNotice("Need ≥ 2 cards in row");
+      return;
+    }
+    setAlignBusy("distribute");
+    applyBatchSnapSpring(allCards);
+
+    const rawLayoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
+    const batchPatch: Record<string, unknown> = {
+      ...rawLayoutMap,
+    };
+
+    let distributedCount = 0;
+
+    groups.forEach(({ parentEl, cards }) => {
+      const parentRect = parentEl.getBoundingClientRect();
+      const measured = cards.map((el) => ({
+        el,
+        rect: el.getBoundingClientRect(),
+        key: resolveCardStorageKey(el),
+      }));
+
+      // Cluster into horizontal visual rows based on vertical top proximity
+      const sortedByY = [...measured].sort((a, b) => a.rect.top - b.rect.top);
+      const rows: typeof measured[] = [];
+      sortedByY.forEach((item) => {
+        const existingRow = rows.find(
+          (r) => Math.abs(r[0].rect.top - item.rect.top) <= 120
+        );
+        if (existingRow) existingRow.push(item);
+        else rows.push([item]);
+      });
+
+      rows.forEach((row) => {
+        if (row.length < 2) return;
+        row.sort((a, b) => a.rect.left - b.rect.left);
+        const baselineTop = Math.min(...row.map((r) => r.rect.top));
+        const sumWidths = row.reduce((acc, r) => acc + r.rect.width, 0);
+        const minRowLeft = row[0].rect.left;
+        const maxRowRight = row[row.length - 1].rect.right;
+
+        const useParentSpan =
+          parentRect.width >= sumWidths + 16 * (row.length - 1);
+        let cursorLeft = useParentSpan ? parentRect.left : minRowLeft;
+        const gap = useParentSpan
+          ? (parentRect.width - sumWidths) / (row.length - 1)
+          : Math.max(16, (maxRowRight - minRowLeft - sumWidths) / (row.length - 1));
+
+        row.forEach((item) => {
+          const prev = ((rawLayoutMap[item.key] || {}) as {
+            x?: number;
+            y?: number;
+            rotation?: number;
+            [k: string]: unknown;
+          });
+          const curX = typeof prev.x === "number" ? prev.x : 0;
+          const curY = typeof prev.y === "number" ? prev.y : 0;
+          const nextX = Math.round(curX + (cursorLeft - item.rect.left));
+          const nextY = Math.round(curY + (baselineTop - item.rect.top));
+          const rot = typeof prev.rotation === "number" ? prev.rotation : 0;
+
+          item.el.style.transform =
+            nextX !== 0 || nextY !== 0 || rot !== 0
+              ? `translate3d(${nextX}px, ${nextY}px, 0)${rot ? ` rotate(${rot}deg)` : ""}`
+              : "none";
+
+          batchPatch[item.key] = {
+            ...prev,
+            x: nextX,
+            y: nextY,
+            xRatio:
+              parentRect.width > 0
+                ? Math.round((nextX / parentRect.width) * 10000) / 10000
+                : undefined,
+            transform:
+              nextX !== 0 || nextY !== 0
+                ? `translate(${nextX}px, ${nextY}px)`
+                : undefined,
+          };
+
+          cursorLeft += item.rect.width + gap;
+          distributedCount += 1;
+        });
+      });
+    });
+
+    if (distributedCount > 0) {
+      await pushAdminCmsPatch({
+        sectionLayoutMap: batchPatch,
+      });
+      flashAlignNotice(`↔️ Distributed ${distributedCount} cards evenly`);
+    } else {
+      flashAlignNotice("No multi-card horizontal row detected");
+    }
+    setAlignBusy(null);
+  };
 
   const updateSectionLayout = async (patch: Partial<SectionLayoutInfo>) => {
     await pushAdminCmsPatch({
@@ -973,6 +1293,7 @@ export function InlineSectionBanner({
 
   return (
     <div
+      ref={bannerRef}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       className="rounded-2xl border border-dashed border-[#d4af37]/60 bg-[#111318]/95 text-[#FAF7F0] px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-md space-y-2.5 transition-all duration-300 ease-out"
@@ -1102,6 +1423,77 @@ export function InlineSectionBanner({
           >
             + Add New Card Here
           </button>
+        </div>
+      </div>
+
+      {/* Row Alignment & Tidy Engine + Live Device Viewport Preview Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-white/10 pt-2 text-[11px]">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#E5C158]/85 mr-0.5">
+            Tidy Row:
+          </span>
+          <button
+            type="button"
+            disabled={alignBusy !== null}
+            onClick={() => void handleAutoAlignRow()}
+            title="Reset child cards to clean CSS Grid (x:0, y:0), equalize card heights & apply 24px gap"
+            className={`px-2.5 py-1 rounded-lg border font-bold transition ${
+              sec.equalHeights
+                ? "border-emerald-400/70 bg-emerald-500/20 text-emerald-200"
+                : "border-[#d4af37]/50 bg-[#d4af37]/15 text-[#E5C158] hover:bg-[#d4af37]/25"
+            } disabled:opacity-50`}
+          >
+            {alignBusy === "auto" ? "Snapping..." : "✨ Auto-Align Row"}
+          </button>
+          <button
+            type="button"
+            disabled={alignBusy !== null}
+            onClick={() => void handleMatchHeights()}
+            title="Measure tallest card (snapped to 16px) and lock all sibling cards to uniform height"
+            className="px-2.5 py-1 rounded-lg border border-sky-400/45 bg-sky-500/15 text-sky-200 font-bold hover:bg-sky-500/25 transition disabled:opacity-50"
+          >
+            {alignBusy === "heights" ? "Measuring..." : "📏 Match Heights"}
+          </button>
+          <button
+            type="button"
+            disabled={alignBusy !== null}
+            onClick={() => void handleDistributeEvenly()}
+            title="Equalize horizontal spacing across cards in the active row and align to one horizontal baseline"
+            className="px-2.5 py-1 rounded-lg border border-purple-400/45 bg-purple-500/15 text-purple-200 font-bold hover:bg-purple-500/25 transition disabled:opacity-50"
+          >
+            {alignBusy === "distribute" ? "Distributing..." : "↔️ Distribute Evenly"}
+          </button>
+          {alignNotice && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-emerald-200 text-[10px] font-bold">
+              {alignNotice}
+            </span>
+          )}
+        </div>
+
+        <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-black/55 border border-white/15 p-0.5">
+          <span className="px-1.5 text-[10px] font-bold opacity-70 uppercase">
+            Preview:
+          </span>
+          {(
+            [
+              { id: "full", label: "🖥️ Full Monitor (100%)" },
+              { id: "laptop", label: "💻 Laptop (1280px)" },
+              { id: "mobile", label: "📱 Mobile Phone (390px)" },
+            ] as { id: AdminDeviceViewport; label: string }[]
+          ).map((vp) => (
+            <button
+              key={vp.id}
+              type="button"
+              onClick={() => setDeviceViewport(vp.id)}
+              className={`px-2 py-0.5 rounded-lg font-bold transition ${
+                deviceViewport === vp.id
+                  ? "bg-[#2563EB] text-white shadow-sm"
+                  : "text-[#FAF7F0]/80 hover:text-white"
+              }`}
+            >
+              {vp.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -2489,6 +2881,8 @@ export interface SlideCanvasState {
   scope?: "root" | "child" | "micro";
   isMicroElement?: boolean;
   parentId?: string;
+  equalHeightRow?: boolean;
+  sectionId?: string;
   deleted?: boolean;
 }
 
@@ -2672,6 +3066,7 @@ export function clampFloatingWidgetPos(
 
 export function SlidePresentationCanvas({
   id,
+  pageKey = "global",
   label,
   elementType,
   children,
@@ -2727,6 +3122,7 @@ export function SlidePresentationCanvas({
   const [selected, setSelected] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [mobilePreview, toggleMobilePreview] = useMobilePreviewMode();
+  const [deviceViewport] = useDevicePreviewViewport();
   const [toolbarPos, setToolbarPos] = useState<{
     top: number;
     left: number;
@@ -2818,6 +3214,8 @@ export function SlidePresentationCanvas({
     textColor: slideSaved.textColor,
     bgColor: slideSaved.bgColor,
     borderColor: slideSaved.borderColor,
+    equalHeightRow: Boolean(slideSaved.equalHeightRow),
+    sectionId: slideSaved.sectionId,
     deleted: Boolean(slideSaved.deleted),
     snapStep:
       slideSaved.snapStep !== undefined
@@ -3456,8 +3854,19 @@ export function SlidePresentationCanvas({
       : curZ;
 
   // Cross-device viewport clamping for free-form desktop transforms & fixed widths
-  const isNarrowMobile = mounted && viewportWidth <= 768 && !mobilePreview;
-  const maxSafeVwWidth = mounted && viewportWidth > 0 ? Math.max(160, viewportWidth - 24) : undefined;
+  const effectiveViewportW =
+    deviceViewport === "mobile"
+      ? 390
+      : deviceViewport === "laptop"
+        ? Math.min(viewportWidth, 1280)
+        : viewportWidth;
+  const isNarrowMobile =
+    mounted &&
+    ((viewportWidth <= 768 && !mobilePreview) || deviceViewport === "mobile");
+  const maxSafeVwWidth =
+    mounted && effectiveViewportW > 0
+      ? Math.max(160, effectiveViewportW - 24)
+      : undefined;
   const clampedRenderW =
     !isFloatingWidget && curW && !isNarrowMobile
       ? maxSafeVwWidth
@@ -3467,10 +3876,24 @@ export function SlidePresentationCanvas({
   const clampedRenderX =
     !isFloatingWidget && mounted && !isNarrowMobile && curX !== 0
       ? Math.max(
-          -Math.round(viewportWidth * 0.45),
-          Math.min(Math.round(viewportWidth * 0.45), curX)
+          -Math.round(effectiveViewportW * 0.45),
+          Math.min(Math.round(effectiveViewportW * 0.45), curX)
         )
       : curX;
+
+  useEffect(() => {
+    const parentEl = boxRef.current?.parentElement;
+    if (!parentEl || isMicroNode || isFloatingWidget) return;
+    const siblingCards = parentEl.querySelectorAll(
+      ':scope > [data-canvas-id][data-god-card="true"]'
+    );
+    if (siblingCards.length < 2) return;
+    const secEntry = saved.sectionId
+      ? ((cms.sectionLayoutMap?.[saved.sectionId] || {}) as SectionLayoutInfo)
+      : undefined;
+    const shouldEqualize = Boolean(saved.equalHeightRow || secEntry?.equalHeights);
+    parentEl.classList.toggle("section-equal-heights", shouldEqualize);
+  }, [saved.equalHeightRow, saved.sectionId, cms.sectionLayoutMap, isMicroNode, isFloatingWidget]);
 
   const canvasStyle: React.CSSProperties = {
     boxSizing: "border-box",
@@ -3545,6 +3968,9 @@ export function SlidePresentationCanvas({
     <div
       ref={boxRef}
       data-canvas-id={id}
+      data-storage-key={storageKey}
+      data-canvas-page={pageKey}
+      data-canvas-scope={isMicroNode ? "micro" : isChildNode ? "child" : "root"}
       data-god-card={!isMicroNode && !isFloatingWidget ? "true" : undefined}
       data-dragging={activeOp !== "idle" ? "true" : undefined}
       data-edit-mode={canEdit ? "true" : undefined}
@@ -3716,7 +4142,7 @@ export function SlidePresentationCanvas({
             setSelected(true);
           }}
           title={`Drag ${label || id} (16px Magnetic Grid + Sibling Guides; hold Shift to free-move)`}
-          className="mb-1 inline-flex items-center gap-1 rounded-md border border-[#2563EB]/65 bg-[#0F172A]/90 px-2 py-0.5 text-[10px] font-bold text-[#93C5FD] shadow cursor-grab active:cursor-grabbing select-none"
+          className="absolute -top-3 left-2.5 z-40 inline-flex items-center gap-1 rounded-md border border-[#2563EB]/75 bg-[#0F172A]/95 px-2 py-0.5 text-[10px] font-bold text-[#93C5FD] shadow cursor-grab active:cursor-grabbing select-none"
         >
           ✥ {label || id}
         </button>
