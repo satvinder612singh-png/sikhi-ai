@@ -8,6 +8,7 @@ import { Footer } from "@/components/footer";
 import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
 import { useKirtanAudio } from "@/components/kirtan-audio-context";
 import {
+  useAdminEditMode,
   useCmsSiteState,
   resolveCmsFontFamily,
   getPageTransitionClass,
@@ -438,6 +439,7 @@ function NitnemReaderContent() {
   };
 
   const cms = useCmsSiteState();
+  const [liveEditMode] = useAdminEditMode();
   const layoutCfg = cms.layoutConfig || {};
   const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
   const layoutMap = (cms.sectionLayoutMap || {}) as Record<
@@ -487,8 +489,16 @@ function NitnemReaderContent() {
         pageKey="nitnem"
         label="Nitnem Hero Banner"
       >
-      <section className="border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      <section
+        className={`border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)] ${
+          liveEditMode ? "overflow-visible" : ""
+        }`}
+      >
+        <div
+          className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6 ${
+            liveEditMode ? "overflow-visible" : ""
+          }`}
+        >
           <SlidePresentationCanvas
             id="nitnem-hero-intro-block"
             parentId="nitnem-hero-canvas"
@@ -545,40 +555,70 @@ function NitnemReaderContent() {
                   : "flex flex-wrap items-center gap-3 shrink-0"
               }
             >
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentTrack.category === "Background Raag Instrumentals" && isPlaying) {
-                    togglePlayPause();
-                  } else {
-                    startReadingInstrumental();
-                  }
-                }}
-                className={`px-4 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition ${
-                  currentTrack.category === "Background Raag Instrumentals" && isPlaying
-                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] border-[#E5C158] shadow-sm"
-                    : "border-[#C59B27] bg-[#121C15] text-[#E5C158] hover:border-[#D97706]"
-                }`}
+              <SlidePresentationCanvas
+                id="nitnem-hero-btn-music"
+                parentId="nitnem-hero-intro-block"
+                pageKey="nitnem"
+                label="Music Button"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
               >
-                {currentTrack.category === "Background Raag Instrumentals" && isPlaying
-                  ? "⏸ Pause Background Reading Music (25%)"
-                  : "🎻 Play Background Reading Music (Dilruba / Sitar / Veena)"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowMoolMantarDeepDive((v) => !v)}
-                className="px-4 py-2.5 rounded-xl border border-[#C59B27] bg-[#121C15] text-xs font-bold uppercase tracking-wider text-[#E5C158] hover:border-[#D97706] transition"
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentTrack.category === "Background Raag Instrumentals" && isPlaying) {
+                      togglePlayPause();
+                    } else {
+                      startReadingInstrumental();
+                    }
+                  }}
+                  className={`px-4 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition ${
+                    currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                      ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] border-[#E5C158] shadow-sm"
+                      : "border-[#C59B27] bg-[#121C15] text-[#E5C158] hover:border-[#D97706]"
+                  }`}
+                >
+                  {currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                    ? "⏸ Pause Background Reading Music (25%)"
+                    : "🎻 Play Background Reading Music (Dilruba / Sitar / Veena)"}
+                </button>
+              </SlidePresentationCanvas>
+              <SlidePresentationCanvas
+                id="nitnem-hero-btn-mool-mantar"
+                parentId="nitnem-hero-intro-block"
+                pageKey="nitnem"
+                label="Mool Mantar Button"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
               >
-                {showMoolMantarDeepDive
-                  ? "Hide Mool Mantar Deep-Dive"
-                  : "Open Mool Mantar 9-Slide Explorer"}
-              </button>
-              <Link
-                href="/hukamnama"
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                <button
+                  type="button"
+                  onClick={() => setShowMoolMantarDeepDive((v) => !v)}
+                  className="px-4 py-2.5 rounded-xl border border-[#C59B27] bg-[#121C15] text-xs font-bold uppercase tracking-wider text-[#E5C158] hover:border-[#D97706] transition"
+                >
+                  {showMoolMantarDeepDive
+                    ? "Hide Mool Mantar Deep-Dive"
+                    : "Open Mool Mantar 9-Slide Explorer"}
+                </button>
+              </SlidePresentationCanvas>
+              <SlidePresentationCanvas
+                id="nitnem-hero-btn-hukamnama"
+                parentId="nitnem-hero-intro-block"
+                pageKey="nitnem"
+                label="Hukamnama Button"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
               >
-                Today&apos;s Darbar Sahib Hukamnama →
-              </Link>
+                <Link
+                  href="/hukamnama"
+                  className="inline-block px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                >
+                  Today&apos;s Darbar Sahib Hukamnama →
+                </Link>
+              </SlidePresentationCanvas>
             </div>
           </div>
           </SlidePresentationCanvas>
@@ -598,18 +638,28 @@ function NitnemReaderContent() {
                 { id: "extended", label: "੩ · Sukhmani Sahib (24 Ashtpadis), Asa Di Vaar & Ardas" },
               ] as { id: BaniCategory; label: string }[]
             ).map((cat) => (
-              <button
+              <SlidePresentationCanvas
                 key={cat.id}
-                type="button"
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-                  activeCategory === cat.id
-                    ? "bg-[#E5C158] text-[#171917] shadow-sm"
-                    : "bg-[#121C15] text-[#F3ECE0] border border-[#C59B27]/35 hover:border-[#E5C158]"
-                }`}
+                id={`nitnem-cat-${cat.id}`}
+                parentId="nitnem-hero-canvas"
+                pageKey="nitnem"
+                label={`Tab: ${cat.id}`}
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
               >
-                {cat.label}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+                    activeCategory === cat.id
+                      ? "bg-[#E5C158] text-[#171917] shadow-sm"
+                      : "bg-[#121C15] text-[#F3ECE0] border border-[#C59B27]/35 hover:border-[#E5C158]"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              </SlidePresentationCanvas>
             ))}
           </div>
 
@@ -618,43 +668,89 @@ function NitnemReaderContent() {
             {BANI_CATALOG.filter((b) => b.category === activeCategory).map((item) => {
               const selected = item.id === selectedBani.id;
               return (
-                <button
+                <SlidePresentationCanvas
                   key={item.id}
-                  type="button"
-                  onClick={() => handleSelectBani(item)}
-                  className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between hover:-translate-y-0.5 ${
-                    selected
-                      ? "bg-[#FAF6EE] text-[#171917] border-2 border-[#E5C158] shadow-lg"
-                      : "bg-[#1B2A20]/90 text-[#FAF6EE] border-[#C59B27]/40 hover:border-[#E5C158]"
-                  }`}
+                  id={`nitnem-bani-card-${item.id}`}
+                  parentId="nitnem-hero-canvas"
+                  pageKey="nitnem"
+                  label={item.title}
+                  elementType="Card"
+                  className="h-full"
                 >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleSelectBani(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectBani(item);
+                      }
+                    }}
+                    className={`h-full p-4 rounded-2xl border text-left transition-all flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer ${
+                      liveEditMode ? "overflow-visible" : ""
+                    } ${
+                      selected
+                        ? "bg-[#FAF6EE] text-[#171917] border-2 border-[#E5C158] shadow-lg"
+                        : "bg-[#1B2A20]/90 text-[#FAF6EE] border-[#C59B27]/40 hover:border-[#E5C158]"
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <SlidePresentationCanvas
+                          id={`nitnem-bani-num-${item.id}`}
+                          parentId={`nitnem-bani-card-${item.id}`}
+                          pageKey="nitnem"
+                          label="Numeral"
+                          elementType="Badge"
+                          isMicroElement={true}
+                          className="inline-block w-fit"
+                        >
+                          <span
+                            lang="pa"
+                            className={`font-gurmukhi text-xs font-bold px-2 py-0.5 rounded border inline-flex items-center justify-center ${
+                              selected
+                                ? "bg-[#1B2A20] text-[#E5C158] border-[#C59B27]"
+                                : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/40"
+                            }`}
+                          >
+                            {item.numeral}
+                          </span>
+                        </SlidePresentationCanvas>
+                        <SlidePresentationCanvas
+                          id={`nitnem-bani-unit-${item.id}`}
+                          parentId={`nitnem-bani-card-${item.id}`}
+                          pageKey="nitnem"
+                          label="Unit Count"
+                          elementType="Badge"
+                          isMicroElement={true}
+                          className="inline-block w-fit"
+                        >
+                          <span className="text-[10px] uppercase tracking-wider opacity-75">
+                            {item.unitLabel}s
+                          </span>
+                        </SlidePresentationCanvas>
+                      </div>
+                      <GodModeText
+                        id={`nitnem-bani-pa-${item.id}`}
+                        pageKey="nitnem"
+                        tag="p"
                         lang="pa"
-                        className={`font-gurmukhi text-xs font-bold px-2 py-0.5 rounded border ${
-                          selected
-                            ? "bg-[#1B2A20] text-[#E5C158] border-[#C59B27]"
-                            : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/40"
+                        defaultText={item.gurmukhi}
+                        className={`font-gurmukhi text-sm font-bold ${
+                          selected ? "text-[#D97706]" : "text-[#E5C158]"
                         }`}
-                      >
-                        {item.numeral}
-                      </span>
-                      <span className="text-[10px] uppercase tracking-wider opacity-75">
-                        {item.unitLabel}s
-                      </span>
+                      />
+                      <GodModeText
+                        id={`nitnem-bani-title-${item.id}`}
+                        pageKey="nitnem"
+                        tag="h2"
+                        defaultText={item.title}
+                        className="font-serif text-base font-bold mt-0.5"
+                      />
                     </div>
-                    <p
-                      lang="pa"
-                      className={`font-gurmukhi text-sm font-bold ${
-                        selected ? "text-[#D97706]" : "text-[#E5C158]"
-                      }`}
-                    >
-                      {item.gurmukhi}
-                    </p>
-                    <h2 className="font-serif text-base font-bold mt-0.5">{item.title}</h2>
                   </div>
-                </button>
+                </SlidePresentationCanvas>
               );
             })}
           </div>

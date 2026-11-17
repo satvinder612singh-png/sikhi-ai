@@ -9,6 +9,7 @@ import {
 } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
+  useAdminEditMode,
   useCmsSiteState,
   applyCmsOrder,
   resolveCmsFontFamily,
@@ -24,6 +25,7 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
   type InlineTopicEditData,
@@ -582,6 +584,7 @@ function SlideFiveKs({
   onOpenModal: (item: FoundationModalItem) => void;
   cms: CmsSiteState;
 }) {
+  const [liveEditMode] = useAdminEditMode();
   const orderedKs = applyCmsOrder(FIVE_KS, (item) => item.art.artKey, "foundations", cms);
   const [sel, setSel] = useState(0);
   const rawK = orderedKs[Math.min(sel, Math.max(0, orderedKs.length - 1))] || FIVE_KS[0];
@@ -650,7 +653,9 @@ function SlideFiveKs({
               openKakaarModal(k);
             }
           }}
-          className={`rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(kEdit, "grid-2")}`}
+          className={`rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
+            liveEditMode ? "overflow-visible" : ""
+          } ${resolveCmsCardLayoutClass(kEdit, "grid-2")}`}
           style={{
             ...card,
             backgroundColor: kEdit?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -679,15 +684,48 @@ function SlideFiveKs({
               />
             </div>
             <FoundationCardArtwork artKey={k.art.artKey} variant={k.art.variant} title={k.name} heightClass="h-32" compact />
-            <div>
-              <p lang="pa" className={`font-gurmukhi ${gurmukhiCls} font-bold text-[#C59B27]`}>{k.gurmukhi}</p>
-              <h3 style={{ color: kEdit?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${headingCls} font-bold`}>{k.name} — {k.meaning}</h3>
+            <div className="space-y-1">
+              <SlidePresentationCanvas
+                id={`fiveks-pa-${rawK.art.artKey}`}
+                pageKey="foundations"
+                label="Gurmukhi"
+                elementType="Text"
+                isMicroElement={true}
+              >
+                <p lang="pa" className={`font-gurmukhi ${gurmukhiCls} font-bold text-[#C59B27]`}>{k.gurmukhi}</p>
+              </SlidePresentationCanvas>
+              <SlidePresentationCanvas
+                id={`fiveks-title-${rawK.art.artKey}`}
+                pageKey="foundations"
+                label="Title"
+                elementType="Text"
+                isMicroElement={true}
+              >
+                <h3 style={{ color: kEdit?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${headingCls} font-bold`}>{k.name} — {k.meaning}</h3>
+              </SlidePresentationCanvas>
             </div>
-            <p className={`${bodyCls} leading-relaxed`} style={muted}>{k.symbolism}</p>
+            <SlidePresentationCanvas
+              id={`fiveks-desc-${rawK.art.artKey}`}
+              pageKey="foundations"
+              label="Description"
+              elementType="Text"
+              isMicroElement={true}
+            >
+              <p className={`${bodyCls} leading-relaxed`} style={muted}>{k.symbolism}</p>
+            </SlidePresentationCanvas>
           </div>
-          <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-            Read Historical Sakhi &amp; Citations →
-          </span>
+          <SlidePresentationCanvas
+            id={`fiveks-cta-${rawK.art.artKey}`}
+            pageKey="foundations"
+            label="Sakhi CTA"
+            elementType="Badge"
+            isMicroElement={true}
+            className="inline-block w-fit"
+          >
+            <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+              Read Historical Sakhi &amp; Citations →
+            </span>
+          </SlidePresentationCanvas>
         </article>
 
         <div className="md:col-span-3 rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out" style={card}>
@@ -730,6 +768,7 @@ function SlideFiveKs({
 
 /* ----------------------------- SLIDE 3 ----------------------------------- */
 function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) => void }) {
+  const [liveEditMode] = useAdminEditMode();
   const [sel, setSel] = useState(0);
   const g = GURUS[sel];
 
@@ -801,7 +840,9 @@ function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
               openGuruModal(g);
             }
           }}
-          className="lg:col-span-3 rounded-3xl border-2 p-6 sm:p-8 space-y-3 cursor-pointer hover:border-[#C59B27] transition-all"
+          className={`lg:col-span-3 rounded-3xl border-2 p-6 sm:p-8 space-y-3 cursor-pointer hover:border-[#C59B27] transition-all ${
+            liveEditMode ? "overflow-visible" : ""
+          }`}
           style={card}
         >
           <Eyebrow>Guru {g.n} of 10 • {g.life}</Eyebrow>
@@ -861,7 +902,9 @@ function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
             openSggsModal();
           }
         }}
-        className="grid gap-5 rounded-3xl border-2 p-6 md:grid-cols-5 cursor-pointer hover:border-[#C59B27] transition-all"
+        className={`grid gap-5 rounded-3xl border-2 p-6 md:grid-cols-5 cursor-pointer hover:border-[#C59B27] transition-all ${
+          liveEditMode ? "overflow-visible" : ""
+        }`}
         style={card}
       >
         <div className="md:col-span-2">
@@ -901,6 +944,7 @@ function SlidePyare({
   onOpenModal: (item: FoundationModalItem) => void;
   cms: CmsSiteState;
 }) {
+  const [liveEditMode] = useAdminEditMode();
   const orderedPyare = applyCmsOrder(PANJ_PYARE, (p) => p.art.artKey, "foundations", cms);
   const layoutCfg = cms.layoutConfig || {};
   const openPyareModal = (p: (typeof PANJ_PYARE)[number]) => {
@@ -958,7 +1002,9 @@ function SlidePyare({
                   openPyareModal(p);
                 }
               }}
-              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
+              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
+                liveEditMode ? "overflow-visible" : ""
+              } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               style={{
                 ...card,
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -987,14 +1033,56 @@ function SlidePyare({
                   />
                 </div>
                 <FoundationCardArtwork artKey={p.art.artKey} variant={p.art.variant} title={p.name} heightClass="h-32" compact />
-                <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{p.gurmukhi}</p>
-                <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{p.name}</h4>
-                <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{p.from}</p>
-                <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{p.note}</p>
+                <SlidePresentationCanvas
+                  id={`pyare-pa-${p.art.artKey}`}
+                  pageKey="foundations"
+                  label="Gurmukhi"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{p.gurmukhi}</p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`pyare-title-${p.art.artKey}`}
+                  pageKey="foundations"
+                  label="Title"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{p.name}</h4>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`pyare-sub-${p.art.artKey}`}
+                  pageKey="foundations"
+                  label="Origin"
+                  elementType="Badge"
+                  isMicroElement={true}
+                  className="inline-block w-fit"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{p.from}</p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`pyare-desc-${p.art.artKey}`}
+                  pageKey="foundations"
+                  label="Note"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{p.note}</p>
+                </SlidePresentationCanvas>
               </div>
-              <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-                Read Historical Sakhi &amp; Citations →
-              </span>
+              <SlidePresentationCanvas
+                id={`pyare-cta-${p.art.artKey}`}
+                pageKey="foundations"
+                label="Sakhi CTA"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
+              >
+                <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+                  Read Historical Sakhi &amp; Citations →
+                </span>
+              </SlidePresentationCanvas>
             </article>
           );
         })}
@@ -1011,6 +1099,7 @@ function SlideSahibzaade({
   onOpenModal: (item: FoundationModalItem) => void;
   cms: CmsSiteState;
 }) {
+  const [liveEditMode] = useAdminEditMode();
   const orderedSahibzaade = applyCmsOrder(SAHIBZAADE, (s) => s.art.artKey, "foundations", cms);
   const layoutCfg = cms.layoutConfig || {};
   const openSahibzaadaModal = (s: (typeof SAHIBZAADE)[number]) => {
@@ -1080,7 +1169,9 @@ function SlideSahibzaade({
                   openSahibzaadaModal(s);
                 }
               }}
-              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(ov, "grid-2")}`}
+              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
+                liveEditMode ? "overflow-visible" : ""
+              } ${resolveCmsCardLayoutClass(ov, "grid-2")}`}
               style={{
                 ...card,
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -1109,14 +1200,56 @@ function SlideSahibzaade({
                   />
                 </div>
                 <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
-                <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
-                <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
-                <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{ov?.subtitle || `${s.age} • ${s.place}`}</p>
-                <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{s.note}</p>
+                <SlidePresentationCanvas
+                  id={`sahibzaade-pa-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Gurmukhi"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`sahibzaade-title-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Title"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`sahibzaade-sub-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Age & Place"
+                  elementType="Badge"
+                  isMicroElement={true}
+                  className="inline-block w-fit"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{ov?.subtitle || `${s.age} • ${s.place}`}</p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`sahibzaade-desc-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Summary"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{s.note}</p>
+                </SlidePresentationCanvas>
               </div>
-              <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-                Read Historical Sakhi &amp; Citations →
-              </span>
+              <SlidePresentationCanvas
+                id={`sahibzaade-cta-${s.art.artKey}`}
+                pageKey="foundations"
+                label="Sakhi CTA"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
+              >
+                <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+                  Read Historical Sakhi &amp; Citations →
+                </span>
+              </SlidePresentationCanvas>
             </article>
           );
         })}
@@ -1167,6 +1300,7 @@ function SlideShaheeds({
   onOpenModal: (item: FoundationModalItem) => void;
   cms: CmsSiteState;
 }) {
+  const [liveEditMode] = useAdminEditMode();
   const orderedShaheeds = applyCmsOrder(SHAHEEDS, (s) => s.art.artKey, "foundations", cms);
   const layoutCfg = cms.layoutConfig || {};
   const openShaheedModal = (s: (typeof SHAHEEDS)[number]) => {
@@ -1214,7 +1348,9 @@ function SlideShaheeds({
                   openShaheedModal(s);
                 }
               }}
-              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
+              className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
+                liveEditMode ? "overflow-visible" : ""
+              } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               style={{
                 ...card,
                 backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
@@ -1243,14 +1379,56 @@ function SlideShaheeds({
                   />
                 </div>
                 <FoundationCardArtwork artKey={s.art.artKey} variant={s.art.variant} title={s.name} heightClass="h-36" compact />
-                <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
-                <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
-                <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.year}</p>
-                <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{s.note}</p>
+                <SlidePresentationCanvas
+                  id={`shaheed-pa-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Gurmukhi"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>{s.gurmukhi}</p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`shaheed-title-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Title"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <h4 style={{ color: ov?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || layoutCfg.headingScale)} font-bold`}>{s.name}</h4>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`shaheed-year-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Year"
+                  elementType="Badge"
+                  isMicroElement={true}
+                  className="inline-block w-fit"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">{s.year}</p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`shaheed-desc-${s.art.artKey}`}
+                  pageKey="foundations"
+                  label="Summary"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p className={resolveCmsBodyClass(ov?.fontScale || layoutCfg.bodyScale)} style={muted}>{s.note}</p>
+                </SlidePresentationCanvas>
               </div>
-              <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-                Read Historical Sakhi &amp; Citations →
-              </span>
+              <SlidePresentationCanvas
+                id={`shaheed-cta-${s.art.artKey}`}
+                pageKey="foundations"
+                label="Sakhi CTA"
+                elementType="Badge"
+                isMicroElement={true}
+                className="inline-block w-fit"
+              >
+                <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
+                  Read Historical Sakhi &amp; Citations →
+                </span>
+              </SlidePresentationCanvas>
             </article>
           );
         })}
@@ -1342,6 +1520,7 @@ function NS_NAME(i: number) {
 /* ------------------------------- DECK ------------------------------------ */
 export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
   const cms = useCmsSiteState();
+  const [liveEditMode] = useAdminEditMode();
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [modalItem, setModalItem] = useState<FoundationModalItem | null>(null);
@@ -1556,7 +1735,9 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
                       ? resolveCmsFontFamily(ov.fontFamily)
                       : undefined,
                   }}
-                  className={`rounded-2xl border border-[#d4af37]/30 p-4 space-y-2.5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
+                  className={`rounded-2xl border border-[#d4af37]/30 p-4 space-y-2.5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out ${
+                    liveEditMode ? "overflow-visible" : ""
+                  } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <InlineOrderControls
@@ -1584,24 +1765,57 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
                     />
                   )}
                   {(ov?.gurmukhi || ct.gurmukhi) && (
-                    <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>
-                      {ov?.gurmukhi || ct.gurmukhi}
-                    </p>
+                    <SlidePresentationCanvas
+                      id={`custom-pa-${ct.id}`}
+                      pageKey="foundations"
+                      label="Gurmukhi"
+                      elementType="Text"
+                      isMicroElement={true}
+                    >
+                      <p lang="pa" className={`font-gurmukhi ${resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale)} font-semibold text-[#C59B27]`}>
+                        {ov?.gurmukhi || ct.gurmukhi}
+                      </p>
+                    </SlidePresentationCanvas>
                   )}
-                  <h4
-                    style={{ color: ov?.textColor || ct.textColor || layoutCfg.headingTextColor || undefined }}
-                    className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || ct.fontScale || layoutCfg.headingScale)} font-bold`}
+                  <SlidePresentationCanvas
+                    id={`custom-title-${ct.id}`}
+                    pageKey="foundations"
+                    label="Title"
+                    elementType="Text"
+                    isMicroElement={true}
                   >
-                    {ov?.title || ct.title}
-                  </h4>
+                    <h4
+                      style={{ color: ov?.textColor || ct.textColor || layoutCfg.headingTextColor || undefined }}
+                      className={`font-serif ${resolveCmsHeadingClass(ov?.fontScale || ct.fontScale || layoutCfg.headingScale)} font-bold`}
+                    >
+                      {ov?.title || ct.title}
+                    </h4>
+                  </SlidePresentationCanvas>
                   {(ov?.subtitle || ct.subtitle) && (
-                    <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">
-                      {ov?.subtitle || ct.subtitle}
-                    </p>
+                    <SlidePresentationCanvas
+                      id={`custom-sub-${ct.id}`}
+                      pageKey="foundations"
+                      label="Subtitle"
+                      elementType="Badge"
+                      isMicroElement={true}
+                      className="inline-block w-fit"
+                    >
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">
+                        {ov?.subtitle || ct.subtitle}
+                      </p>
+                    </SlidePresentationCanvas>
                   )}
-                  <p className={resolveCmsBodyClass(ov?.fontScale || ct.fontScale || layoutCfg.bodyScale)} style={muted}>
-                    {ov?.description || ct.description}
-                  </p>
+                  <SlidePresentationCanvas
+                    id={`custom-desc-${ct.id}`}
+                    pageKey="foundations"
+                    label="Summary"
+                    elementType="Text"
+                    isMicroElement={true}
+                  >
+                    <p className={resolveCmsBodyClass(ov?.fontScale || ct.fontScale || layoutCfg.bodyScale)} style={muted}>
+                      {ov?.description || ct.description}
+                    </p>
+                  </SlidePresentationCanvas>
                 </article>
               );
             })}

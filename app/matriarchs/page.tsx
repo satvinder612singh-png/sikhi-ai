@@ -7,6 +7,7 @@ import Footer from "@/components/footer";
 import { COMMONS_ART, ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
+  useAdminEditMode,
   useCmsSiteState,
   applyCmsOrder,
   resolveCmsFontFamily,
@@ -21,6 +22,7 @@ import {
   InlineTopicEditor,
   InlineOrderControls,
   InlineSectionBanner,
+  SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
   useGodModeTextValue,
@@ -299,6 +301,7 @@ const CATEGORIES: ("All" | MatriarchCategory)[] = [
 
 export default function MatriarchsPage() {
   const cms = useCmsSiteState();
+  const [liveEditMode] = useAdminEditMode();
   const [selectedCategory, setSelectedCategory] =
     useState<"All" | MatriarchCategory>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -600,7 +603,9 @@ export default function MatriarchsPage() {
                     ? resolveCmsFontFamily(ov.fontFamily)
                     : undefined,
                 }}
-                className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
+                className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 ${
+                  liveEditMode ? "overflow-visible" : ""
+                } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               >
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -652,46 +657,80 @@ export default function MatriarchsPage() {
                 />
 
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <SikhiIcon
-                      name={
-                        profile.category === "Battlefield Commanders"
-                          ? "dhaal"
-                          : "lotus-dome"
-                      }
-                      size={26}
-                    />
-                    <span
-                      lang="pa"
-                      className="h-8 w-8 rounded-lg bg-[#121C15] border border-[#C59B27]/40 font-gurmukhi text-sm font-bold text-[#C59B27] flex items-center justify-center"
-                    >
-                      {profile.numeral}
-                    </span>
-                  </div>
-                  <span
-                    style={{ color: layoutCfg.accentColor || undefined }}
-                    className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30"
+                  <SlidePresentationCanvas
+                    id={`matriarch-icon-${profile.id}`}
+                    pageKey="matriarchs"
+                    label="Emblem & Numeral"
+                    elementType="Icon"
+                    isMicroElement={true}
+                    className="inline-block w-fit"
                   >
-                    {ov?.badge || profile.category}
-                  </span>
+                    <div className="flex items-center gap-2">
+                      <SikhiIcon
+                        name={
+                          profile.category === "Battlefield Commanders"
+                            ? "dhaal"
+                            : "lotus-dome"
+                        }
+                        size={26}
+                      />
+                      <span
+                        lang="pa"
+                        className="h-8 w-8 rounded-lg bg-[#121C15] border border-[#C59B27]/40 font-gurmukhi text-sm font-bold text-[#C59B27] flex items-center justify-center"
+                      >
+                        {profile.numeral}
+                      </span>
+                    </div>
+                  </SlidePresentationCanvas>
+                  <SlidePresentationCanvas
+                    id={`matriarch-badge-${profile.id}`}
+                    pageKey="matriarchs"
+                    label="Category Badge"
+                    elementType="Badge"
+                    isMicroElement={true}
+                    className="inline-block w-fit"
+                  >
+                    <span
+                      style={{ color: layoutCfg.accentColor || undefined }}
+                      className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30 inline-block"
+                    >
+                      {ov?.badge || profile.category}
+                    </span>
+                  </SlidePresentationCanvas>
                 </div>
 
-                <div>
-                  <p
-                    lang="pa"
-                    style={{ color: layoutCfg.accentColor || undefined }}
-                    className={`font-gurmukhi ${gurmukhiSizeCls} font-medium text-[#D97706]`}
+                <div className="space-y-0.5">
+                  <SlidePresentationCanvas
+                    id={`matriarch-pa-${profile.id}`}
+                    pageKey="matriarchs"
+                    label="Gurmukhi Name"
+                    elementType="Text"
+                    isMicroElement={true}
                   >
-                    {profile.gurmukhiName}
-                  </p>
-                  <h2
-                    style={{
-                      color: ov?.textColor || layoutCfg.headingTextColor || undefined,
-                    }}
-                    className={`${cardHeadingCls} font-serif font-bold mt-0.5`}
+                    <p
+                      lang="pa"
+                      style={{ color: layoutCfg.accentColor || undefined }}
+                      className={`font-gurmukhi ${gurmukhiSizeCls} font-medium text-[#D97706]`}
+                    >
+                      {profile.gurmukhiName}
+                    </p>
+                  </SlidePresentationCanvas>
+                  <SlidePresentationCanvas
+                    id={`matriarch-title-${profile.id}`}
+                    pageKey="matriarchs"
+                    label="Title"
+                    elementType="Text"
+                    isMicroElement={true}
                   >
-                    {profile.name}
-                  </h2>
+                    <h2
+                      style={{
+                        color: ov?.textColor || layoutCfg.headingTextColor || undefined,
+                      }}
+                      className={`${cardHeadingCls} font-serif font-bold mt-0.5`}
+                    >
+                      {profile.name}
+                    </h2>
+                  </SlidePresentationCanvas>
                   <p
                     style={{ color: layoutCfg.accentColor || undefined }}
                     className="text-xs font-semibold text-[#C59B27] mt-0.5"
@@ -703,9 +742,17 @@ export default function MatriarchsPage() {
                   </p>
                 </div>
 
-                <p className={`${cardBodyCls} opacity-85 leading-relaxed`}>
-                  {profile.shortSummary}
-                </p>
+                <SlidePresentationCanvas
+                  id={`matriarch-desc-${profile.id}`}
+                  pageKey="matriarchs"
+                  label="Summary"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p className={`${cardBodyCls} opacity-85 leading-relaxed`}>
+                    {profile.shortSummary}
+                  </p>
+                </SlidePresentationCanvas>
 
                 <div className="p-3 rounded-xl bg-[#121C15] border border-[#C59B27]/25 text-xs font-medium text-[#C59B27]">
                   {profile.keyQuoteOrEmblem}
@@ -716,13 +763,22 @@ export default function MatriarchsPage() {
                 <span className="text-[11px] text-[#4A554E] truncate">
                   {profile.primaryCitation}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setActiveProfile(profile)}
-                  className="shrink-0 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                <SlidePresentationCanvas
+                  id={`matriarch-cta-${profile.id}`}
+                  pageKey="matriarchs"
+                  label="Bio Button"
+                  elementType="Badge"
+                  isMicroElement={true}
+                  className="inline-block w-fit shrink-0"
                 >
-                  Read Biography →
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveProfile(profile)}
+                    className="shrink-0 px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                  >
+                    Read Biography →
+                  </button>
+                </SlidePresentationCanvas>
               </div>
             </article>
             );

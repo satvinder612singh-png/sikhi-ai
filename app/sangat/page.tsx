@@ -12,6 +12,7 @@ import {
   EditableHeritageImage,
   compressImageFile,
   saveAndSyncFrame,
+  useAdminEditMode,
   useCmsSiteState,
   writeCmsCache,
   applyCmsOrder,
@@ -798,6 +799,7 @@ function SangatHubContent() {
 
   // SikhStack & SikhInterest unified feed
   const cms = useCmsSiteState();
+  const [liveEditMode] = useAdminEditMode();
   const [feedTab, setFeedTab] = useState<FeedTabId>("all");
   const [curatedLinks, setCuratedLinks] = useState<CuratedLink[]>(CURATED_LINK_SEED);
   const [readingItem, setReadingItem] = useState<FeedItem | null>(null);
@@ -2203,7 +2205,9 @@ function SangatHubContent() {
               : undefined,
             color: heroInline?.textColor || undefined,
           }}
-          className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-6 ${widthCls}`}
+          className={`relative ${
+            liveEditMode ? "overflow-visible" : "overflow-hidden"
+          } rounded-3xl border p-6 sm:p-8 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-6 ${widthCls}`}
         >
           {/* Ambient Heritage Hero Backdrop */}
           {heroBannerUrl && (
@@ -2730,7 +2734,9 @@ function SangatHubContent() {
                               ? resolveCmsFontFamily(ov.fontFamily)
                               : undefined,
                           }}
-                          className={`group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37]/70 transition-all duration-300 ease-out ${cardLayoutCls}`}
+                          className={`group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37]/70 transition-all duration-300 ease-out ${
+                            liveEditMode ? "overflow-visible" : ""
+                          } ${cardLayoutCls}`}
                         >
                           <div className="space-y-3 flex-1">
                             <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -2757,55 +2763,108 @@ function SangatHubContent() {
                               />
                             )}
 
-                            <button
-                              type="button"
+                            <div
+                              role="button"
+                              tabIndex={0}
                               onClick={() => setReadingItem(item)}
-                              className={`w-full space-y-2.5 ${
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setReadingItem(item);
+                                }
+                              }}
+                              className={`w-full space-y-2.5 cursor-pointer ${
                                 ov?.textAlign === "center" ? "text-center" : "text-left"
                               }`}
                             >
-                              <div
-                                style={{
-                                  color: layoutCfg.accentColor || undefined,
-                                }}
-                                className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158] ${
-                                  ov?.textAlign === "center" ? "justify-center" : "justify-between"
-                                }`}
+                              <SlidePresentationCanvas
+                                id={`sangat-card-badge-${item.id}`}
+                                parentId="sangat-feed-canvas"
+                                pageKey="sangat"
+                                label="Badge"
+                                elementType="Badge"
+                                isMicroElement={true}
                               >
-                                <span className="truncate">{badge}</span>
-                                {item.kind === "essay" && (
-                                  <span className="shrink-0 opacity-75">{item.blog.readingTime}</span>
-                                )}
-                              </div>
+                                <div
+                                  style={{
+                                    color: layoutCfg.accentColor || undefined,
+                                  }}
+                                  className={`flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#9A7418] dark:text-[#E5C158] ${
+                                    ov?.textAlign === "center" ? "justify-center" : "justify-between"
+                                  }`}
+                                >
+                                  <span className="truncate">{badge}</span>
+                                  {item.kind === "essay" && (
+                                    <span className="shrink-0 opacity-75">{item.blog.readingTime}</span>
+                                  )}
+                                </div>
+                              </SlidePresentationCanvas>
 
-                              <h3
-                                style={{
-                                  color: ov?.textColor || layoutCfg.headingTextColor || undefined,
-                                }}
-                                className={`${cardHeadingCls} font-extrabold leading-snug group-hover:text-[#9A7418] dark:group-hover:text-[#E5C158] transition`}
+                              <SlidePresentationCanvas
+                                id={`sangat-card-title-${item.id}`}
+                                parentId="sangat-feed-canvas"
+                                pageKey="sangat"
+                                label="Title"
+                                elementType="Text"
+                                isMicroElement={true}
                               >
-                                {item.title}
-                              </h3>
+                                <h3
+                                  style={{
+                                    color: ov?.textColor || layoutCfg.headingTextColor || undefined,
+                                  }}
+                                  className={`${cardHeadingCls} font-extrabold leading-snug group-hover:text-[#9A7418] dark:group-hover:text-[#E5C158] transition`}
+                                >
+                                  {item.title}
+                                </h3>
+                              </SlidePresentationCanvas>
 
-                              <p className="text-xs font-semibold opacity-75">
-                                By {displayContributor(item.byline)}
-                              </p>
+                              <SlidePresentationCanvas
+                                id={`sangat-card-byline-${item.id}`}
+                                parentId="sangat-feed-canvas"
+                                pageKey="sangat"
+                                label="Byline"
+                                elementType="Text"
+                                isMicroElement={true}
+                              >
+                                <p className="text-xs font-semibold opacity-75">
+                                  By {displayContributor(item.byline)}
+                                </p>
+                              </SlidePresentationCanvas>
 
-                              <p className={`${cardBodyCls} opacity-80 leading-relaxed line-clamp-2`}>
-                                {item.preview}
-                              </p>
-                            </button>
+                              <SlidePresentationCanvas
+                                id={`sangat-card-desc-${item.id}`}
+                                parentId="sangat-feed-canvas"
+                                pageKey="sangat"
+                                label="Summary"
+                                elementType="Text"
+                                isMicroElement={true}
+                              >
+                                <p className={`${cardBodyCls} opacity-80 leading-relaxed line-clamp-2`}>
+                                  {item.preview}
+                                </p>
+                              </SlidePresentationCanvas>
+                            </div>
                           </div>
 
                           <div className="pt-4 mt-4 border-t border-[#C59B27]/15 space-y-2.5">
                             <div className="flex items-center justify-between gap-2 text-xs">
-                              <button
-                                type="button"
-                                onClick={() => setReadingItem(item)}
-                                className="font-bold text-[#9A7418] dark:text-[#E5C158] hover:underline"
+                              <SlidePresentationCanvas
+                                id={`sangat-card-cta-${item.id}`}
+                                parentId="sangat-feed-canvas"
+                                pageKey="sangat"
+                                label="Read CTA"
+                                elementType="Badge"
+                                isMicroElement={true}
+                                className="inline-block w-fit"
                               >
-                                Read Summary →
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setReadingItem(item)}
+                                  className="font-bold text-[#9A7418] dark:text-[#E5C158] hover:underline"
+                                >
+                                  Read Summary →
+                                </button>
+                              </SlidePresentationCanvas>
 
                               {item.kind === "link" && (
                                 <a

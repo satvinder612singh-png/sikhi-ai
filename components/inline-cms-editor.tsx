@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
 import { useAuth } from "@/components/auth-provider";
 import {
   useAdminEditMode,
@@ -997,6 +996,13 @@ interface GodModeTextRecord {
   textSize?: GodModeTextSize;
   textColor?: string;
   bgColor?: string;
+  x?: number;
+  y?: number;
+  transform?: string;
+  width?: number;
+  height?: number;
+  padding?: number;
+  zIndex?: number;
 }
 
 interface GodModePageScopeRecord {
@@ -1062,11 +1068,33 @@ export function GodModeText({
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
   const elRef = useRef<HTMLElement | null>(null);
+  const textOpRef = useRef<{
+    op: "drag" | "resize";
+    dir?: "e" | "s" | "se";
+    startClientX: number;
+    startClientY: number;
+    initialX: number;
+    initialY: number;
+    initialW: number;
+    initialH: number;
+    latestX: number;
+    latestY: number;
+    latestW: number;
+    latestH: number;
+    moved: boolean;
+    rafId: number | null;
+  } | null>(null);
+
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [selected, setSelected] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 80, left: 24 });
 
   const elRecord = (cms.topicEdits?.[id] || {}) as CmsTopicEdit & GodModeTextRecord;
+  const layoutTextRecord = (
+    (cms.sectionLayoutMap || {})[`__god_text_${id}`] || {}
+  ) as GodModeTextRecord;
   const pageScope = (
     (cms.sectionLayoutMap || {})[`__god_page_${pageKey}`] || {}
   ) as GodModePageScopeRecord;
@@ -1077,12 +1105,40 @@ export function GodModeText({
   const resolvedTextColor = elRecord.textColor || pageScope.textColor;
   const resolvedBgColor = elRecord.bgColor || pageScope.bgColor;
 
+  const savedX = elRecord.x ?? layoutTextRecord.x ?? 0;
+  const savedY = elRecord.y ?? layoutTextRecord.y ?? 0;
+  const savedW = elRecord.width ?? layoutTextRecord.width;
+  const savedH = elRecord.height ?? layoutTextRecord.height;
+  const savedPad = elRecord.padding ?? layoutTextRecord.padding;
+  const savedZ = elRecord.zIndex ?? layoutTextRecord.zIndex;
+
   const [draftText, setDraftText] = useState(resolvedText);
   const [draftFont, setDraftFont] = useState<CmsFontFamily | "">("");
   const [draftSize, setDraftSize] = useState<GodModeTextSize | "">("");
   const [draftTextColor, setDraftTextColor] = useState("");
   const [draftBgColor, setDraftBgColor] = useState("");
+  const [draftPadding, setDraftPadding] = useState<string>("");
+  const [draftZIndex, setDraftZIndex] = useState<string>("");
   const [scope, setScope] = useState<GodModeScope>("element");
+
+  useEffect(() => {
+    if (!canEdit) {
+      setHovered(false);
+      setSelected(false);
+      setOpen(false);
+    }
+  }, [canEdit]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const onOutside = (e: PointerEvent) => {
+      if (elRef.current && !elRef.current.contains(e.target as Node)) {
+        setSelected(false);
+      }
+    };
+    window.addEventListener("pointerdown", onOutside);
+    return () => window.removeEventListener("pointerdown", onOutside);
+  }, [selected]);
 
   useEffect(() => {
     if (!open) return;
@@ -1091,20 +1147,250 @@ export function GodModeText({
     setDraftSize(resolvedSize || "");
     setDraftTextColor(resolvedTextColor || "");
     setDraftBgColor(resolvedBgColor || "");
+    setDraftPadding(typeof savedPad === "number" ? String(savedPad) : "");
+    setDraftZIndex(typeof savedZ === "number" ? String(savedZ) : "");
     setScope("element");
-  }, [open, resolvedText, resolvedFont, resolvedSize, resolvedTextColor, resolvedBgColor]);
+  }, [
+    open,
+    resolvedText,
+    resolvedFont,
+    resolvedSize,
+    resolvedTextColor,
+    resolvedBgColor,
+    savedPad,
+    savedZ,
+  ]);
+
+  const persistTextSpatial = async (patch: Partial<GodModeTextRecord>) => {
+    const nextX = patch.x !== undefined ? patch.x : savedX;
+    const nextY = patch.y !== undefined ? patch.y : savedY;
+    const spatialPayload: Partial<GodModeTextRecord> = {
+      ...patch,
+      transform:
+        nextX !== 0 || nextY !== 0
+          ? `translate3d(${nextX}px, ${nextY}px, 0)`
+          : undefined,
+    };
+    await pushAdminCmsPatch({
+      topicEdits: {
+        [id]: {
+          ...elRecord,
+          ...spatialPayload,
+        } as CmsTopicEdit,
+      },
+      sectionLayoutMap: {
+        ...(cms.sectionLayoutMap || {}),
+        [`__god_text_${id}`]: {
+          ...layoutTextRecord,
+          ...spatialPayload,
+        },
+      },
+    });
+  };
+
+  const handleTextDragStart = (e: React.PointerEvent) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const captureTarget = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    try {
+      captureTarget.setPointerCapture(pointerId);
+    } catch {
+      // ignore if unsupported
+    }
+    setSelected(true);
+
+    const el = elRef.current;
+    if (!el) return;
+    el.setAttribute("data-dragging", "true");
+    el.classList.add("is-actively-dragging");
+
+    textOpRef.current = {
+      op: "drag",
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      initialX: savedX,
+      initialY: savedY,
+      initialW: savedW || 0,
+      initialH: savedH || 0,
+      latestX: savedX,
+      latestY: savedY,
+      latestW: savedW || 0,
+      latestH: savedH || 0,
+      moved: false,
+      rafId: null,
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      const snap = textOpRef.current;
+      if (!snap) return;
+      const dx = ev.clientX - snap.startClientX;
+      const dy = ev.clientY - snap.startClientY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        snap.moved = true;
+      }
+      snap.latestX = Math.round(snap.initialX + dx);
+      snap.latestY = Math.round(snap.initialY + dy);
+
+      if (snap.rafId === null) {
+        snap.rafId = window.requestAnimationFrame(() => {
+          const cur = textOpRef.current;
+          if (!cur || !elRef.current) return;
+          cur.rafId = null;
+          elRef.current.style.transform = `translate3d(${cur.latestX}px, ${cur.latestY}px, 0)`;
+        });
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      try {
+        if (captureTarget.hasPointerCapture(pointerId)) {
+          captureTarget.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      const snap = textOpRef.current;
+      textOpRef.current = null;
+      if (snap?.rafId !== null && snap?.rafId !== undefined) {
+        window.cancelAnimationFrame(snap.rafId);
+      }
+      if (elRef.current) {
+        elRef.current.removeAttribute("data-dragging");
+        elRef.current.classList.remove("is-actively-dragging");
+      }
+      if (snap?.moved) {
+        void persistTextSpatial({ x: snap.latestX, y: snap.latestY });
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
+
+  const handleTextResizeStart = (
+    e: React.PointerEvent,
+    dir: "e" | "s" | "se"
+  ) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const captureTarget = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    try {
+      captureTarget.setPointerCapture(pointerId);
+    } catch {
+      // ignore
+    }
+    setSelected(true);
+
+    const el = elRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const initialW = savedW || Math.max(24, Math.round(rect.width));
+    const initialH = savedH || Math.max(20, Math.round(rect.height));
+
+    el.setAttribute("data-dragging", "true");
+    el.classList.add("is-actively-dragging");
+
+    textOpRef.current = {
+      op: "resize",
+      dir,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      initialX: savedX,
+      initialY: savedY,
+      initialW,
+      initialH,
+      latestX: savedX,
+      latestY: savedY,
+      latestW: initialW,
+      latestH: initialH,
+      moved: false,
+      rafId: null,
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      const snap = textOpRef.current;
+      if (!snap) return;
+      const dx = ev.clientX - snap.startClientX;
+      const dy = ev.clientY - snap.startClientY;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        snap.moved = true;
+      }
+      if (dir === "e" || dir === "se") {
+        snap.latestW = Math.max(24, Math.round(snap.initialW + dx));
+      }
+      if (dir === "s" || dir === "se") {
+        snap.latestH = Math.max(20, Math.round(snap.initialH + dy));
+      }
+
+      if (snap.rafId === null) {
+        snap.rafId = window.requestAnimationFrame(() => {
+          const cur = textOpRef.current;
+          if (!cur || !elRef.current) return;
+          cur.rafId = null;
+          if (dir === "e" || dir === "se") {
+            elRef.current.style.width = `${cur.latestW}px`;
+            elRef.current.style.maxWidth = "none";
+          }
+          if (dir === "s" || dir === "se") {
+            elRef.current.style.minHeight = `${cur.latestH}px`;
+          }
+        });
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      try {
+        if (captureTarget.hasPointerCapture(pointerId)) {
+          captureTarget.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      const snap = textOpRef.current;
+      textOpRef.current = null;
+      if (snap?.rafId !== null && snap?.rafId !== undefined) {
+        window.cancelAnimationFrame(snap.rafId);
+      }
+      if (elRef.current) {
+        elRef.current.removeAttribute("data-dragging");
+        elRef.current.classList.remove("is-actively-dragging");
+      }
+      if (snap?.moved) {
+        const patch: Partial<GodModeTextRecord> = {};
+        if (dir === "e" || dir === "se") patch.width = snap.latestW;
+        if (dir === "s" || dir === "se") patch.height = snap.latestH;
+        void persistTextSpatial(patch);
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
 
   const openToolbar = (e: React.MouseEvent) => {
     if (!canEdit) return;
     e.preventDefault();
     e.stopPropagation();
+    setSelected(true);
     const target = elRef.current || (e.currentTarget as HTMLElement);
     const rect = target.getBoundingClientRect();
     const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
     const vh = typeof window !== "undefined" ? window.innerHeight : 768;
     const desiredLeft = Math.max(12, Math.min(rect.left, vw - 372));
     const desiredTop =
-      rect.bottom + 340 < vh ? rect.bottom + 8 : Math.max(12, rect.top - 340);
+      rect.bottom + 360 < vh ? rect.bottom + 8 : Math.max(12, rect.top - 360);
     setPos({ top: desiredTop, left: desiredLeft });
     setOpen(true);
   };
@@ -1114,9 +1400,20 @@ export function GodModeText({
     e.stopPropagation();
     setSaving(true);
 
-    const textPayload = {
+    const parsedPad =
+      draftPadding.trim() !== "" && Number.isFinite(Number(draftPadding))
+        ? Math.max(0, Number(draftPadding))
+        : undefined;
+    const parsedZ =
+      draftZIndex.trim() !== "" && Number.isFinite(Number(draftZIndex))
+        ? Number(draftZIndex)
+        : undefined;
+
+    const textPayload: Partial<GodModeTextRecord & { title?: string }> = {
       text: draftText,
       title: draftText,
+      padding: parsedPad,
+      zIndex: parsedZ,
     };
     const stylePayload: Partial<GodModePageScopeRecord> = {
       fontFamily: draftFont || undefined,
@@ -1192,30 +1489,75 @@ export function GodModeText({
           textSize: undefined,
           textColor: undefined,
           bgColor: undefined,
+          x: undefined,
+          y: undefined,
+          transform: undefined,
+          width: undefined,
+          height: undefined,
+          padding: undefined,
+          zIndex: undefined,
         } as CmsTopicEdit,
+      },
+      sectionLayoutMap: {
+        ...(cms.sectionLayoutMap || {}),
+        [`__god_text_${id}`]: {},
       },
     });
     setSaving(false);
     setOpen(false);
   };
 
+  const hasSpatialStyle =
+    savedX !== 0 ||
+    savedY !== 0 ||
+    typeof savedW === "number" ||
+    typeof savedH === "number" ||
+    typeof savedPad === "number" ||
+    typeof savedZ === "number";
+
   const mergedClassName = [
     className,
     resolveGodModeSizeClass(resolvedSize),
     canEdit ? "god-mode-text-editable" : "",
+    canEdit && selected ? "god-mode-selected" : "",
+    canEdit && hovered && !selected ? "god-mode-hover" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const activeZIndex =
+    canEdit && (selected || hovered)
+      ? Math.max(60, typeof savedZ === "number" ? savedZ : 60)
+      : savedZ;
+
   const mergedStyle: React.CSSProperties = {
     ...style,
+    ...(canEdit || hasSpatialStyle
+      ? {
+          position: style?.position ?? "relative",
+          ...(tag === "span" && !style?.display ? { display: "inline-block" } : {}),
+        }
+      : {}),
+    ...(savedX !== 0 || savedY !== 0
+      ? { transform: `translate3d(${savedX}px, ${savedY}px, 0)` }
+      : {}),
+    ...(typeof savedW === "number" ? { width: `${savedW}px`, maxWidth: "none" } : {}),
+    ...(typeof savedH === "number" ? { minHeight: `${savedH}px` } : {}),
+    ...(typeof savedPad === "number" ? { padding: `${savedPad}px` } : {}),
+    ...(typeof activeZIndex === "number" ? { zIndex: activeZIndex } : {}),
     ...(resolvedFont ? { fontFamily: resolveCmsFontFamily(resolvedFont) } : {}),
     ...(resolvedTextColor ? { color: resolvedTextColor } : {}),
     ...(resolvedBgColor
       ? {
           backgroundColor: resolvedBgColor,
-          paddingLeft: style?.paddingLeft ?? "0.35em",
-          paddingRight: style?.paddingRight ?? "0.35em",
+          paddingLeft:
+            typeof savedPad === "number"
+              ? `${savedPad}px`
+              : (style?.paddingLeft ?? "0.35em"),
+          paddingRight:
+            typeof savedPad === "number"
+              ? `${savedPad}px`
+              : (style?.paddingRight ?? "0.35em"),
           borderRadius: style?.borderRadius ?? "0.35rem",
         }
       : {}),
@@ -1230,9 +1572,76 @@ export function GodModeText({
         lang={lang}
         style={mergedStyle}
         className={mergedClassName}
+        onMouseEnter={
+          canEdit
+            ? (e) => {
+                e.stopPropagation();
+                setHovered(true);
+              }
+            : undefined
+        }
+        onMouseLeave={canEdit ? () => setHovered(false) : undefined}
+        onPointerDown={
+          canEdit
+            ? (e) => {
+                e.stopPropagation();
+                setSelected(true);
+              }
+            : undefined
+        }
         onClick={canEdit ? openToolbar : undefined}
-        title={canEdit ? `Click to edit "${id}" (God Mode)` : undefined}
+        title={canEdit ? `Click to edit or drag/resize "${id}"` : undefined}
       >
+        {canEdit && (hovered || selected) && (
+          <>
+            <span
+              role="button"
+              tabIndex={0}
+              onPointerDown={handleTextDragStart}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              title="Drag to move anywhere inside card"
+              className="absolute -top-5 left-0 z-[65] inline-flex items-center gap-0.5 rounded bg-[#2563EB] px-1.5 py-0.5 text-[9px] font-extrabold leading-none text-white shadow cursor-grab active:cursor-grabbing select-none whitespace-nowrap"
+            >
+              ✥ Drag
+            </span>
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Resize width East"
+              onPointerDown={(e) => handleTextResizeStart(e, "e")}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              className="slide-canvas-handle top-1/2 -right-1.5 -translate-y-1/2 cursor-ew-resize"
+            />
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Resize height South"
+              onPointerDown={(e) => handleTextResizeStart(e, "s")}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              className="slide-canvas-handle -bottom-1.5 left-1/2 -translate-x-1/2 cursor-ns-resize"
+            />
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Resize corner South-East"
+              onPointerDown={(e) => handleTextResizeStart(e, "se")}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              className="slide-canvas-handle -bottom-1.5 -right-1.5 cursor-nwse-resize"
+            />
+          </>
+        )}
         {resolvedText}
       </Tag>
 
@@ -1249,6 +1658,7 @@ export function GodModeText({
           >
             <div
               onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
               className="fixed w-[355px] max-w-[calc(100vw-24px)] rounded-2xl border-2 border-[#d4af37] bg-[#111318]/98 text-[#FAF7F0] p-4 shadow-2xl shadow-black/50 backdrop-blur-md space-y-3 text-xs z-[95]"
@@ -1347,6 +1757,34 @@ export function GodModeText({
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-0.5">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider opacity-75">
+                      Padding (px)
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Auto"
+                      value={draftPadding}
+                      onChange={(e) => setDraftPadding(e.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs text-[#FAF7F0]"
+                    />
+                  </label>
+                  <label className="space-y-0.5">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider opacity-75">
+                      Z-Index Layer
+                    </span>
+                    <input
+                      type="number"
+                      placeholder="Auto (60 selected)"
+                      value={draftZIndex}
+                      onChange={(e) => setDraftZIndex(e.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs text-[#FAF7F0]"
+                    />
+                  </label>
                 </div>
 
                 <div>
@@ -1499,34 +1937,28 @@ function useHoveredCanvasId(): [string | null, (next: string | null) => void] {
   return [hoveredId, setHoveredCanvasIdGlobal];
 }
 
-function projectDeltaToLocal(
-  parentEl: HTMLElement | null,
+type InvMatrix2D = [number, number, number, number, number];
+
+function captureInverseMatrix(parentEl: HTMLElement | null): InvMatrix2D | null {
+  if (!parentEl || typeof window === "undefined") return null;
+  const t = window.getComputedStyle(parentEl).transform;
+  const m = t && t !== "none" ? t.match(/^matrix\(([^)]+)\)$/) : null;
+  if (!m) return null;
+  const nums = m[1].split(",").map((v) => Number.parseFloat(v.trim()));
+  if (nums.length < 4 || nums.some((n) => !Number.isFinite(n))) return null;
+  const det = nums[0] * nums[3] - nums[1] * nums[2];
+  return Math.abs(det) >= 1e-4 ? [nums[0], nums[1], nums[2], nums[3], det] : null;
+}
+
+function applyInverseMatrix(
+  inv: InvMatrix2D | null,
   dxScreen: number,
   dyScreen: number
 ): { dx: number; dy: number } {
-  if (!parentEl || typeof window === "undefined") {
-    return { dx: dxScreen, dy: dyScreen };
-  }
-  const transform = window.getComputedStyle(parentEl).transform;
-  if (!transform || transform === "none") {
-    return { dx: dxScreen, dy: dyScreen };
-  }
-  const match = transform.match(/^matrix\(([^)]+)\)$/);
-  if (!match) {
-    return { dx: dxScreen, dy: dyScreen };
-  }
-  const nums = match[1].split(",").map((v) => Number.parseFloat(v.trim()));
-  if (nums.length < 4 || nums.some((n) => !Number.isFinite(n))) {
-    return { dx: dxScreen, dy: dyScreen };
-  }
-  const [a, b, c, d] = nums;
-  const det = a * d - b * c;
-  if (Math.abs(det) < 1e-4) {
-    return { dx: dxScreen, dy: dyScreen };
-  }
+  if (!inv) return { dx: dxScreen, dy: dyScreen };
   return {
-    dx: (d * dxScreen - c * dyScreen) / det,
-    dy: (-b * dxScreen + a * dyScreen) / det,
+    dx: (inv[3] * dxScreen - inv[2] * dyScreen) / inv[4],
+    dy: (-inv[1] * dxScreen + inv[0] * dyScreen) / inv[4],
   };
 }
 
@@ -1619,10 +2051,7 @@ export function SlidePresentationCanvas({
   const [globalHoveredId, setGlobalHoveredId] = useHoveredCanvasId();
 
   const isEnteredAsParent = !isChildNode && enteredFrameId === id;
-  const isInteractiveChild =
-    canEdit &&
-    isChildNode &&
-    (isMicroNode || (resolvedParentId ? enteredFrameId === resolvedParentId : true));
+  const isInteractiveChild = canEdit && isChildNode;
   const showHandles = canEdit && (!isChildNode ? !isEnteredAsParent : isInteractiveChild);
 
   const storageKey = isMicroNode
@@ -1634,6 +2063,22 @@ export function SlidePresentationCanvas({
       : `__slide_canvas_${id}`;
 
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const dragSnapshotRef = useRef<{
+    op: "drag" | "resize" | "rotate";
+    startClientX: number;
+    startClientY: number;
+    initialX: number;
+    initialY: number;
+    initialW: number;
+    initialH: number;
+    latestX: number;
+    latestY: number;
+    latestW: number;
+    latestH: number;
+    latestRot: number;
+    moved: boolean;
+    rafId: number | null;
+  } | null>(null);
   const hovered = showHandles && globalHoveredId === id;
   const [selected, setSelected] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -1656,9 +2101,6 @@ export function SlidePresentationCanvas({
   const [activeOp, setActiveOp] = useState<
     "idle" | "drag" | "resize" | "rotate"
   >("idle");
-  const [liveOverride, setLiveOverride] = useState<Partial<SlideCanvasState> | null>(
-    null
-  );
   const [smartGuides, setSmartGuides] = useState<{
     v: boolean;
     h: boolean;
@@ -1780,22 +2222,34 @@ export function SlidePresentationCanvas({
     if (!showHandles) return;
     e.preventDefault();
     e.stopPropagation();
+    const captureTarget = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    try {
+      captureTarget.setPointerCapture(pointerId);
+    } catch {
+      // ignore if unsupported
+    }
     setSelected(true);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const baseX = saved.x || 0;
-    const baseY = saved.y || 0;
 
-    // Measure element & parent card container for localized coordinates and magnetic alignment
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const initialX = saved.x || 0;
+    const initialY = saved.y || 0;
+    const baseRot = saved.rotation || 0;
+
+    // Measure element & parent card container ONCE on pointerdown (never during pointermove)
     const el = boxRef.current;
     const elRect = el ? el.getBoundingClientRect() : null;
     const parentEl = findParentCardElement(el);
     const parentRectRaw = parentEl ? parentEl.getBoundingClientRect() : null;
 
+    // Capture static inverse-transform projector once on pointerdown
+    const invMatrix = isMicroNode ? captureInverseMatrix(parentEl) : null;
+
     const exactCenterX =
       elRect && parentRectRaw
         ? Math.round(
-            baseX +
+            initialX +
               (parentRectRaw.left +
                 parentRectRaw.width / 2 -
                 (elRect.left + elRect.width / 2))
@@ -1804,7 +2258,7 @@ export function SlidePresentationCanvas({
     const exactCenterY =
       elRect && parentRectRaw
         ? Math.round(
-            baseY +
+            initialY +
               (parentRectRaw.top +
                 parentRectRaw.height / 2 -
                 (elRect.top + elRect.height / 2))
@@ -1820,91 +2274,170 @@ export function SlidePresentationCanvas({
         }
       : undefined;
 
-    let latestX = baseX;
-    let latestY = baseY;
-    let moved = false;
+    if (el) {
+      el.setAttribute("data-dragging", "true");
+      el.classList.add("is-actively-dragging");
+    }
+
+    dragSnapshotRef.current = {
+      op: "drag",
+      startClientX,
+      startClientY,
+      initialX,
+      initialY,
+      initialW: elRect ? Math.round(elRect.width) : 0,
+      initialH: elRect ? Math.round(elRect.height) : 0,
+      latestX: initialX,
+      latestY: initialY,
+      latestW: elRect ? Math.round(elRect.width) : 0,
+      latestH: elRect ? Math.round(elRect.height) : 0,
+      latestRot: baseRot,
+      moved: false,
+      rafId: null,
+    };
+
+    let prevHitV = false;
+    let prevHitH = false;
     setActiveOp("drag");
     setDraggingBodyLock(true);
 
     const onMove = (ev: PointerEvent) => {
-      const screenDx = ev.clientX - startX;
-      const screenDy = ev.clientY - startY;
+      const snap = dragSnapshotRef.current;
+      if (!snap) return;
+      const screenDx = ev.clientX - snap.startClientX;
+      const screenDy = ev.clientY - snap.startClientY;
       if (Math.abs(screenDx) > 2 || Math.abs(screenDy) > 2) {
-        moved = true;
+        snap.moved = true;
       }
-      const { dx, dy } = isMicroNode
-        ? projectDeltaToLocal(parentEl, screenDx, screenDy)
-        : { dx: screenDx, dy: screenDy };
 
-      const rawX = baseX + dx;
-      const rawY = baseY + dy;
+      const { dx, dy } = applyInverseMatrix(invMatrix, screenDx, screenDy);
+
+      const rawX = snap.initialX + dx;
+      const rawY = snap.initialY + dy;
 
       let hitV = false;
       let hitH = false;
 
-      if (exactCenterX !== null && Math.abs(rawX - exactCenterX) <= 12) {
-        latestX = exactCenterX;
+      if (exactCenterX !== null && Math.abs(rawX - exactCenterX) <= 10) {
+        snap.latestX = exactCenterX;
         hitV = true;
       } else {
-        latestX =
+        snap.latestX =
           activeSnapStep > 0
             ? Math.round(rawX / activeSnapStep) * activeSnapStep
             : Math.round(rawX);
       }
 
-      if (exactCenterY !== null && Math.abs(rawY - exactCenterY) <= 12) {
-        latestY = exactCenterY;
+      if (exactCenterY !== null && Math.abs(rawY - exactCenterY) <= 10) {
+        snap.latestY = exactCenterY;
         hitH = true;
       } else {
-        latestY =
+        snap.latestY =
           activeSnapStep > 0
             ? Math.round(rawY / activeSnapStep) * activeSnapStep
             : Math.round(rawY);
       }
 
-      setLiveOverride({ x: latestX, y: latestY });
-      setSmartGuides(hitV || hitH ? { v: hitV, h: hitH, rect: guideRect } : null);
+      if (snap.rafId === null) {
+        snap.rafId = window.requestAnimationFrame(() => {
+          const cur = dragSnapshotRef.current;
+          if (!cur || !boxRef.current) return;
+          cur.rafId = null;
+          boxRef.current.style.transform = `translate3d(${cur.latestX}px, ${cur.latestY}px, 0)${
+            cur.latestRot ? ` rotate(${cur.latestRot}deg)` : ""
+          }`;
+        });
+      }
+
+      if (hitV !== prevHitV || hitH !== prevHitH) {
+        prevHitV = hitV;
+        prevHitH = hitH;
+        setSmartGuides(hitV || hitH ? { v: hitV, h: hitH, rect: guideRect } : null);
+      }
     };
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      try {
+        if (captureTarget.hasPointerCapture(pointerId)) {
+          captureTarget.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      const snap = dragSnapshotRef.current;
+      dragSnapshotRef.current = null;
+      if (snap?.rafId !== null && snap?.rafId !== undefined) {
+        window.cancelAnimationFrame(snap.rafId);
+      }
+      if (boxRef.current) {
+        boxRef.current.removeAttribute("data-dragging");
+        boxRef.current.classList.remove("is-actively-dragging");
+      }
       setActiveOp("idle");
       setDraggingBodyLock(false);
       setSmartGuides(null);
-      setLiveOverride(null);
-      if (moved) {
-        void persistCanvas({ x: latestX, y: latestY });
+      if (snap?.moved) {
+        void persistCanvas({ x: snap.latestX, y: snap.latestY });
       }
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
   const handleResizeStart = (e: React.PointerEvent, dir: ResizeHandleDir) => {
     if (!showHandles) return;
     e.preventDefault();
     e.stopPropagation();
+    const captureTarget = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    try {
+      captureTarget.setPointerCapture(pointerId);
+    } catch {
+      // ignore
+    }
     setSelected(true);
     const el = boxRef.current;
     const parentEl = findParentCardElement(el);
     const rect = el ? el.getBoundingClientRect() : { width: 380, height: 140 };
-    const startMouseX = e.clientX;
-    const startMouseY = e.clientY;
-    const baseX = saved.x || 0;
-    const baseY = saved.y || 0;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const initialX = saved.x || 0;
+    const initialY = saved.y || 0;
     const minW = isMicroNode ? 20 : 80;
     const minH = isMicroNode ? 20 : 36;
-    const baseW = saved.width || Math.max(minW, Math.round(rect.width));
-    const baseH = saved.height || Math.max(minH, Math.round(rect.height));
-    const aspect = baseW / Math.max(minH, baseH);
+    const initialW = saved.width || Math.max(minW, Math.round(rect.width));
+    const initialH = saved.height || Math.max(minH, Math.round(rect.height));
+    const aspect = initialW / Math.max(minH, initialH);
+    const baseRot = saved.rotation || 0;
 
-    let nextX = baseX;
-    let nextY = baseY;
-    let nextW = baseW;
-    let nextH = baseH;
-    let resized = false;
+    const invMatrix = isMicroNode ? captureInverseMatrix(parentEl) : null;
+
+    if (el) {
+      el.setAttribute("data-dragging", "true");
+      el.classList.add("is-actively-dragging");
+    }
+
+    dragSnapshotRef.current = {
+      op: "resize",
+      startClientX,
+      startClientY,
+      initialX,
+      initialY,
+      initialW,
+      initialH,
+      latestX: initialX,
+      latestY: initialY,
+      latestW: initialW,
+      latestH: initialH,
+      latestRot: baseRot,
+      moved: false,
+      rafId: null,
+    };
 
     setActiveOp("resize");
     setDraggingBodyLock(true);
@@ -1915,30 +2448,30 @@ export function SlidePresentationCanvas({
         : Math.round(v);
 
     const onMove = (ev: PointerEvent) => {
-      const screenDx = ev.clientX - startMouseX;
-      const screenDy = ev.clientY - startMouseY;
+      const snap = dragSnapshotRef.current;
+      if (!snap) return;
+      const screenDx = ev.clientX - snap.startClientX;
+      const screenDy = ev.clientY - snap.startClientY;
       if (Math.abs(screenDx) > 1 || Math.abs(screenDy) > 1) {
-        resized = true;
+        snap.moved = true;
       }
-      const { dx, dy } = isMicroNode
-        ? projectDeltaToLocal(parentEl, screenDx, screenDy)
-        : { dx: screenDx, dy: screenDy };
+      const { dx, dy } = applyInverseMatrix(invMatrix, screenDx, screenDy);
 
-      let w = baseW;
-      let h = baseH;
-      let x = baseX;
-      let y = baseY;
+      let w = snap.initialW;
+      let h = snap.initialH;
+      let x = snap.initialX;
+      let y = snap.initialY;
 
-      if (dir.includes("e")) w = Math.max(minW, snapVal(baseW + dx));
-      if (dir.includes("s")) h = Math.max(minH, snapVal(baseH + dy));
+      if (dir.includes("e")) w = Math.max(minW, snapVal(snap.initialW + dx));
+      if (dir.includes("s")) h = Math.max(minH, snapVal(snap.initialH + dy));
       if (dir.includes("w")) {
-        const candidateW = Math.max(minW, snapVal(baseW - dx));
-        x = Math.round(baseX + (baseW - candidateW));
+        const candidateW = Math.max(minW, snapVal(snap.initialW - dx));
+        x = Math.round(snap.initialX + (snap.initialW - candidateW));
         w = candidateW;
       }
       if (dir.includes("n")) {
-        const candidateH = Math.max(minH, snapVal(baseH - dy));
-        y = Math.round(baseY + (baseH - candidateH));
+        const candidateH = Math.max(minH, snapVal(snap.initialH - dy));
+        y = Math.round(snap.initialY + (snap.initialH - candidateH));
         h = candidateH;
       }
 
@@ -1948,31 +2481,54 @@ export function SlidePresentationCanvas({
         w = Math.max(minW, Math.round(h * aspect));
       }
 
-      nextX = x;
-      nextY = y;
-      nextW = w;
-      nextH = h;
-      setLiveOverride({
-        x: nextX,
-        y: nextY,
-        width: nextW,
-        height: nextH,
-        widthPreset: "custom",
-      });
+      snap.latestX = x;
+      snap.latestY = y;
+      snap.latestW = w;
+      snap.latestH = h;
+
+      if (snap.rafId === null) {
+        snap.rafId = window.requestAnimationFrame(() => {
+          const cur = dragSnapshotRef.current;
+          if (!cur || !boxRef.current) return;
+          cur.rafId = null;
+          boxRef.current.style.width = `${cur.latestW}px`;
+          boxRef.current.style.maxWidth = isFloatingWidget ? "95vw" : "100%";
+          boxRef.current.style.minHeight = `${cur.latestH}px`;
+          boxRef.current.style.transform = `translate3d(${cur.latestX}px, ${cur.latestY}px, 0)${
+            cur.latestRot ? ` rotate(${cur.latestRot}deg)` : ""
+          }`;
+        });
+      }
     };
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      try {
+        if (captureTarget.hasPointerCapture(pointerId)) {
+          captureTarget.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      const snap = dragSnapshotRef.current;
+      dragSnapshotRef.current = null;
+      if (snap?.rafId !== null && snap?.rafId !== undefined) {
+        window.cancelAnimationFrame(snap.rafId);
+      }
+      if (boxRef.current) {
+        boxRef.current.removeAttribute("data-dragging");
+        boxRef.current.classList.remove("is-actively-dragging");
+      }
       setActiveOp("idle");
       setDraggingBodyLock(false);
-      setLiveOverride(null);
-      if (resized) {
+      if (snap?.moved) {
         void persistCanvas({
-          x: nextX,
-          y: nextY,
-          width: nextW,
-          height: nextH,
+          x: snap.latestX,
+          y: snap.latestY,
+          width: snap.latestW,
+          height: snap.latestH,
           widthPreset: "custom",
         });
       }
@@ -1980,54 +2536,112 @@ export function SlidePresentationCanvas({
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
   const handleRotateStart = (e: React.PointerEvent) => {
     if (!showHandles) return;
     e.preventDefault();
     e.stopPropagation();
+    const captureTarget = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    try {
+      captureTarget.setPointerCapture(pointerId);
+    } catch {
+      // ignore
+    }
     setSelected(true);
     const el = boxRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    let nextRot = saved.rotation || 0;
+    const initialX = saved.x || 0;
+    const initialY = saved.y || 0;
+    const initialRot = saved.rotation || 0;
+
+    el.setAttribute("data-dragging", "true");
+    el.classList.add("is-actively-dragging");
+
+    dragSnapshotRef.current = {
+      op: "rotate",
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      initialX,
+      initialY,
+      initialW: Math.round(rect.width),
+      initialH: Math.round(rect.height),
+      latestX: initialX,
+      latestY: initialY,
+      latestW: Math.round(rect.width),
+      latestH: Math.round(rect.height),
+      latestRot: initialRot,
+      moved: false,
+      rafId: null,
+    };
 
     setActiveOp("rotate");
     setDraggingBodyLock(true);
 
     const onMove = (ev: PointerEvent) => {
+      const snap = dragSnapshotRef.current;
+      if (!snap) return;
+      snap.moved = true;
       const deg =
         (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI + 90;
       let normalized = Math.round(((deg + 180) % 360 + 360) % 360 - 180);
       if (Math.abs(normalized) <= 4) normalized = 0;
       else if (Math.abs(normalized - 90) <= 4) normalized = 90;
       else if (Math.abs(normalized + 90) <= 4) normalized = -90;
-      nextRot = normalized;
-      setLiveOverride({ rotation: nextRot });
+      snap.latestRot = normalized;
+
+      if (snap.rafId === null) {
+        snap.rafId = window.requestAnimationFrame(() => {
+          const cur = dragSnapshotRef.current;
+          if (!cur || !boxRef.current) return;
+          cur.rafId = null;
+          boxRef.current.style.transform = `translate3d(${cur.latestX}px, ${cur.latestY}px, 0) rotate(${cur.latestRot}deg)`;
+        });
+      }
     };
 
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      try {
+        if (captureTarget.hasPointerCapture(pointerId)) {
+          captureTarget.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      const snap = dragSnapshotRef.current;
+      dragSnapshotRef.current = null;
+      if (snap?.rafId !== null && snap?.rafId !== undefined) {
+        window.cancelAnimationFrame(snap.rafId);
+      }
+      if (boxRef.current) {
+        boxRef.current.removeAttribute("data-dragging");
+        boxRef.current.classList.remove("is-actively-dragging");
+      }
       setActiveOp("idle");
       setDraggingBodyLock(false);
-      setLiveOverride(null);
-      void persistCanvas({ rotation: nextRot });
+      if (snap?.moved) {
+        void persistCanvas({ rotation: snap.latestRot });
+      }
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
-  const curX = liveOverride?.x ?? saved.x ?? 0;
-  const curY = liveOverride?.y ?? saved.y ?? 0;
-  const curW =
-    liveOverride?.width ??
-    (saved.widthPreset === "custom" ? saved.width : undefined);
-  const curH = liveOverride?.height ?? saved.height;
-  const curRot = liveOverride?.rotation ?? saved.rotation ?? 0;
+  const curX = saved.x ?? 0;
+  const curY = saved.y ?? 0;
+  const curW = saved.widthPreset === "custom" ? saved.width : undefined;
+  const curH = saved.height;
+  const curRot = saved.rotation ?? 0;
   const curZ = saved.zIndex;
 
   const layoutWidthCls =
@@ -2077,11 +2691,24 @@ export function SlidePresentationCanvas({
     return Math.max(0, Math.min((curZ ?? 20) - 10, minZ - 1));
   };
 
+  const activeZ =
+    isMicroNode && showHandles && (selected || hovered || activeOp !== "idle")
+      ? Math.max(60, typeof curZ === "number" ? curZ : 60)
+      : curZ;
+
   const canvasStyle: React.CSSProperties = {
     ...style,
+    ...(curX !== 0 || curY !== 0 || curRot !== 0
+      ? {
+          transform: `translate3d(${curX}px, ${curY}px, 0)${
+            curRot ? ` rotate(${curRot}deg)` : ""
+          }`,
+        }
+      : {}),
     ...(curW ? { width: `${curW}px`, maxWidth: isFloatingWidget ? "95vw" : "100%" } : {}),
     ...(curH ? { minHeight: `${curH}px` } : {}),
-    ...(typeof curZ === "number" ? { zIndex: curZ } : {}),
+    ...(typeof activeZ === "number" ? { zIndex: activeZ } : {}),
+    ...(canEdit ? { overflow: "visible" } : {}),
     ...(saved.textColor ? { color: saved.textColor } : {}),
     ...(saved.bgColor ? { backgroundColor: saved.bgColor, borderRadius: "1rem" } : {}),
     ...(saved.borderColor
@@ -2124,19 +2751,11 @@ export function SlidePresentationCanvas({
   }
 
   return (
-    <motion.div
+    <div
       ref={boxRef}
       data-god-card={!isMicroNode && !isFloatingWidget ? "true" : undefined}
-      animate={{
-        x: curX,
-        y: curY,
-        rotate: curRot,
-      }}
-      transition={
-        activeOp !== "idle"
-          ? { duration: 0 }
-          : { type: "spring", stiffness: 360, damping: 32, mass: 0.5 }
-      }
+      data-dragging={activeOp !== "idle" ? "true" : undefined}
+      data-edit-mode={canEdit ? "true" : undefined}
       style={canvasStyle}
       onMouseOver={(e) => {
         if (!showHandles) return;
@@ -2152,20 +2771,31 @@ export function SlidePresentationCanvas({
         }
       }}
       onPointerDown={(e) => {
-        if (!showHandles || !isMicroNode) return;
-        e.stopPropagation();
-        const targetEl = e.target as HTMLElement | null;
-        if (
-          targetEl?.closest(
-            "input, textarea, select, [data-no-micro-drag='true']"
-          )
-        ) {
+        if (!showHandles) return;
+        if (isMicroNode) {
+          e.stopPropagation();
+          const targetEl = e.target as HTMLElement | null;
+          if (
+            targetEl?.closest(
+              "input, textarea, select, [data-no-micro-drag='true']"
+            )
+          ) {
+            return;
+          }
+          handleDragStart(e);
           return;
         }
-        handleDragStart(e);
+        // Outer parent frame: ONLY start dragging on the header grip OR empty background of the frame itself
+        if (e.target === e.currentTarget) {
+          handleDragStart(e);
+        }
       }}
       onClick={(e) => {
-        if (showHandles) {
+        if (!showHandles) return;
+        if (isMicroNode) {
+          e.stopPropagation();
+          setSelected(true);
+        } else if (e.target === e.currentTarget) {
           e.stopPropagation();
           setSelected(true);
         }
@@ -2181,6 +2811,7 @@ export function SlidePresentationCanvas({
       }}
       className={[
         "god-mode-box",
+        canEdit ? "overflow-visible" : "",
         isMicroNode && showHandles ? "cursor-grab active:cursor-grabbing" : "",
         presetWidthCls,
         alignCls,
@@ -2193,18 +2824,39 @@ export function SlidePresentationCanvas({
                 ? `god-mode-hover ${isMicroNode ? "rounded-lg" : "rounded-2xl p-0.5"}`
                 : "god-mode-box-active"
             : "",
-        activeOp !== "idle" ? "god-mode-box-dragging" : "",
+        activeOp !== "idle" ? "god-mode-box-dragging is-actively-dragging" : "",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
       {showHandles && (selected || hovered) && (
-        <span className="god-mode-type-tag">{resolvedElementType}</span>
+        <span
+          style={isMicroNode ? { left: "auto", right: "8px" } : undefined}
+          className="god-mode-type-tag"
+        >
+          {resolvedElementType}
+        </span>
+      )}
+      {showHandles && isMicroNode && (hovered || selected) && (
+        <button
+          type="button"
+          onPointerDown={handleDragStart}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setSelected(true);
+          }}
+          title={`Drag ${label || resolvedElementType} anywhere inside card`}
+          className="absolute -top-3.5 -left-1 z-[65] inline-flex items-center gap-0.5 rounded bg-[#2563EB] px-1.5 py-0.5 text-[9px] font-extrabold leading-none text-white shadow cursor-grab active:cursor-grabbing select-none whitespace-nowrap"
+        >
+          ✥ Drag
+        </button>
       )}
       {canEdit && isEnteredAsParent && (
         <div
           onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#111318]/95 border border-[#d4af37] px-3 py-1.5 text-[11px] font-bold text-[#FAF7F0] shadow-lg"
         >
           <span className="text-[#E5C158]">
@@ -2220,33 +2872,39 @@ export function SlidePresentationCanvas({
         </div>
       )}
 
-      {showHandles && (!isMicroNode || selected) && (
-        <>
-          {/* Top Rotation Handle + Connector Stem */}
-          <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-40">
-            <button
-              type="button"
-              onPointerDown={handleRotateStart}
-              title="Drag to rotate element"
-              aria-label={`Rotate ${label || id}`}
-              className="pointer-events-auto h-5 w-5 rounded-full bg-white border-2 border-[#2563EB] text-[#2563EB] text-[10px] font-black flex items-center justify-center shadow hover:scale-110 cursor-grab active:cursor-grabbing"
-            >
-              ↻
-            </button>
-            <span className="h-2.5 w-0.5 bg-[#2563EB]/85" />
-          </div>
+      {showHandles &&
+        (!isMicroNode || selected || hovered) &&
+        HANDLE_DEFS.filter(
+          (h) =>
+            !isMicroNode ||
+            selected ||
+            h.dir === "e" ||
+            h.dir === "s" ||
+            h.dir === "se"
+        ).map((h) => (
+          <button
+            key={h.dir}
+            type="button"
+            aria-label={`Resize ${h.dir} handle`}
+            onPointerDown={(e) => handleResizeStart(e, h.dir)}
+            className={`slide-canvas-handle ${h.posClass} ${h.cursorClass}`}
+          />
+        ))}
 
-          {/* 8-Way Resize Nodes (4 Corners + 4 Edge Midpoints) */}
-          {HANDLE_DEFS.map((h) => (
-            <button
-              key={h.dir}
-              type="button"
-              aria-label={`Resize ${h.dir} handle`}
-              onPointerDown={(e) => handleResizeStart(e, h.dir)}
-              className={`slide-canvas-handle ${h.posClass} ${h.cursorClass}`}
-            />
-          ))}
-        </>
+      {showHandles && (!isMicroNode || selected) && (
+        /* Top Rotation Handle + Connector Stem */
+        <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-40">
+          <button
+            type="button"
+            onPointerDown={handleRotateStart}
+            title="Drag to rotate element"
+            aria-label={`Rotate ${label || id}`}
+            className="pointer-events-auto h-5 w-5 rounded-full bg-white border-2 border-[#2563EB] text-[#2563EB] text-[10px] font-black flex items-center justify-center shadow hover:scale-110 cursor-grab active:cursor-grabbing"
+          >
+            ↻
+          </button>
+          <span className="h-2.5 w-0.5 bg-[#2563EB]/85" />
+        </div>
       )}
 
       {showHandles && !isMicroNode && (
@@ -2264,10 +2922,10 @@ export function SlidePresentationCanvas({
             <button
               type="button"
               onPointerDown={handleDragStart}
-              title="Drag anywhere (Magnetic Grid + Center Snapping ON)"
+              title="Drag outer frame anywhere (Magnetic Grid + Center Snapping ON)"
               className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/25 text-[#93C5FD] border border-[#2563EB]/50 select-none"
             >
-              ⋮⋮ {isChildNode ? "Child" : "Drag"} {label || id}
+              ✥ Move Frame · {label || id}
             </button>
             <button
               type="button"
@@ -2880,7 +3538,7 @@ export function SlidePresentationCanvas({
           </div>,
           document.body
         )}
-    </motion.div>
+    </div>
   );
 }
 
