@@ -1425,6 +1425,9 @@ export function GodModeText({
   );
 }
 
+export type SlideLayoutWidth = "full" | "wide" | "half" | "compact";
+export type SlideLayoutAlign = "left" | "center" | "right";
+
 export interface SlideCanvasState {
   x?: number;
   y?: number;
@@ -1432,6 +1435,8 @@ export interface SlideCanvasState {
   width?: number;
   height?: number;
   widthPreset?: "1/3" | "1/2" | "3/4" | "full" | "custom";
+  layoutWidth?: SlideLayoutWidth;
+  layoutAlign?: SlideLayoutAlign;
   rotation?: number;
   zIndex?: number;
   lockAspectRatio?: boolean;
@@ -1678,10 +1683,18 @@ export function SlidePresentationCanvas({
     height: slideSaved.height ?? (isChildNode ? undefined : legacySaved.minHeightPx),
     widthPreset:
       slideSaved.widthPreset ?? (isChildNode ? undefined : legacySaved.widthPreset),
+    layoutWidth: slideSaved.layoutWidth,
+    layoutAlign:
+      slideSaved.layoutAlign ??
+      slideSaved.alignSelf ??
+      (isChildNode ? undefined : legacySaved.alignSelf),
     rotation: slideSaved.rotation ?? 0,
     zIndex: slideSaved.zIndex,
     lockAspectRatio: Boolean(slideSaved.lockAspectRatio),
-    alignSelf: slideSaved.alignSelf ?? (isChildNode ? undefined : legacySaved.alignSelf),
+    alignSelf:
+      slideSaved.layoutAlign ??
+      slideSaved.alignSelf ??
+      (isChildNode ? undefined : legacySaved.alignSelf),
     textColor: slideSaved.textColor,
     bgColor: slideSaved.bgColor,
     borderColor: slideSaved.borderColor,
@@ -2017,23 +2030,39 @@ export function SlidePresentationCanvas({
   const curRot = liveOverride?.rotation ?? saved.rotation ?? 0;
   const curZ = saved.zIndex;
 
-  const presetWidthCls =
-    !curW && saved.widthPreset === "1/3"
+  const layoutWidthCls =
+    !curW && saved.layoutWidth
+      ? saved.layoutWidth === "full"
+        ? "w-full"
+        : saved.layoutWidth === "wide"
+          ? "w-full lg:w-3/4"
+          : saved.layoutWidth === "half"
+            ? "w-full lg:w-1/2"
+            : saved.layoutWidth === "compact"
+              ? "max-w-2xl"
+              : ""
+      : "";
+
+  const legacyWidthCls =
+    !curW && !layoutWidthCls && saved.widthPreset === "1/3"
       ? "w-full md:w-1/3"
-      : !curW && saved.widthPreset === "1/2"
+      : !curW && !layoutWidthCls && saved.widthPreset === "1/2"
         ? "w-full md:w-1/2"
-        : !curW && saved.widthPreset === "3/4"
+        : !curW && !layoutWidthCls && saved.widthPreset === "3/4"
           ? "w-full md:w-3/4"
-          : !curW && saved.widthPreset === "full"
+          : !curW && !layoutWidthCls && saved.widthPreset === "full"
             ? "w-full"
             : "";
 
+  const presetWidthCls = layoutWidthCls || legacyWidthCls;
+
+  const activeAlign = saved.layoutAlign ?? saved.alignSelf;
   const alignCls =
-    saved.alignSelf === "center"
+    activeAlign === "center"
       ? "mx-auto"
-      : saved.alignSelf === "right"
+      : activeAlign === "right"
         ? "ml-auto"
-        : saved.alignSelf === "left"
+        : activeAlign === "left"
           ? "mr-auto"
           : "";
 
@@ -2282,6 +2311,8 @@ export function SlidePresentationCanvas({
               saved.width ||
               saved.height ||
               saved.widthPreset ||
+              saved.layoutWidth ||
+              saved.layoutAlign ||
               saved.textColor ||
               saved.bgColor ||
               saved.borderColor) && (
@@ -2294,6 +2325,8 @@ export function SlidePresentationCanvas({
                     width: undefined,
                     height: undefined,
                     widthPreset: undefined,
+                    layoutWidth: undefined,
+                    layoutAlign: undefined,
                     rotation: 0,
                     zIndex: undefined,
                     alignSelf: undefined,
@@ -2361,7 +2394,9 @@ export function SlidePresentationCanvas({
             curY !== 0 ||
             curRot !== 0 ||
             saved.width ||
-            saved.height) && (
+            saved.height ||
+            saved.layoutWidth ||
+            saved.layoutAlign) && (
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
@@ -2373,6 +2408,9 @@ export function SlidePresentationCanvas({
                   width: undefined,
                   height: undefined,
                   widthPreset: undefined,
+                  layoutWidth: undefined,
+                  layoutAlign: undefined,
+                  alignSelf: undefined,
                   rotation: 0,
                 });
               }}
@@ -2620,6 +2658,106 @@ export function SlidePresentationCanvas({
               </div>
             </div>
 
+            {/* Container Width & Block Alignment Constraints */}
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold uppercase opacity-75">
+                  Container Width
+                </span>
+                {saved.layoutWidth && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void persistCanvas({
+                        layoutWidth: undefined,
+                        widthPreset: undefined,
+                      })
+                    }
+                    className="text-[10px] underline text-sky-300 hover:text-white"
+                  >
+                    Auto
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(
+                  [
+                    { id: "full", label: "Full (100%)" },
+                    { id: "wide", label: "Wide (75%)" },
+                    { id: "half", label: "Half (50%)" },
+                    { id: "compact", label: "Compact" },
+                  ] as { id: SlideLayoutWidth; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() =>
+                      void persistCanvas({
+                        layoutWidth:
+                          saved.layoutWidth === opt.id ? undefined : opt.id,
+                        width: undefined,
+                        widthPreset: undefined,
+                      })
+                    }
+                    className={`px-2 py-1 rounded-lg border text-[10px] font-bold transition ${
+                      saved.layoutWidth === opt.id
+                        ? "border-[#2563EB] bg-[#2563EB] text-white"
+                        : "border-white/20 bg-white/5 opacity-85 hover:opacity-100"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-[10px] font-bold uppercase opacity-75">
+                  Block Alignment
+                </span>
+                {activeAlign && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void persistCanvas({
+                        layoutAlign: undefined,
+                        alignSelf: undefined,
+                      })
+                    }
+                    className="text-[10px] underline text-sky-300 hover:text-white"
+                  >
+                    Auto
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    { id: "left", label: "Left" },
+                    { id: "center", label: "Center" },
+                    { id: "right", label: "Right" },
+                  ] as { id: SlideLayoutAlign; label: string }[]
+                ).map((al) => (
+                  <button
+                    key={al.id}
+                    type="button"
+                    onClick={() =>
+                      void persistCanvas({
+                        layoutAlign: activeAlign === al.id ? undefined : al.id,
+                        alignSelf: activeAlign === al.id ? undefined : al.id,
+                      })
+                    }
+                    className={`px-2 py-1 rounded-lg border text-[10px] font-bold transition ${
+                      activeAlign === al.id
+                        ? "border-[#d4af37] bg-[#d4af37] text-[#18181B]"
+                        : "border-white/20 bg-white/5 opacity-85 hover:opacity-100"
+                    }`}
+                  >
+                    {al.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Z-Index Layering */}
             <div className="space-y-1 pt-2 border-t border-white/10">
               <div className="flex items-center justify-between">
@@ -2703,6 +2841,8 @@ export function SlidePresentationCanvas({
                       width: undefined,
                       height: undefined,
                       widthPreset: undefined,
+                      layoutWidth: undefined,
+                      layoutAlign: undefined,
                       rotation: 0,
                       zIndex: undefined,
                       lockAspectRatio: false,

@@ -440,6 +440,20 @@ function NitnemReaderContent() {
   const cms = useCmsSiteState();
   const layoutCfg = cms.layoutConfig || {};
   const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
+  const layoutMap = (cms.sectionLayoutMap || {}) as Record<
+    string,
+    { layoutWidth?: string } | undefined
+  >;
+  const heroIntroLayout =
+    layoutMap["__slide_micro_nitnem-hero-canvas::nitnem-hero-intro-block"]?.layoutWidth ||
+    layoutMap["__slide_canvas_nitnem-hero-intro-block"]?.layoutWidth;
+  const heroOuterLayout =
+    layoutMap["__slide_canvas_nitnem-hero-canvas"]?.layoutWidth;
+  const isHeroConstrained =
+    heroIntroLayout === "half" ||
+    heroIntroLayout === "compact" ||
+    heroOuterLayout === "half" ||
+    heroOuterLayout === "compact";
 
   const currentSection = sections[currentPageIdx] || sections[0];
   const displayedSections = continuousView
@@ -475,7 +489,21 @@ function NitnemReaderContent() {
       >
       <section className="border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <SlidePresentationCanvas
+            id="nitnem-hero-intro-block"
+            parentId="nitnem-hero-canvas"
+            pageKey="nitnem"
+            label="Hero Text & Buttons"
+            elementType="Card"
+            isMicroElement={true}
+          >
+          <div
+            className={
+              isHeroConstrained
+                ? "flex flex-col items-start justify-start gap-5"
+                : "flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+            }
+          >
             <div className="space-y-2 max-w-3xl">
               <div className="inline-flex flex-wrap items-center gap-2.5">
                 <GodModeText
@@ -510,7 +538,13 @@ function NitnemReaderContent() {
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div
+              className={
+                isHeroConstrained
+                  ? "flex flex-wrap items-center gap-3"
+                  : "flex flex-wrap items-center gap-3 shrink-0"
+              }
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -547,6 +581,7 @@ function NitnemReaderContent() {
               </Link>
             </div>
           </div>
+          </SlidePresentationCanvas>
 
           {showMoolMantarDeepDive && (
             <div className="pt-4 animate-fade-in-up">
