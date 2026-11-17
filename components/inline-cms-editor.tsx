@@ -20,6 +20,12 @@ import {
   type CmsTopicEdit,
 } from "@/components/editable-heritage-image";
 
+export type SectionLayoutPreset =
+  | "split-50-50"
+  | "bento-3"
+  | "focused-2"
+  | "magazine-stack";
+
 type SectionLayoutInfo = {
   titleAlign?: "left" | "center" | "right";
   widthMode?: "full" | "contained" | "compact";
@@ -28,7 +34,148 @@ type SectionLayoutInfo = {
   hidden?: boolean;
   equalHeights?: boolean;
   gapPx?: number;
+  layoutPreset?: SectionLayoutPreset;
 };
+
+export interface RegisteredCanvasNode {
+  id: string;
+  sectionId: string;
+  pageKey: string;
+  storageKey: string;
+  type: string;
+  label: string;
+  scope: "root" | "child" | "micro" | "text";
+}
+
+const CANVAS_REGISTRY_EVENT = "learnsikhi-canvas-registry-change";
+const registeredCanvasNodesMap = new Map<string, RegisteredCanvasNode>();
+let registeredNodesVersion = 0;
+
+export function registerCanvasNode(node: RegisteredCanvasNode) {
+  const prev = registeredCanvasNodesMap.get(node.storageKey);
+  if (
+    prev &&
+    prev.sectionId === node.sectionId &&
+    prev.pageKey === node.pageKey &&
+    prev.type === node.type &&
+    prev.label === node.label
+  ) {
+    return;
+  }
+  registeredCanvasNodesMap.set(node.storageKey, node);
+  registeredNodesVersion += 1;
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(CANVAS_REGISTRY_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function unregisterCanvasNode(storageKey: string) {
+  if (!registeredCanvasNodesMap.has(storageKey)) return;
+  registeredCanvasNodesMap.delete(storageKey);
+  registeredNodesVersion += 1;
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(CANVAS_REGISTRY_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function getRegisteredCanvasNodesSnapshot(): Record<
+  string,
+  RegisteredCanvasNode
+> {
+  const out: Record<string, RegisteredCanvasNode> = {};
+  registeredCanvasNodesMap.forEach((v, k) => {
+    out[k] = v;
+  });
+  return out;
+}
+
+export const CanvasRegistryContext = createContext<{
+  getSnapshot: () => Record<string, RegisteredCanvasNode>;
+}>({
+  getSnapshot: getRegisteredCanvasNodesSnapshot,
+});
+
+export function useRegisteredCanvasNodes(): Record<string, RegisteredCanvasNode> {
+  const [, setTick] = useState(registeredNodesVersion);
+  useEffect(() => {
+    const sync = () => setTick(registeredNodesVersion);
+    window.addEventListener(CANVAS_REGISTRY_EVENT, sync);
+    return () => window.removeEventListener(CANVAS_REGISTRY_EVENT, sync);
+  }, []);
+  return getRegisteredCanvasNodesSnapshot();
+}
+
+const UNLOCK_ALL_EVENT = "learnsikhi-unlock-all-change";
+let currentUnlockAll = false;
+
+function toggleUnlockAllGlobal(explicit?: boolean) {
+  currentUnlockAll = typeof explicit === "boolean" ? explicit : !currentUnlockAll;
+  if (typeof document !== "undefined") {
+    document.body.classList.toggle("god-mode-unlock-all", currentUnlockAll);
+  }
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(UNLOCK_ALL_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function useUnlockAllElements(): [
+  boolean,
+  (explicit?: boolean) => void,
+] {
+  const [unlocked, setUnlocked] = useState(currentUnlockAll);
+  useEffect(() => {
+    const sync = () => setUnlocked(currentUnlockAll);
+    window.addEventListener(UNLOCK_ALL_EVENT, sync);
+    return () => window.removeEventListener(UNLOCK_ALL_EVENT, sync);
+  }, []);
+  return [unlocked, toggleUnlockAllGlobal];
+}
+
+const GRID_OVERLAY_EVENT = "learnsikhi-grid-overlay-change";
+let currentSmartGridVisible = false;
+
+function toggleSmartGridOverlayGlobal(explicit?: boolean) {
+  currentSmartGridVisible =
+    typeof explicit === "boolean" ? explicit : !currentSmartGridVisible;
+  if (typeof document !== "undefined") {
+    document.body.classList.toggle(
+      "god-mode-grid-visible",
+      currentSmartGridVisible
+    );
+  }
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(GRID_OVERLAY_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function useSmartGridOverlay(): [
+  boolean,
+  (explicit?: boolean) => void,
+] {
+  const [visible, setVisible] = useState(currentSmartGridVisible);
+  useEffect(() => {
+    const sync = () => setVisible(currentSmartGridVisible);
+    window.addEventListener(GRID_OVERLAY_EVENT, sync);
+    return () => window.removeEventListener(GRID_OVERLAY_EVENT, sync);
+  }, []);
+  return [visible, toggleSmartGridOverlayGlobal];
+}
 
 export type AdminDeviceViewport = "full" | "laptop" | "mobile";
 const DEVICE_VIEWPORT_EVENT = "learnsikhi-device-viewport-change";
@@ -921,6 +1068,9 @@ export function InlineSectionBanner({
   const canEdit = useVerifiedLiveEdit();
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const [deviceViewport, setDeviceViewport] = useDevicePreviewViewport();
+  const [gridOverlay, toggleGridOverlay] = useSmartGridOverlay();
+  const [unlockAll, toggleUnlockAll] = useUnlockAllElements();
+  const registeredNodes = useRegisteredCanvasNodes();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
@@ -950,13 +1100,46 @@ export function InlineSectionBanner({
   const activeSectionTitle = sec.customTitle || defaultTitle;
   const align = sec.titleAlign || "left";
   const widthMode = sec.widthMode || "full";
+  const activePreset = sec.layoutPreset;
   const currentGrid = cms.layoutConfig?.feedLayout || "grid-3";
+
+  const CURATED_LAYOUT_PRESETS: {
+    id: SectionLayoutPreset;
+    label: string;
+    feedLayout: "grid-3" | "grid-2" | "editorial";
+    widthMode: "full" | "contained" | "compact";
+  }[] = [
+    {
+      id: "split-50-50",
+      label: "Split Hero 50/50",
+      feedLayout: "grid-2",
+      widthMode: "full",
+    },
+    {
+      id: "bento-3",
+      label: "Bento 3-Column",
+      feedLayout: "grid-3",
+      widthMode: "full",
+    },
+    {
+      id: "focused-2",
+      label: "Focused 2-Column",
+      feedLayout: "grid-2",
+      widthMode: "contained",
+    },
+    {
+      id: "magazine-stack",
+      label: "Wide Magazine Stack",
+      feedLayout: "editorial",
+      widthMode: "compact",
+    },
+  ];
 
   const flashAlignNotice = (msg: string) => {
     setAlignNotice(msg);
     window.setTimeout(() => {
       setAlignNotice((prev) => (prev === msg ? null : prev));
-    }, 2000);
+    }, 2200);
   };
 
   const applyBatchSnapSpring = (elements: HTMLElement[]) => {
@@ -969,9 +1152,19 @@ export function InlineSectionBanner({
   const collectSectionCardGroups = (): {
     groups: { parentEl: HTMLElement; cards: HTMLElement[] }[];
     allCards: HTMLElement[];
+    registryKeys: string[];
   } => {
+    const registryKeys = Object.values(registeredNodes)
+      .filter(
+        (n) =>
+          (n.sectionId === sectionId || n.pageKey === pageKey) &&
+          n.scope !== "micro" &&
+          n.scope !== "text"
+      )
+      .map((n) => n.storageKey);
+
     if (typeof document === "undefined") {
-      return { groups: [], allCards: [] };
+      return { groups: [], allCards: [], registryKeys };
     }
     const scopeRoot =
       bannerRef.current?.closest("main") ||
@@ -1008,6 +1201,7 @@ export function InlineSectionBanner({
       return {
         groups: multiCardGroups,
         allCards: multiCardGroups.flatMap((g) => g.cards),
+        registryKeys,
       };
     }
 
@@ -1015,6 +1209,7 @@ export function InlineSectionBanner({
     return {
       groups: allCards.length > 0 ? [{ parentEl: fallbackParent, cards: allCards }] : [],
       allCards,
+      registryKeys,
     };
   };
 
@@ -1025,17 +1220,35 @@ export function InlineSectionBanner({
     );
   };
 
+  const applyPresetClassesToGroups = (
+    groups: { parentEl: HTMLElement; cards: HTMLElement[] }[],
+    preset?: SectionLayoutPreset
+  ) => {
+    const presetClsList = [
+      "section-preset-split-50-50",
+      "section-preset-bento-3",
+      "section-preset-focused-2",
+      "section-preset-magazine-stack",
+    ];
+    groups.forEach(({ parentEl }) => {
+      presetClsList.forEach((cls) => parentEl.classList.remove(cls));
+      if (preset) {
+        parentEl.classList.add(`section-preset-${preset}`);
+      }
+    });
+  };
+
   const handleAutoAlignRow = async () => {
-    const { groups, allCards } = collectSectionCardGroups();
-    if (allCards.length === 0) {
+    const { groups, allCards, registryKeys } = collectSectionCardGroups();
+    const targetKeys = Array.from(
+      new Set([...registryKeys, ...allCards.map(resolveCardStorageKey)])
+    );
+    if (targetKeys.length === 0) {
       flashAlignNotice("No cards found in section");
       return;
     }
     setAlignBusy("auto");
-    applyBatchSnapSpring([
-      ...groups.map((g) => g.parentEl),
-      ...allCards,
-    ]);
+    applyBatchSnapSpring([...groups.map((g) => g.parentEl), ...allCards]);
 
     const rawLayoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
     const batchPatch: Record<string, unknown> = {
@@ -1052,18 +1265,25 @@ export function InlineSectionBanner({
     });
 
     allCards.forEach((cardEl) => {
-      const storageKey = resolveCardStorageKey(cardEl);
-      const prev = ((rawLayoutMap[storageKey] || {}) as Record<string, unknown>);
       cardEl.style.transform = "";
       cardEl.style.minHeight = "";
       cardEl.style.height = "";
+    });
+
+    targetKeys.forEach((storageKey) => {
+      const prev = ((rawLayoutMap[storageKey] || {}) as Record<string, unknown>);
       batchPatch[storageKey] = {
         ...prev,
         x: 0,
         y: 0,
         xRatio: undefined,
         transform: undefined,
+        width: undefined,
+        widthRatio: undefined,
+        widthPreset: undefined,
+        layoutWidth: undefined,
         height: undefined,
+        rotation: 0,
         layoutAlign: undefined,
         alignSelf: undefined,
         equalHeightRow: true,
@@ -1075,7 +1295,74 @@ export function InlineSectionBanner({
       sectionLayoutMap: batchPatch,
     });
     setAlignBusy(null);
-    flashAlignNotice(`✨ Auto-Aligned ${allCards.length} cards`);
+    flashAlignNotice(`✨ Auto-Aligned ${targetKeys.length} cards`);
+  };
+
+  const handleShuffleLayout = async () => {
+    const curIdx = CURATED_LAYOUT_PRESETS.findIndex((p) => p.id === activePreset);
+    const next = CURATED_LAYOUT_PRESETS[(curIdx + 1) % CURATED_LAYOUT_PRESETS.length];
+    const { groups, allCards, registryKeys } = collectSectionCardGroups();
+    const targetKeys = Array.from(
+      new Set([...registryKeys, ...allCards.map(resolveCardStorageKey)])
+    );
+
+    setAlignBusy("shuffle");
+    applyBatchSnapSpring([...groups.map((g) => g.parentEl), ...allCards]);
+    applyPresetClassesToGroups(groups, next.id);
+
+    const rawLayoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
+    const batchPatch: Record<string, unknown> = {
+      ...rawLayoutMap,
+      [sectionId]: {
+        ...sec,
+        layoutPreset: next.id,
+        widthMode: next.widthMode,
+        equalHeights: next.id !== "magazine-stack",
+        gapPx: 24,
+      },
+    };
+
+    groups.forEach(({ parentEl }) => {
+      parentEl.classList.toggle(
+        "section-equal-heights",
+        next.id !== "magazine-stack"
+      );
+    });
+
+    allCards.forEach((cardEl) => {
+      cardEl.style.transform = "";
+      cardEl.style.width = "";
+      cardEl.style.minHeight = "";
+    });
+
+    targetKeys.forEach((storageKey) => {
+      const prev = ((rawLayoutMap[storageKey] || {}) as Record<string, unknown>);
+      batchPatch[storageKey] = {
+        ...prev,
+        x: 0,
+        y: 0,
+        xRatio: undefined,
+        transform: undefined,
+        width: undefined,
+        widthRatio: undefined,
+        widthPreset: undefined,
+        layoutWidth: undefined,
+        height: undefined,
+        rotation: 0,
+        equalHeightRow: next.id !== "magazine-stack",
+        sectionId,
+      };
+    });
+
+    await pushAdminCmsPatch({
+      layoutConfig: {
+        ...(cms.layoutConfig || {}),
+        feedLayout: next.feedLayout,
+      },
+      sectionLayoutMap: batchPatch,
+    });
+    setAlignBusy(null);
+    flashAlignNotice(`🎲 Preset: ${next.label}`);
   };
 
   const handleMatchHeights = async () => {
@@ -1294,9 +1581,11 @@ export function InlineSectionBanner({
   return (
     <div
       ref={bannerRef}
+      data-banner-section-id={sectionId}
+      data-banner-page={pageKey}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      className="rounded-2xl border border-dashed border-[#d4af37]/60 bg-[#111318]/95 text-[#FAF7F0] px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-md space-y-2.5 transition-all duration-300 ease-out"
+      className="admin-studio-ui rounded-2xl border border-dashed border-amber-400/60 bg-slate-950/95 text-white px-4 py-3 shadow-2xl backdrop-blur-md space-y-2.5 transition-all duration-300 ease-out"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1427,9 +1716,9 @@ export function InlineSectionBanner({
       </div>
 
       {/* Row Alignment & Tidy Engine + Live Device Viewport Preview Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-white/10 pt-2 text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-white/15 pt-2 text-[11px]">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#E5C158]/85 mr-0.5">
+          <span className="admin-label-muted text-[10px] font-extrabold uppercase tracking-wider mr-0.5">
             Tidy Row:
           </span>
           <button
@@ -1437,10 +1726,11 @@ export function InlineSectionBanner({
             disabled={alignBusy !== null}
             onClick={() => void handleAutoAlignRow()}
             title="Reset child cards to clean CSS Grid (x:0, y:0), equalize card heights & apply 24px gap"
+            data-admin-active={sec.equalHeights ? "true" : undefined}
             className={`px-2.5 py-1 rounded-lg border font-bold transition ${
               sec.equalHeights
-                ? "border-emerald-400/70 bg-emerald-500/20 text-emerald-200"
-                : "border-[#d4af37]/50 bg-[#d4af37]/15 text-[#E5C158] hover:bg-[#d4af37]/25"
+                ? "admin-pill-active"
+                : "border-amber-400/50 bg-slate-900 text-amber-300 hover:bg-amber-500/20"
             } disabled:opacity-50`}
           >
             {alignBusy === "auto" ? "Snapping..." : "✨ Auto-Align Row"}
@@ -1448,9 +1738,18 @@ export function InlineSectionBanner({
           <button
             type="button"
             disabled={alignBusy !== null}
+            onClick={() => void handleShuffleLayout()}
+            title="Cycle section through 4 curated presets: Split Hero 50/50, Bento 3-Column, Focused 2-Column, Wide Magazine Stack"
+            className="px-2.5 py-1 rounded-lg border border-amber-400/60 bg-amber-500/15 text-amber-200 font-bold hover:bg-amber-500/25 transition disabled:opacity-50"
+          >
+            {alignBusy === "shuffle" ? "Shuffling..." : "🎲 Shuffle Layout"}
+          </button>
+          <button
+            type="button"
+            disabled={alignBusy !== null}
             onClick={() => void handleMatchHeights()}
             title="Measure tallest card (snapped to 16px) and lock all sibling cards to uniform height"
-            className="px-2.5 py-1 rounded-lg border border-sky-400/45 bg-sky-500/15 text-sky-200 font-bold hover:bg-sky-500/25 transition disabled:opacity-50"
+            className="px-2.5 py-1 rounded-lg border border-sky-400/45 bg-slate-900 text-sky-200 font-bold hover:bg-sky-500/25 transition disabled:opacity-50"
           >
             {alignBusy === "heights" ? "Measuring..." : "📏 Match Heights"}
           </button>
@@ -1459,19 +1758,45 @@ export function InlineSectionBanner({
             disabled={alignBusy !== null}
             onClick={() => void handleDistributeEvenly()}
             title="Equalize horizontal spacing across cards in the active row and align to one horizontal baseline"
-            className="px-2.5 py-1 rounded-lg border border-purple-400/45 bg-purple-500/15 text-purple-200 font-bold hover:bg-purple-500/25 transition disabled:opacity-50"
+            className="px-2.5 py-1 rounded-lg border border-purple-400/45 bg-slate-900 text-purple-200 font-bold hover:bg-purple-500/25 transition disabled:opacity-50"
           >
             {alignBusy === "distribute" ? "Distributing..." : "↔️ Distribute Evenly"}
           </button>
+          <button
+            type="button"
+            onClick={() => toggleGridOverlay()}
+            data-admin-active={gridOverlay ? "true" : undefined}
+            title="Toggle 16px Smart Alignment Grid lines across canvas"
+            className={`px-2 py-1 rounded-lg border font-bold transition ${
+              gridOverlay
+                ? "admin-pill-active"
+                : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
+            }`}
+          >
+            ⊞ Grid
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleUnlockAll()}
+            data-admin-active={unlockAll ? "true" : undefined}
+            title="Unlock all nested cards, children, and hidden overflow locks on this page"
+            className={`px-2 py-1 rounded-lg border font-bold transition ${
+              unlockAll
+                ? "admin-pill-active"
+                : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
+            }`}
+          >
+            🔓 {unlockAll ? "Unlocked" : "Unlock All"}
+          </button>
           {alignNotice && (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-emerald-200 text-[10px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-400/55 text-emerald-200 text-[10px] font-bold">
               {alignNotice}
             </span>
           )}
         </div>
 
-        <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-black/55 border border-white/15 p-0.5">
-          <span className="px-1.5 text-[10px] font-bold opacity-70 uppercase">
+        <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-900 border border-amber-400/35 p-0.5">
+          <span className="admin-label-muted px-1.5 text-[10px] font-bold uppercase">
             Preview:
           </span>
           {(
@@ -1484,11 +1809,12 @@ export function InlineSectionBanner({
             <button
               key={vp.id}
               type="button"
+              data-admin-active={deviceViewport === vp.id ? "true" : undefined}
               onClick={() => setDeviceViewport(vp.id)}
               className={`px-2 py-0.5 rounded-lg font-bold transition ${
                 deviceViewport === vp.id
-                  ? "bg-[#2563EB] text-white shadow-sm"
-                  : "text-[#FAF7F0]/80 hover:text-white"
+                  ? "admin-pill-active shadow-sm"
+                  : "text-slate-200 hover:text-white"
               }`}
             >
               {vp.label}
@@ -1977,6 +2303,7 @@ export interface GodModeTextProps {
   defaultText: string;
   tag?: "h1" | "h2" | "h3" | "h4" | "p" | "span" | "div";
   pageKey?: string;
+  sectionId?: string;
   className?: string;
   style?: React.CSSProperties;
   lang?: string;
@@ -1987,6 +2314,7 @@ export function GodModeText({
   defaultText,
   tag = "span",
   pageKey = "global",
+  sectionId,
   className = "",
   style,
   lang,
@@ -2055,6 +2383,33 @@ export function GodModeText({
       setOpen(false);
     }
   }, [canEdit]);
+
+  useEffect(() => {
+    const inferredSection =
+      sectionId ||
+      elRef.current
+        ?.closest("[data-section-id]")
+        ?.getAttribute("data-section-id") ||
+      (typeof document !== "undefined"
+        ? document
+            .querySelector<HTMLElement>(
+              `[data-banner-page="${pageKey}"][data-banner-section-id]`
+            )
+            ?.getAttribute("data-banner-section-id")
+        : null) ||
+      pageKey;
+    const key = `__god_text_${id}`;
+    registerCanvasNode({
+      id,
+      sectionId: inferredSection || pageKey,
+      pageKey,
+      storageKey: key,
+      type: "Text",
+      label: id,
+      scope: "text",
+    });
+    return () => unregisterCanvasNode(key);
+  }, [id, pageKey, sectionId]);
 
   useEffect(() => {
     if (!selected) return;
@@ -2619,7 +2974,7 @@ export function GodModeText({
                 style={{ left: `${textGuides.v.px}px` }}
                 className="sibling-guide-v"
               >
-                <span className="fixed top-16 -translate-x-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                <span className="fixed top-16 -translate-x-1/2 rounded bg-[#f59e0b] px-1.5 py-0.5 text-[9px] font-extrabold text-[#090d16] shadow">
                   {textGuides.v.label}
                 </span>
               </div>
@@ -2629,7 +2984,7 @@ export function GodModeText({
                 style={{ top: `${textGuides.h.px}px` }}
                 className="sibling-guide-h"
               >
-                <span className="fixed left-3 -translate-y-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                <span className="fixed left-3 -translate-y-1/2 rounded bg-[#f59e0b] px-1.5 py-0.5 text-[9px] font-extrabold text-[#090d16] shadow">
                   {textGuides.h.label}
                 </span>
               </div>
@@ -2654,7 +3009,7 @@ export function GodModeText({
               onPointerDown={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
-              className="fixed w-[355px] max-w-[calc(100vw-24px)] rounded-2xl border-2 border-[#d4af37] bg-[#111318]/98 text-[#FAF7F0] p-4 shadow-2xl shadow-black/50 backdrop-blur-md space-y-3 text-xs z-[95]"
+              className="admin-studio-ui fixed w-[355px] max-w-[calc(100vw-24px)] rounded-2xl border-2 border-amber-400/70 bg-slate-950/98 text-white p-4 shadow-2xl backdrop-blur-md space-y-3 text-xs z-[95]"
             >
               <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
                 <span className="font-extrabold text-[#E5C158] truncate">
@@ -3081,6 +3436,7 @@ export function SlidePresentationCanvas({
 }: SlidePresentationCanvasProps) {
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
+  const [unlockAll] = useUnlockAllElements();
   const contextParentId = useContext(NestedFrameDepthContext);
   const resolvedParentId = explicitParentId ?? contextParentId;
   const isMicroNode = Boolean(isMicroElement);
@@ -3090,7 +3446,9 @@ export function SlidePresentationCanvas({
 
   const isEnteredAsParent = !isChildNode && enteredFrameId === id;
   const isInteractiveChild = canEdit && isChildNode;
-  const showHandles = canEdit && (!isChildNode ? !isEnteredAsParent : isInteractiveChild);
+  const showHandles =
+    canEdit &&
+    (unlockAll || (!isChildNode ? !isEnteredAsParent : isInteractiveChild));
 
   const storageKey = isMicroNode
     ? resolvedParentId
@@ -3882,18 +4240,70 @@ export function SlidePresentationCanvas({
       : curX;
 
   useEffect(() => {
+    const inferredSection =
+      saved.sectionId ||
+      boxRef.current
+        ?.closest("[data-section-id]")
+        ?.getAttribute("data-section-id") ||
+      (typeof document !== "undefined"
+        ? document
+            .querySelector<HTMLElement>(
+              `[data-banner-page="${pageKey}"][data-banner-section-id]`
+            )
+            ?.getAttribute("data-banner-section-id")
+        : null) ||
+      pageKey;
+    registerCanvasNode({
+      id,
+      sectionId: inferredSection || pageKey,
+      pageKey,
+      storageKey,
+      type: resolvedElementType,
+      label: label || id,
+      scope: isMicroNode ? "micro" : isChildNode ? "child" : "root",
+    });
+    return () => unregisterCanvasNode(storageKey);
+  }, [id, pageKey, saved.sectionId, storageKey, resolvedElementType, label, isMicroNode, isChildNode]);
+
+  useEffect(() => {
     const parentEl = boxRef.current?.parentElement;
     if (!parentEl || isMicroNode || isFloatingWidget) return;
     const siblingCards = parentEl.querySelectorAll(
       ':scope > [data-canvas-id][data-god-card="true"]'
     );
     if (siblingCards.length < 2) return;
-    const secEntry = saved.sectionId
-      ? ((cms.sectionLayoutMap?.[saved.sectionId] || {}) as SectionLayoutInfo)
+
+    const layoutRecords = (cms.sectionLayoutMap || {}) as Record<
+      string,
+      SectionLayoutInfo
+    >;
+    const inferredBannerSecId =
+      saved.sectionId ||
+      (typeof document !== "undefined"
+        ? document
+            .querySelector<HTMLElement>(
+              `[data-banner-page="${pageKey}"][data-banner-section-id]`
+            )
+            ?.getAttribute("data-banner-section-id") || undefined
+        : undefined);
+    const secEntry = inferredBannerSecId
+      ? layoutRecords[inferredBannerSecId]
       : undefined;
+
     const shouldEqualize = Boolean(saved.equalHeightRow || secEntry?.equalHeights);
     parentEl.classList.toggle("section-equal-heights", shouldEqualize);
-  }, [saved.equalHeightRow, saved.sectionId, cms.sectionLayoutMap, isMicroNode, isFloatingWidget]);
+
+    const presetClsList = [
+      "section-preset-split-50-50",
+      "section-preset-bento-3",
+      "section-preset-focused-2",
+      "section-preset-magazine-stack",
+    ];
+    presetClsList.forEach((cls) => parentEl.classList.remove(cls));
+    if (secEntry?.layoutPreset) {
+      parentEl.classList.add(`section-preset-${secEntry.layoutPreset}`);
+    }
+  }, [saved.equalHeightRow, saved.sectionId, cms.sectionLayoutMap, pageKey, isMicroNode, isFloatingWidget]);
 
   const canvasStyle: React.CSSProperties = {
     boxSizing: "border-box",
@@ -4050,7 +4460,11 @@ export function SlidePresentationCanvas({
                 : "god-mode-box-active"
             : "",
         activeOp !== "idle" ? "god-mode-box-dragging is-actively-dragging" : "",
-        className,
+        unlockAll && canEdit
+          ? className
+              .replace(/\boverflow-hidden\b/g, "overflow-visible")
+              .replace(/\bpointer-events-none\b/g, "pointer-events-auto")
+          : className,
       ]
         .filter(Boolean)
         .join(" ")}
@@ -4171,11 +4585,7 @@ export function SlidePresentationCanvas({
               left: `${toolbarPos.left}px`,
               zIndex: 99999,
             }}
-            className={`flex flex-wrap items-center justify-between gap-1.5 rounded-xl border px-2.5 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-2xl shadow-black/60 backdrop-blur-md max-w-[calc(100vw-16px)] ${
-              isChildNode
-                ? "bg-[#1E1B4B]/95 border-[#A855F7]/90"
-                : "bg-[#0F172A]/95 border-[#2563EB]/90"
-            }`}
+            className="admin-studio-ui flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-amber-400/50 bg-slate-950/95 px-2.5 py-1 text-[10px] font-bold text-white shadow-2xl backdrop-blur-md max-w-[calc(100vw-16px)]"
           >
             <div className="flex flex-wrap items-center gap-1">
               <button
@@ -4290,7 +4700,7 @@ export function SlidePresentationCanvas({
         <div
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 whitespace-nowrap rounded-lg border border-[#3b82f6] bg-[#0B101B]/95 px-1.5 py-0.5 text-[10px] font-bold text-[#FAF7F0] shadow-xl"
+          className="admin-studio-ui absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 whitespace-nowrap rounded-lg border border-amber-400/60 bg-slate-950/95 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xl"
         >
           <button
             type="button"
@@ -4376,7 +4786,7 @@ export function SlidePresentationCanvas({
                 style={{ left: `${smartGuides.v.px}px` }}
                 className="sibling-guide-v"
               >
-                <span className="fixed top-16 -translate-x-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                <span className="fixed top-16 -translate-x-1/2 rounded bg-[#f59e0b] px-1.5 py-0.5 text-[9px] font-extrabold text-[#090d16] shadow">
                   {smartGuides.v.label}
                 </span>
               </div>
@@ -4386,7 +4796,7 @@ export function SlidePresentationCanvas({
                 style={{ top: `${smartGuides.h.px}px` }}
                 className="sibling-guide-h"
               >
-                <span className="fixed left-3 -translate-y-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                <span className="fixed left-3 -translate-y-1/2 rounded bg-[#f59e0b] px-1.5 py-0.5 text-[9px] font-extrabold text-[#090d16] shadow">
                   {smartGuides.h.label}
                 </span>
               </div>
@@ -4404,7 +4814,7 @@ export function SlidePresentationCanvas({
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
-            className="fixed right-4 top-20 z-[100] w-[320px] max-w-[calc(100vw-32px)] max-h-[82vh] overflow-y-auto rounded-2xl border-2 border-[#2563EB] bg-[#0B101B]/98 text-[#FAF7F0] p-4 shadow-2xl shadow-black/60 backdrop-blur-md space-y-3 text-xs"
+            className="admin-studio-ui fixed right-4 top-20 z-[100] w-[320px] max-w-[calc(100vw-32px)] max-h-[82vh] overflow-y-auto rounded-2xl border-2 border-amber-400/60 bg-slate-950/98 text-white p-4 shadow-2xl backdrop-blur-md space-y-3 text-xs"
           >
             <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
               <div className="min-w-0">

@@ -12,6 +12,7 @@ import {
   pushAdminCmsPatch,
   checkVerifiedAdminStatus,
   clearAdminAuthTokens,
+  getVerifiedAdminToken,
   isStealthAdminEmail,
   type CmsFontFamily,
   type CmsFontScale,
@@ -22,6 +23,10 @@ import {
   toggleCmsArchiveItem,
   permanentlyDeleteCmsItem,
   clampFloatingWidgetPos,
+  useUnlockAllElements,
+  useSmartGridOverlay,
+  useRegisteredCanvasNodes,
+  getRegisteredCanvasNodesSnapshot,
 } from "@/components/inline-cms-editor";
 import {
   GlobalExplorerSidebar,
@@ -76,6 +81,17 @@ export function Header({ solid = false }: { solid?: boolean }) {
   const [isHiddenDrawerOpen, setIsHiddenDrawerOpen] = useState(false);
   const [confirmDrawerDeleteId, setConfirmDrawerDeleteId] = useState<string | null>(null);
   const [adminSaving, setAdminSaving] = useState<string | null>(null);
+  const [unlockAll, toggleUnlockAll] = useUnlockAllElements();
+  const [gridOverlay, toggleGridOverlay] = useSmartGridOverlay();
+  const registeredNodes = useRegisteredCanvasNodes();
+  const [aiCommand, setAiCommand] = useState("");
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [aiOutput, setAiOutput] = useState<{
+    summary: string;
+    prompt: string;
+    engine: string;
+    wroteTaskFile: boolean;
+  } | null>(null);
   const menuId = useId();
 
   const layoutCfg: CmsLayoutConfig = cms.layoutConfig || {};
@@ -125,6 +141,96 @@ export function Header({ solid = false }: { solid?: boolean }) {
     window.setTimeout(() => {
       setAdminSaving((curr) => (curr === `✓ ${label}` ? null : curr));
     }, 2500);
+  };
+
+  const runAiArchitect = async (
+    mode: "live-layout" | "antigravity-bridge",
+    overrideCommand?: string
+  ) => {
+    const commandText = (overrideCommand ?? aiCommand).trim() || "shuffle layout";
+    setAiBusy(mode);
+    setAdminSaving("⚡ AI Architect thinking...");
+    try {
+      const token = await getVerifiedAdminToken();
+      const xToken =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("learnsikhi_admin_token_v1") ||
+            (window.localStorage.getItem("learnsikhi_founder_admin_v1") === "true"
+              ? "verified_founder_1313"
+              : "")
+          : "";
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      if (xToken) headers["x-admin-token"] = xToken;
+      else if (token) headers["x-admin-token"] = token;
+
+      const res = await fetch("/api/ai-architect", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          command: commandText,
+          currentPath: pathname || "/",
+          currentSiteState: cms,
+          registeredNodes: getRegisteredCanvasNodesSnapshot(),
+          mode,
+          email: user?.email,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        summary?: string;
+        updatedStatePatch?: Partial<typeof cms>;
+        antigravityPrompt?: string;
+        engine?: string;
+        wroteTaskFile?: boolean;
+        error?: string;
+      } | null;
+
+      if (!res.ok || !data?.ok) {
+        setAdminSaving(data?.error || "AI Architect request failed");
+        setAiBusy(null);
+        return;
+      }
+
+      if (mode === "live-layout" && data.updatedStatePatch) {
+        const applied = await pushAdminCmsPatch(data.updatedStatePatch);
+        setAdminSaving(
+          applied
+            ? `✓ ${data.summary || "Live layout updated"}`
+            : `Applied locally: ${data.summary || "done"}`
+        );
+      } else if (mode === "antigravity-bridge") {
+        const copyText = data.wroteTaskFile
+          ? "Execute antigravity-task.md"
+          : data.antigravityPrompt || "Execute antigravity-task.md";
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          try {
+            await navigator.clipboard.writeText(copyText);
+          } catch {
+            // clipboard blocked
+          }
+        }
+        setAdminSaving(
+          data.wroteTaskFile
+            ? "🚀 Wrote antigravity-task.md & copied: Execute antigravity-task.md"
+            : "🚀 Prompt copied to clipboard"
+        );
+      }
+
+      setAiOutput({
+        summary: data.summary || "Completed",
+        prompt: data.antigravityPrompt || "",
+        engine: data.engine || "local",
+        wroteTaskFile: Boolean(data.wroteTaskFile),
+      });
+      window.setTimeout(() => setAdminSaving(null), 3200);
+    } catch {
+      setAdminSaving("AI Architect error");
+    } finally {
+      setAiBusy(null);
+    }
   };
 
   useEffect(() => {
@@ -454,30 +560,55 @@ export function Header({ solid = false }: { solid?: boolean }) {
       {/* Live Top Admin Studio Dropdown Toolbar */}
       {isStealthAdmin && isAdminBarOpen && (
         <div
-          style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--accent-primary)",
-            color: "var(--text-primary)",
-          }}
-          className="border-t border-b shadow-2xl px-4 sm:px-6 lg:px-8 py-4"
+          className="admin-studio-ui border-t border-b border-amber-400/50 bg-slate-950/95 text-white shadow-2xl px-4 sm:px-6 lg:px-8 py-4"
         >
           <div className="mx-auto max-w-7xl space-y-4">
-            {/* Top Action Row: Master Live Edit Mode + Status + Vault Link */}
+            {/* Top Action Row: Master Live Edit Mode + Unlock All + Status + Vault Link */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  data-admin-active={liveEditMode ? "true" : undefined}
                   onClick={() => setLiveEditMode(!liveEditMode)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-extrabold border transition ${
                     liveEditMode
-                      ? "bg-emerald-600 text-white border-emerald-500 shadow-sm"
-                      : "border-[#C59B27]/50 bg-[#C59B27]/10 text-[#9A7418] dark:text-[#E5C158] hover:border-[#C59B27]"
+                      ? "bg-emerald-500 text-[#090d16] border-emerald-300 shadow-sm"
+                      : "border-amber-400/50 bg-slate-900 text-amber-300 hover:border-amber-400"
                   }`}
                 >
                   ✏️ Live Page Edit Mode: {liveEditMode ? "ON" : "OFF"}
                 </button>
+                <button
+                  type="button"
+                  data-admin-active={unlockAll ? "true" : undefined}
+                  onClick={() => {
+                    if (!liveEditMode) setLiveEditMode(true);
+                    toggleUnlockAll();
+                  }}
+                  title="Strip restrictive overflow/pointer locks and unlock every card & nested item on this page"
+                  className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition ${
+                    unlockAll
+                      ? "admin-pill-active shadow-sm"
+                      : "border-amber-400/45 bg-slate-900 text-amber-200 hover:border-amber-400"
+                  }`}
+                >
+                  🔓 Unlock All Elements on Page ({Object.keys(registeredNodes).length})
+                </button>
+                <button
+                  type="button"
+                  data-admin-active={gridOverlay ? "true" : undefined}
+                  onClick={() => toggleGridOverlay()}
+                  title="Toggle 16px Smart Alignment Grid"
+                  className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition ${
+                    gridOverlay
+                      ? "admin-pill-active shadow-sm"
+                      : "border-white/25 bg-slate-900 text-slate-200 hover:border-amber-400/60"
+                  }`}
+                >
+                  ⊞ Smart Grid
+                </button>
                 {adminSaving && (
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-bold text-emerald-200">
                     {adminSaving}
                   </span>
                 )}
@@ -487,12 +618,13 @@ export function Header({ solid = false }: { solid?: boolean }) {
                 <button
                   type="button"
                   onClick={() => setIsHiddenDrawerOpen((v) => !v)}
+                  data-admin-active={isHiddenDrawerOpen ? "true" : undefined}
                   className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition ${
                     isHiddenDrawerOpen
-                      ? "bg-amber-500 text-[#18181B] border-amber-400"
+                      ? "admin-pill-active"
                       : archivedIds.length > 0
-                        ? "border-amber-400/70 bg-amber-500/15 text-amber-500 dark:text-amber-300"
-                        : "border-[#C59B27]/40 opacity-80 hover:opacity-100"
+                        ? "border-amber-400/70 bg-amber-500/15 text-amber-200"
+                        : "border-white/25 bg-slate-900 text-slate-200 hover:border-amber-400/60"
                   }`}
                 >
                   👁️ Hidden Items Drawer ({archivedIds.length} Hidden)
@@ -512,47 +644,137 @@ export function Header({ solid = false }: { solid?: boolean }) {
                     window.setTimeout(() => setAdminSaving(null), 2000);
                   }}
                   title="Reset Khoj AI floating support icon to bottom-right"
-                  className="px-3 py-2 rounded-xl border border-sky-500/45 bg-sky-500/10 text-sky-600 dark:text-sky-300 text-xs font-bold hover:bg-sky-500/20 transition"
+                  className="px-3 py-2 rounded-xl border border-sky-400/50 bg-slate-900 text-sky-200 text-xs font-bold hover:bg-sky-500/20 transition"
                 >
                   ↺ Reset Position
                 </button>
                 <Link
                   href="/admin"
                   onClick={() => setIsAdminBarOpen(false)}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold shadow-sm hover:brightness-105 transition"
+                  className="px-3.5 py-2 rounded-xl bg-amber-400 text-[#090d16] text-xs font-extrabold shadow-sm hover:brightness-105 transition"
                 >
                   🛡️ Security &amp; Moderation Vault (/admin)
                 </Link>
                 <button
                   type="button"
                   onClick={() => setIsAdminBarOpen(false)}
-                  className="px-3 py-2 rounded-xl border text-xs font-bold opacity-75 hover:opacity-100"
-                  style={{ borderColor: "var(--border-subtle)" }}
+                  className="px-3 py-2 rounded-xl border border-white/25 bg-slate-900 text-xs font-bold text-slate-200 hover:text-white"
                 >
                   Close ✕
                 </button>
               </div>
             </div>
 
+            {/* ⚡ AI Architect & Antigravity Command Bar */}
+            <div className="rounded-2xl border border-amber-400/45 bg-slate-900/95 p-3 space-y-2.5 shadow-lg">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 rounded-xl border border-amber-400/40 bg-[#090d16] px-3 py-2">
+                  <span className="text-amber-400 text-sm shrink-0">⚡</span>
+                  <input
+                    type="text"
+                    value={aiCommand}
+                    onChange={(e) => setAiCommand(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void runAiArchitect("live-layout");
+                      }
+                    }}
+                    placeholder="Ask AI Architect to redesign this page, shuffle layout, fix alignment, or dispatch a task to Antigravity..."
+                    className="w-full bg-transparent text-xs text-white placeholder:text-slate-400 focus:outline-none border-0 p-0"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs shrink-0">
+                  <button
+                    type="button"
+                    disabled={aiBusy !== null}
+                    onClick={() => void runAiArchitect("live-layout")}
+                    className="px-3 py-2 rounded-xl bg-amber-400 text-[#090d16] font-extrabold hover:bg-amber-300 transition disabled:opacity-50"
+                  >
+                    {aiBusy === "live-layout" ? "Applying..." : "✨ Apply Live to Page"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aiBusy !== null}
+                    onClick={() => void runAiArchitect("antigravity-bridge")}
+                    className="px-3 py-2 rounded-xl border border-sky-400/55 bg-sky-500/20 text-sky-100 font-extrabold hover:bg-sky-500/30 transition disabled:opacity-50"
+                  >
+                    {aiBusy === "antigravity-bridge"
+                      ? "Dispatching..."
+                      : "🚀 Send Task to Antigravity"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aiBusy !== null}
+                    onClick={() => void runAiArchitect("live-layout", "shuffle layout")}
+                    className="px-3 py-2 rounded-xl border border-amber-400/50 bg-[#090d16] text-amber-300 font-extrabold hover:bg-amber-500/20 transition disabled:opacity-50"
+                  >
+                    🎲 Magic Layout Shuffle
+                  </button>
+                </div>
+              </div>
+
+              {aiOutput && (
+                <div className="rounded-xl border border-amber-400/30 bg-[#090d16]/90 px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <p className="font-bold text-amber-300 truncate">
+                      ✓ [{aiOutput.engine === "gemini" ? "Gemini AI" : "Local Architect"}]{" "}
+                      {aiOutput.summary}
+                    </p>
+                    {aiOutput.wroteTaskFile && (
+                      <p className="text-[10px] text-slate-300 font-mono truncate">
+                        Task written to antigravity-task.md — Type in Antigravity: Execute antigravity-task.md
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof navigator !== "undefined" && navigator.clipboard) {
+                          void navigator.clipboard.writeText(
+                            aiOutput.wroteTaskFile
+                              ? "Execute antigravity-task.md"
+                              : aiOutput.prompt
+                          );
+                          setAdminSaving("✓ Copied command to clipboard");
+                          window.setTimeout(() => setAdminSaving(null), 1800);
+                        }
+                      }}
+                      className="px-2 py-1 rounded-lg border border-amber-400/45 text-amber-200 text-[10px] font-bold hover:bg-amber-500/20"
+                    >
+                      📋 Copy Command
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiOutput(null)}
+                      className="px-2 py-1 rounded-lg border border-white/20 text-slate-300 text-[10px] hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {isHiddenDrawerOpen && (
               <div
-                style={{ borderColor: "var(--border-subtle)" }}
-                className="rounded-xl border bg-black/5 dark:bg-black/30 p-3 space-y-2 text-xs"
+                className="rounded-xl border border-amber-400/35 bg-slate-900/95 p-3 space-y-2 text-xs"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-extrabold text-amber-600 dark:text-amber-300">
+                  <span className="font-extrabold text-amber-300">
                     👁️‍🗨️ Hidden Items ({archivedIds.length}) — Hidden from regular visitors
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsHiddenDrawerOpen(false)}
-                    className="text-[11px] opacity-75 hover:opacity-100"
+                    className="admin-label-muted text-[11px] hover:text-white"
                   >
                     Hide Drawer ✕
                   </button>
                 </div>
                 {archivedIds.length === 0 ? (
-                  <p className="text-[11px] opacity-70">
+                  <p className="admin-label-muted text-[11px]">
                     No hidden cards or articles right now.
                   </p>
                 ) : (
@@ -560,12 +782,11 @@ export function Header({ solid = false }: { solid?: boolean }) {
                     {archivedIds.map((hid) => (
                       <div
                         key={hid}
-                        style={{ borderColor: "var(--border-subtle)" }}
-                        className="flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 bg-[var(--bg-surface)]"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-amber-400/30 px-2.5 py-1.5 bg-[#090d16]"
                       >
                         <div className="min-w-0">
-                          <p className="font-bold truncate">{resolveHiddenItemLabel(hid)}</p>
-                          <p className="text-[10px] opacity-60 font-mono truncate">{hid}</p>
+                          <p className="font-bold truncate text-white">{resolveHiddenItemLabel(hid)}</p>
+                          <p className="admin-label-muted text-[10px] font-mono truncate">{hid}</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -576,7 +797,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                               setAdminSaving("✓ Restored");
                               window.setTimeout(() => setAdminSaving(null), 1800);
                             }}
-                            className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:brightness-110"
+                            className="px-2 py-1 rounded bg-emerald-500 text-[#090d16] text-[10px] font-extrabold hover:brightness-110"
                           >
                             Unhide
                           </button>
@@ -598,7 +819,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                             <button
                               type="button"
                               onClick={() => setConfirmDrawerDeleteId(hid)}
-                              className="px-2 py-1 rounded border border-red-500/40 text-red-500 text-[10px] font-bold hover:bg-red-500/15"
+                              className="px-2 py-1 rounded border border-red-400/50 text-red-300 text-[10px] font-bold hover:bg-red-500/20"
                             >
                               Delete
                             </button>
@@ -614,7 +835,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
             {/* Row 2: Page Transition + Quick Theme Switches + Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
               <div className="space-y-1.5">
-                <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
+                <span className="admin-label-muted block text-[11px] font-bold uppercase tracking-wider">
                   Page Transition
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -629,6 +850,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                     <button
                       key={tr.id}
                       type="button"
+                      data-admin-active={(layoutCfg.pageTransition || "fade") === tr.id ? "true" : undefined}
                       onClick={() =>
                         void applyAdminLayoutPatch(
                           { pageTransition: tr.id },
@@ -637,8 +859,8 @@ export function Header({ solid = false }: { solid?: boolean }) {
                       }
                       className={`px-2.5 py-1.5 rounded-lg border font-semibold transition ${
                         (layoutCfg.pageTransition || "fade") === tr.id
-                          ? "border-[#C59B27] bg-[#C59B27]/20 text-[#9A7418] dark:text-[#E5C158]"
-                          : "border-white/15 opacity-75 hover:opacity-100"
+                          ? "admin-pill-active"
+                          : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
                       }`}
                     >
                       {tr.label}
@@ -648,7 +870,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
               </div>
 
               <div className="space-y-1.5">
-                <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
+                <span className="admin-label-muted block text-[11px] font-bold uppercase tracking-wider">
                   Quick Theme Switches
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -667,7 +889,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                         "Dark Darbar Theme"
                       )
                     }
-                    className="px-2.5 py-1.5 rounded-lg border border-[#C59B27]/40 font-semibold hover:border-[#C59B27]"
+                    className="px-2.5 py-1.5 rounded-lg border border-amber-400/40 bg-slate-900 text-slate-100 font-semibold hover:border-amber-400"
                   >
                     🌙 Dark Darbar
                   </button>
@@ -686,7 +908,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                         "Light Ivory Theme"
                       )
                     }
-                    className="px-2.5 py-1.5 rounded-lg border border-[#C59B27]/40 font-semibold hover:border-[#C59B27]"
+                    className="px-2.5 py-1.5 rounded-lg border border-amber-400/40 bg-slate-900 text-slate-100 font-semibold hover:border-amber-400"
                   >
                     ☀️ Light Ivory
                   </button>
@@ -705,7 +927,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                         "Puratan Parchment Theme"
                       )
                     }
-                    className="px-2.5 py-1.5 rounded-lg border border-[#C59B27]/40 font-semibold hover:border-[#C59B27]"
+                    className="px-2.5 py-1.5 rounded-lg border border-amber-400/40 bg-slate-900 text-slate-100 font-semibold hover:border-amber-400"
                   >
                     📜 Puratan Parchment
                   </button>
@@ -713,7 +935,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
               </div>
 
               <div className="space-y-1.5">
-                <span className="block text-[11px] font-bold uppercase tracking-wider opacity-75">
+                <span className="admin-label-muted block text-[11px] font-bold uppercase tracking-wider">
                   Font, Size &amp; Grid
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -726,11 +948,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                         "Font updated"
                       )
                     }
-                    style={{
-                      backgroundColor: "var(--bg-primary)",
-                      borderColor: "var(--border-subtle)",
-                    }}
-                    className="rounded-lg border px-2 py-1 text-xs font-semibold"
+                    className="rounded-lg border border-amber-400/40 bg-slate-900 text-white px-2 py-1 text-xs font-semibold"
                   >
                     <option value="serif-heritage">Serif</option>
                     <option value="sans-modern">Sans</option>
@@ -742,6 +960,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                     <button
                       key={sz}
                       type="button"
+                      data-admin-active={(layoutCfg.bodyScale || "md") === sz ? "true" : undefined}
                       onClick={() =>
                         void applyAdminLayoutPatch(
                           { headingScale: sz, bodyScale: sz },
@@ -750,8 +969,8 @@ export function Header({ solid = false }: { solid?: boolean }) {
                       }
                       className={`px-2 py-1 rounded-lg border uppercase font-bold ${
                         (layoutCfg.bodyScale || "md") === sz
-                          ? "border-[#C59B27] bg-[#C59B27]/20 text-[#9A7418] dark:text-[#E5C158]"
-                          : "border-white/15 opacity-75"
+                          ? "admin-pill-active"
+                          : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
                       }`}
                     >
                       {sz}
@@ -768,6 +987,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                     <button
                       key={g.id}
                       type="button"
+                      data-admin-active={(layoutCfg.feedLayout || "grid-3") === g.id ? "true" : undefined}
                       onClick={() =>
                         void applyAdminLayoutPatch(
                           { feedLayout: g.id },
@@ -776,8 +996,8 @@ export function Header({ solid = false }: { solid?: boolean }) {
                       }
                       className={`px-2 py-1 rounded-lg border font-semibold ${
                         (layoutCfg.feedLayout || "grid-3") === g.id
-                          ? "border-[#C59B27] bg-[#C59B27]/20 text-[#9A7418] dark:text-[#E5C158]"
-                          : "border-white/15 opacity-75"
+                          ? "admin-pill-active"
+                          : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
                       }`}
                     >
                       {g.label}
@@ -802,8 +1022,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                 return (
                   <label
                     key={c.key}
-                    className="flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5"
-                    style={{ borderColor: "var(--border-subtle)" }}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-amber-400/35 bg-slate-900 px-2.5 py-1.5 text-slate-100"
                   >
                     <span className="font-bold truncate">{c.label}</span>
                     <input
