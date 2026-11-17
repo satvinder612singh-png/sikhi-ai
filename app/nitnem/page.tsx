@@ -383,6 +383,22 @@ function NitnemReaderContent() {
     BANI_CATALOG.find((b) => b.id === selectedBaniId) || BANI_CATALOG[0];
 
   useEffect(() => {
+    const syncBaniHash = () => {
+      if (typeof window === "undefined") return;
+      const hash = window.location.hash.replace(/^#topic-/, "").replace(/^#/, "");
+      if (!hash) return;
+      const matched = BANI_CATALOG.find((b) => b.id === hash);
+      if (matched) {
+        setSelectedBaniId(matched.id);
+        setActiveCategory(matched.category);
+      }
+    };
+    syncBaniHash();
+    window.addEventListener("hashchange", syncBaniHash);
+    return () => window.removeEventListener("hashchange", syncBaniHash);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     async function loadBaniVerses() {
       setLoadingBani(true);
@@ -490,7 +506,8 @@ function NitnemReaderContent() {
         label="Nitnem Hero Banner"
       >
       <section
-        className={`border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)] ${
+        id="topic-nitnem-hero"
+        className={`border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)] scroll-mt-28 ${
           liveEditMode ? "overflow-visible" : ""
         }`}
       >
@@ -678,6 +695,7 @@ function NitnemReaderContent() {
                   className="h-full"
                 >
                   <div
+                    id={`topic-${item.id}`}
                     role="button"
                     tabIndex={0}
                     onClick={() => handleSelectBani(item)}
@@ -687,7 +705,7 @@ function NitnemReaderContent() {
                         handleSelectBani(item);
                       }
                     }}
-                    className={`h-full p-4 rounded-2xl border text-left transition-all flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer ${
+                    className={`h-full p-4 rounded-2xl border text-left transition-all flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer scroll-mt-28 ${
                       liveEditMode ? "overflow-visible" : ""
                     } ${
                       selected

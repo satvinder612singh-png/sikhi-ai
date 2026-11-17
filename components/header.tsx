@@ -23,6 +23,10 @@ import {
   permanentlyDeleteCmsItem,
   clampFloatingWidgetPos,
 } from "@/components/inline-cms-editor";
+import {
+  GlobalExplorerSidebar,
+  OPEN_EXPLORER_EVENT,
+} from "@/components/global-explorer-sidebar";
 
 const VISITOR_THEME_KEY = "learn_sikhi_theme_v2";
 
@@ -253,6 +257,21 @@ export function Header({ solid = false }: { solid?: boolean }) {
             );
           })}
 
+          <li className="shrink-0 pl-1">
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "map" } })
+                )
+              }
+              title="Open Topic Map & Hourly Sikhi News"
+              className={`whitespace-nowrap rounded-full border border-[#C59B27]/50 bg-[#C59B27]/10 px-2.5 py-1 text-[11px] font-bold text-[#9A7418] dark:text-[#E5C158] hover:border-[#C59B27] transition ${focusRing}`}
+            >
+              🧭 Explore &amp; News
+            </button>
+          </li>
+
           <li className="shrink-0 pl-2">
             <ThemeSwitcher />
           </li>
@@ -318,6 +337,18 @@ export function Header({ solid = false }: { solid?: boolean }) {
         </ul>
 
         <div className="flex items-center gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "map" } })
+              )
+            }
+            aria-label="Open Topic Explorer and Hourly Sikhi News"
+            className={`whitespace-nowrap rounded-full border border-[#C59B27]/50 bg-[#C59B27]/10 px-2.5 py-1 text-[10px] font-bold text-[#9A7418] dark:text-[#E5C158] ${focusRing}`}
+          >
+            🧭 Explore
+          </button>
           {isStealthAdmin && (
             <button
               type="button"
@@ -793,6 +824,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
           </div>
         </div>
       )}
+      <GlobalExplorerSidebar isAdmin={isStealthAdmin} />
     </header>
   );
 }

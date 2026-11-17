@@ -604,6 +604,7 @@ export default function MatriarchsPage() {
             return (
               <article
                 key={profile.id}
+                id={`topic-${profile.id}`}
                 style={{
                   backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || "#1B2A20",
                   borderColor: ov?.borderColor || layoutCfg.accentColor || "rgba(197,155,39,0.4)",
@@ -612,7 +613,7 @@ export default function MatriarchsPage() {
                     ? resolveCmsFontFamily(ov.fontFamily)
                     : undefined,
                 }}
-                className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 ${
+                className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 scroll-mt-28 ${
                   liveEditMode ? "overflow-visible" : ""
                 } ${
                   (cms.archivedIds || []).includes(profile.id)

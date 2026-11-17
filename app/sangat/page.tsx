@@ -2207,6 +2207,7 @@ function SangatHubContent() {
           return (
         <GodModeBox id="sangat-hero-box" pageKey="sangat" label="Hero Section">
         <section
+          id="topic-sangat-hero"
           style={{
             backgroundColor:
               heroInline?.bgColor || layoutCfg.cardBgColor || "var(--bg-surface)",
@@ -2734,6 +2735,7 @@ function SangatHubContent() {
                       return (
                         <article
                           key={`${item.kind}-${item.id}`}
+                          id={`topic-${item.id}`}
                           style={{
                             backgroundColor:
                               ov?.bgColor || layoutCfg.cardBgColor || "var(--bg-surface)",
@@ -2746,7 +2748,7 @@ function SangatHubContent() {
                               ? resolveCmsFontFamily(ov.fontFamily)
                               : undefined,
                           }}
-                          className={`group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37]/70 transition-all duration-300 ease-out ${
+                          className={`group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37]/70 transition-all duration-300 ease-out scroll-mt-28 ${
                             liveEditMode ? "overflow-visible" : ""
                           } ${
                             (cms.archivedIds || []).includes(item.id)

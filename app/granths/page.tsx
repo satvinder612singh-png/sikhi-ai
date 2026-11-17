@@ -1368,6 +1368,7 @@ export default function GranthsAndKirtanPage() {
                   return (
                     <div
                       key={track.id}
+                      id={`topic-${track.id}`}
                       onClick={() => handleTrackClick(track)}
                       role="button"
                       tabIndex={0}
@@ -1387,7 +1388,7 @@ export default function GranthsAndKirtanPage() {
                           ? resolveCmsFontFamily(ov.fontFamily)
                           : undefined,
                       }}
-                      className={`p-5 rounded-2xl border border-[#d4af37]/30 transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between gap-3 ${cardLayoutCls} ${
+                      className={`p-5 rounded-2xl border border-[#d4af37]/30 transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between gap-3 scroll-mt-28 ${cardLayoutCls} ${
                         (cms.archivedIds || []).includes(track.id)
                           ? "opacity-55 ring-2 ring-amber-400/70"
                           : ""
@@ -1704,7 +1705,8 @@ export default function GranthsAndKirtanPage() {
                 return (
                 <article
                   key={granth.id}
-                  className={`rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6 ${
+                  id={`topic-${granth.id}`}
+                  className={`rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6 scroll-mt-28 ${
                     (cms.archivedIds || []).includes(granth.id)
                       ? "opacity-55 ring-2 ring-amber-400/70"
                       : ""
