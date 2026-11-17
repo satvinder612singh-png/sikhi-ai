@@ -1229,6 +1229,299 @@ export function InlineSectionBanner({
 export type GodModeScope = "element" | "page" | "global";
 export type GodModeTextSize = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
 
+export const GOD_MODE_GRID_SIZE = 16;
+const SIBLING_SNAP_THRESHOLD = 8;
+const MOBILE_PREVIEW_EVENT = "learnsikhi-mobile-preview-change";
+let currentMobilePreview = false;
+
+function toggleMobilePreviewGlobal() {
+  currentMobilePreview = !currentMobilePreview;
+  if (typeof document !== "undefined") {
+    document.body.classList.toggle("god-mode-mobile-preview", currentMobilePreview);
+  }
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event(MOBILE_PREVIEW_EVENT));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function useMobilePreviewMode(): [boolean, () => void] {
+  const [enabled, setEnabled] = useState(currentMobilePreview);
+  useEffect(() => {
+    const sync = () => setEnabled(currentMobilePreview);
+    window.addEventListener(MOBILE_PREVIEW_EVENT, sync);
+    return () => window.removeEventListener(MOBILE_PREVIEW_EVENT, sync);
+  }, []);
+  return [enabled, toggleMobilePreviewGlobal];
+}
+
+interface SiblingSnapTarget {
+  offset: number;
+  guideScreenPx: number;
+  label: string;
+  isCenter?: boolean;
+}
+
+interface SnapConstraintContext {
+  xTargets: SiblingSnapTarget[];
+  yTargets: SiblingSnapTarget[];
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  parentWidth: number;
+  maxAllowedW: number;
+}
+
+interface ActiveGuideLine {
+  px: number;
+  label: string;
+  isCenter?: boolean;
+}
+
+interface ActiveAlignmentGuides {
+  v?: ActiveGuideLine | null;
+  h?: ActiveGuideLine | null;
+}
+
+function captureSnapContext(
+  el: HTMLElement | null,
+  parentEl: HTMLElement | null,
+  initialX: number,
+  initialY: number,
+  isMicroNode: boolean
+): SnapConstraintContext {
+  if (!el || typeof window === "undefined") {
+    return {
+      xTargets: [],
+      yTargets: [],
+      minX: -640,
+      maxX: 640,
+      minY: -640,
+      maxY: 640,
+      parentWidth: 0,
+      maxAllowedW: 1200,
+    };
+  }
+
+  const elRect = el.getBoundingClientRect();
+  const parentRect = parentEl ? parentEl.getBoundingClientRect() : null;
+  const siblingRoot =
+    (isMicroNode ? parentEl : el.closest("section, main") || el.parentElement) ||
+    parentEl ||
+    el.parentElement;
+
+  const xTargets: SiblingSnapTarget[] = [];
+  const yTargets: SiblingSnapTarget[] = [];
+
+  if (parentRect && parentRect.width > 0 && parentRect.height > 0) {
+    const pCenterX = parentRect.left + parentRect.width / 2;
+    const pCenterY = parentRect.top + parentRect.height / 2;
+    const elCenterX = elRect.left + elRect.width / 2;
+    const elCenterY = elRect.top + elRect.height / 2;
+    xTargets.push({
+      offset: Math.round(initialX + (pCenterX - elCenterX)),
+      guideScreenPx: Math.round(pCenterX),
+      label: "CENTER X 50%",
+      isCenter: true,
+    });
+    yTargets.push({
+      offset: Math.round(initialY + (pCenterY - elCenterY)),
+      guideScreenPx: Math.round(pCenterY),
+      label: "CENTER Y 50%",
+      isCenter: true,
+    });
+  }
+
+  if (siblingRoot) {
+    const siblings = siblingRoot.querySelectorAll<HTMLElement>("[data-canvas-id]");
+    const elCenterX = elRect.left + elRect.width / 2;
+    const elCenterY = elRect.top + elRect.height / 2;
+    siblings.forEach((sib) => {
+      if (sib === el || el.contains(sib) || sib.contains(el)) return;
+      const sRect = sib.getBoundingClientRect();
+      if (sRect.width <= 0 || sRect.height <= 0) return;
+
+      const sCenterX = sRect.left + sRect.width / 2;
+      const sCenterY = sRect.top + sRect.height / 2;
+
+      // Vertical alignment axes (match left-left, center-center, right-right, edges)
+      xTargets.push(
+        {
+          offset: Math.round(initialX + (sRect.left - elRect.left)),
+          guideScreenPx: Math.round(sRect.left),
+          label: "ALIGN L",
+        },
+        {
+          offset: Math.round(initialX + (sRect.right - elRect.right)),
+          guideScreenPx: Math.round(sRect.right),
+          label: "ALIGN R",
+        },
+        {
+          offset: Math.round(initialX + (sCenterX - elCenterX)),
+          guideScreenPx: Math.round(sCenterX),
+          label: "ALIGN CX",
+        },
+        {
+          offset: Math.round(initialX + (sRect.right - elRect.left)),
+          guideScreenPx: Math.round(sRect.right),
+          label: "EDGE",
+        },
+        {
+          offset: Math.round(initialX + (sRect.left - elRect.right)),
+          guideScreenPx: Math.round(sRect.left),
+          label: "EDGE",
+        }
+      );
+
+      // Horizontal alignment axes
+      yTargets.push(
+        {
+          offset: Math.round(initialY + (sRect.top - elRect.top)),
+          guideScreenPx: Math.round(sRect.top),
+          label: "ALIGN T",
+        },
+        {
+          offset: Math.round(initialY + (sRect.bottom - elRect.bottom)),
+          guideScreenPx: Math.round(sRect.bottom),
+          label: "ALIGN B",
+        },
+        {
+          offset: Math.round(initialY + (sCenterY - elCenterY)),
+          guideScreenPx: Math.round(sCenterY),
+          label: "ALIGN CY",
+        },
+        {
+          offset: Math.round(initialY + (sRect.bottom - elRect.top)),
+          guideScreenPx: Math.round(sRect.bottom),
+          label: "EDGE",
+        },
+        {
+          offset: Math.round(initialY + (sRect.top - elRect.bottom)),
+          guideScreenPx: Math.round(sRect.top),
+          label: "EDGE",
+        }
+      );
+    });
+  }
+
+  const vw = window.innerWidth;
+  const vpMinX = Math.round(initialX + (8 - elRect.left));
+  const vpMaxX = Math.round(initialX + (vw - 8 - elRect.right));
+  const vpMinY = Math.round(initialY + (8 - elRect.top));
+
+  let minX = Math.min(vpMinX, initialX);
+  let maxX = Math.max(vpMaxX, initialX);
+  let minY = Math.min(vpMinY, initialY);
+  let maxY = initialY + 1200;
+
+  if (isMicroNode && parentRect) {
+    const pMinX = Math.round(initialX + (parentRect.left - elRect.left) - 16);
+    const pMaxX = Math.round(initialX + (parentRect.right - elRect.right) + 16);
+    const pMinY = Math.round(initialY + (parentRect.top - elRect.top) - 16);
+    const pMaxY = Math.round(initialY + (parentRect.bottom - elRect.bottom) + 16);
+    minX = Math.min(pMinX, pMaxX, initialX);
+    maxX = Math.max(pMinX, pMaxX, initialX);
+    minY = Math.min(pMinY, pMaxY, initialY);
+    maxY = Math.max(pMinY, pMaxY, initialY);
+  } else if (minX > maxX) {
+    const mid = Math.round((minX + maxX) / 2);
+    minX = mid - 64;
+    maxX = mid + 64;
+  }
+
+  const parentWidth = parentRect ? Math.round(parentRect.width) : Math.round(vw - 32);
+  const maxAllowedW = isMicroNode && parentRect
+    ? Math.max(48, Math.round(parentRect.width + 32))
+    : Math.max(160, Math.round(Math.min(vw - 16, parentWidth > 0 ? parentWidth : vw - 16)));
+
+  return {
+    xTargets,
+    yTargets,
+    minX,
+    maxX,
+    minY,
+    maxY,
+    parentWidth,
+    maxAllowedW,
+  };
+}
+
+function resolveSnappedPosition(
+  rawX: number,
+  rawY: number,
+  ctx: SnapConstraintContext,
+  snapStep: number,
+  shiftKey: boolean
+): {
+  x: number;
+  y: number;
+  vGuide: ActiveGuideLine | null;
+  hGuide: ActiveGuideLine | null;
+} {
+  let snappedX = Math.round(rawX);
+  let snappedY = Math.round(rawY);
+  let vGuide: ActiveGuideLine | null = null;
+  let hGuide: ActiveGuideLine | null = null;
+
+  if (!shiftKey) {
+    let bestDx = SIBLING_SNAP_THRESHOLD + 1;
+    let bestXTarget: SiblingSnapTarget | null = null;
+    for (const t of ctx.xTargets) {
+      const dist = Math.abs(rawX - t.offset);
+      if (dist < bestDx || (dist === bestDx && t.isCenter)) {
+        bestDx = dist;
+        bestXTarget = t;
+      }
+    }
+    if (bestXTarget && bestDx <= SIBLING_SNAP_THRESHOLD) {
+      snappedX = bestXTarget.offset;
+      vGuide = {
+        px: bestXTarget.guideScreenPx,
+        label: bestXTarget.label,
+        isCenter: bestXTarget.isCenter,
+      };
+    } else if (snapStep > 0) {
+      snappedX = Math.round(rawX / snapStep) * snapStep;
+    }
+
+    let bestDy = SIBLING_SNAP_THRESHOLD + 1;
+    let bestYTarget: SiblingSnapTarget | null = null;
+    for (const t of ctx.yTargets) {
+      const dist = Math.abs(rawY - t.offset);
+      if (dist < bestDy || (dist === bestDy && t.isCenter)) {
+        bestDy = dist;
+        bestYTarget = t;
+      }
+    }
+    if (bestYTarget && bestDy <= SIBLING_SNAP_THRESHOLD) {
+      snappedY = bestYTarget.offset;
+      hGuide = {
+        px: bestYTarget.guideScreenPx,
+        label: bestYTarget.label,
+        isCenter: bestYTarget.isCenter,
+      };
+    } else if (snapStep > 0) {
+      snappedY = Math.round(rawY / snapStep) * snapStep;
+    }
+  }
+
+  const clampedX = Math.round(Math.min(ctx.maxX, Math.max(ctx.minX, snappedX)));
+  const clampedY = Math.round(Math.min(ctx.maxY, Math.max(ctx.minY, snappedY)));
+  if (clampedX !== snappedX) vGuide = null;
+  if (clampedY !== snappedY) hGuide = null;
+
+  return {
+    x: clampedX,
+    y: clampedY,
+    vGuide,
+    hGuide,
+  };
+}
+
 interface GodModeTextRecord {
   text?: string;
   fontFamily?: CmsFontFamily;
@@ -1237,8 +1530,10 @@ interface GodModeTextRecord {
   bgColor?: string;
   x?: number;
   y?: number;
+  xRatio?: number;
   transform?: string;
   width?: number;
+  widthRatio?: number;
   height?: number;
   padding?: number;
   zIndex?: number;
@@ -1329,6 +1624,7 @@ export function GodModeText({
   const [selected, setSelected] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 80, left: 24 });
+  const [textGuides, setTextGuides] = useState<ActiveAlignmentGuides | null>(null);
 
   const elRecord = (cms.topicEdits?.[id] || {}) as CmsTopicEdit & GodModeTextRecord;
   const layoutTextRecord = (
@@ -1442,6 +1738,7 @@ export function GodModeText({
 
     const el = elRef.current;
     if (!el) return;
+    const snapCtx = captureSnapContext(el, el.parentElement, savedX, savedY, true);
     el.setAttribute("data-dragging", "true");
     el.classList.add("is-actively-dragging");
 
@@ -1469,8 +1766,16 @@ export function GodModeText({
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
         snap.moved = true;
       }
-      snap.latestX = Math.round(snap.initialX + dx);
-      snap.latestY = Math.round(snap.initialY + dy);
+      const res = resolveSnappedPosition(
+        snap.initialX + dx,
+        snap.initialY + dy,
+        snapCtx,
+        GOD_MODE_GRID_SIZE,
+        ev.shiftKey
+      );
+      snap.latestX = res.x;
+      snap.latestY = res.y;
+      setTextGuides(res.vGuide || res.hGuide ? { v: res.vGuide, h: res.hGuide } : null);
 
       if (snap.rafId === null) {
         snap.rafId = window.requestAnimationFrame(() => {
@@ -1502,8 +1807,16 @@ export function GodModeText({
         elRef.current.removeAttribute("data-dragging");
         elRef.current.classList.remove("is-actively-dragging");
       }
+      setTextGuides(null);
       if (snap?.moved) {
-        void persistTextSpatial({ x: snap.latestX, y: snap.latestY });
+        void persistTextSpatial({
+          x: snap.latestX,
+          y: snap.latestY,
+          xRatio:
+            snapCtx.parentWidth > 0
+              ? Math.round((snap.latestX / snapCtx.parentWidth) * 10000) / 10000
+              : undefined,
+        });
       }
     };
 
@@ -1530,6 +1843,7 @@ export function GodModeText({
 
     const el = elRef.current;
     if (!el) return;
+    const snapCtx = captureSnapContext(el, el.parentElement, savedX, savedY, true);
     const rect = el.getBoundingClientRect();
     const initialW = savedW || Math.max(24, Math.round(rect.width));
     const initialH = savedH || Math.max(20, Math.round(rect.height));
@@ -1563,10 +1877,18 @@ export function GodModeText({
         snap.moved = true;
       }
       if (dir === "e" || dir === "se") {
-        snap.latestW = Math.max(24, Math.round(snap.initialW + dx));
+        const rawW = snap.initialW + dx;
+        const snappedW = ev.shiftKey
+          ? Math.round(rawW)
+          : Math.round(rawW / GOD_MODE_GRID_SIZE) * GOD_MODE_GRID_SIZE;
+        snap.latestW = Math.min(snapCtx.maxAllowedW, Math.max(24, snappedW));
       }
       if (dir === "s" || dir === "se") {
-        snap.latestH = Math.max(20, Math.round(snap.initialH + dy));
+        const rawH = snap.initialH + dy;
+        const snappedH = ev.shiftKey
+          ? Math.round(rawH)
+          : Math.round(rawH / GOD_MODE_GRID_SIZE) * GOD_MODE_GRID_SIZE;
+        snap.latestH = Math.max(20, snappedH);
       }
 
       if (snap.rafId === null) {
@@ -1576,7 +1898,7 @@ export function GodModeText({
           cur.rafId = null;
           if (dir === "e" || dir === "se") {
             elRef.current.style.width = `${cur.latestW}px`;
-            elRef.current.style.maxWidth = "none";
+            elRef.current.style.maxWidth = "100%";
           }
           if (dir === "s" || dir === "se") {
             elRef.current.style.minHeight = `${cur.latestH}px`;
@@ -1607,7 +1929,13 @@ export function GodModeText({
       }
       if (snap?.moved) {
         const patch: Partial<GodModeTextRecord> = {};
-        if (dir === "e" || dir === "se") patch.width = snap.latestW;
+        if (dir === "e" || dir === "se") {
+          patch.width = snap.latestW;
+          if (snapCtx.parentWidth > 0) {
+            patch.widthRatio =
+              Math.round((snap.latestW / snapCtx.parentWidth) * 10000) / 10000;
+          }
+        }
         if (dir === "s" || dir === "se") patch.height = snap.latestH;
         void persistTextSpatial(patch);
       }
@@ -1766,10 +2094,11 @@ export function GodModeText({
 
   const activeZIndex =
     canEdit && (selected || hovered)
-      ? Math.max(60, typeof savedZ === "number" ? savedZ : 60)
+      ? Math.max(999, typeof savedZ === "number" ? savedZ : 999)
       : savedZ;
 
   const mergedStyle: React.CSSProperties = {
+    boxSizing: "border-box",
     ...style,
     ...(canEdit || hasSpatialStyle
       ? {
@@ -1780,7 +2109,7 @@ export function GodModeText({
     ...(savedX !== 0 || savedY !== 0
       ? { transform: `translate3d(${savedX}px, ${savedY}px, 0)` }
       : {}),
-    ...(typeof savedW === "number" ? { width: `${savedW}px`, maxWidth: "none" } : {}),
+    ...(typeof savedW === "number" ? { width: `${savedW}px`, maxWidth: "100%" } : {}),
     ...(typeof savedH === "number" ? { minHeight: `${savedH}px` } : {}),
     ...(typeof savedPad === "number" ? { padding: `${savedPad}px` } : {}),
     ...(typeof activeZIndex === "number" ? { zIndex: activeZIndex } : {}),
@@ -1809,6 +2138,11 @@ export function GodModeText({
       <Tag
         ref={elRef as React.RefObject<never>}
         lang={lang}
+        data-canvas-id={id}
+        data-edit-mode={canEdit ? "true" : undefined}
+        data-desktop-freeform={
+          savedX !== 0 || savedY !== 0 || typeof savedW === "number" ? "true" : undefined
+        }
         style={mergedStyle}
         className={mergedClassName}
         onMouseEnter={
@@ -1883,6 +2217,34 @@ export function GodModeText({
         )}
         {resolvedText}
       </Tag>
+
+      {(textGuides?.v || textGuides?.h) &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            {textGuides.v && (
+              <div
+                style={{ left: `${textGuides.v.px}px` }}
+                className="sibling-guide-v"
+              >
+                <span className="fixed top-16 -translate-x-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                  {textGuides.v.label}
+                </span>
+              </div>
+            )}
+            {textGuides.h && (
+              <div
+                style={{ top: `${textGuides.h.px}px` }}
+                className="sibling-guide-h"
+              >
+                <span className="fixed left-3 -translate-y-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                  {textGuides.h.label}
+                </span>
+              </div>
+            )}
+          </>,
+          document.body
+        )}
 
       {canEdit &&
         open &&
@@ -2108,8 +2470,10 @@ export type SlideLayoutAlign = "left" | "center" | "right";
 export interface SlideCanvasState {
   x?: number;
   y?: number;
+  xRatio?: number;
   transform?: string;
   width?: number;
+  widthRatio?: number;
   height?: number;
   widthPreset?: "1/3" | "1/2" | "3/4" | "full" | "custom";
   layoutWidth?: SlideLayoutWidth;
@@ -2121,7 +2485,7 @@ export interface SlideCanvasState {
   textColor?: string;
   bgColor?: string;
   borderColor?: string;
-  snapStep?: 0 | 10 | 20;
+  snapStep?: 0 | 10 | 16 | 20;
   scope?: "root" | "child" | "micro";
   isMicroElement?: boolean;
   parentId?: string;
@@ -2342,6 +2706,7 @@ export function SlidePresentationCanvas({
       : `__slide_canvas_${id}`;
 
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const portalToolbarRef = useRef<HTMLDivElement | null>(null);
   const dragSnapshotRef = useRef<{
     op: "drag" | "resize" | "rotate";
     startClientX: number;
@@ -2361,6 +2726,12 @@ export function SlidePresentationCanvas({
   const hovered = showHandles && globalHoveredId === id;
   const [selected, setSelected] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [mobilePreview, toggleMobilePreview] = useMobilePreviewMode();
+  const [toolbarPos, setToolbarPos] = useState<{
+    top: number;
+    left: number;
+    flipBelow: boolean;
+  } | null>(null);
 
   const resolvedElementType =
     elementType ||
@@ -2380,11 +2751,7 @@ export function SlidePresentationCanvas({
   const [activeOp, setActiveOp] = useState<
     "idle" | "drag" | "resize" | "rotate"
   >("idle");
-  const [smartGuides, setSmartGuides] = useState<{
-    v: boolean;
-    h: boolean;
-    rect?: { top: number; left: number; width: number; height: number };
-  } | null>(null);
+  const [smartGuides, setSmartGuides] = useState<ActiveAlignmentGuides | null>(null);
 
   const layoutMap = (cms.sectionLayoutMap || {}) as Record<string, unknown>;
   const legacySaved = (layoutMap[`__god_box_${id}`] || {}) as GodModeBoxRecord;
@@ -2398,15 +2765,15 @@ export function SlidePresentationCanvas({
   ) as SlideCanvasState;
 
   const [mounted, setMounted] = useState(false);
-  const [, setViewportTick] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(1280);
 
   useEffect(() => {
     setMounted(true);
-    if (!isFloatingWidget) return;
-    const onResize = () => setViewportTick((t) => t + 1);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [isFloatingWidget]);
+    const updateVw = () => setViewportWidth(window.innerWidth);
+    updateVw();
+    window.addEventListener("resize", updateVw);
+    return () => window.removeEventListener("resize", updateVw);
+  }, []);
 
   const storedSupportPos = isFloatingWidget
     ? (layoutMap.supportWidgetPos as { right?: unknown; bottom?: unknown } | undefined)
@@ -2430,7 +2797,9 @@ export function SlidePresentationCanvas({
   const saved: SlideCanvasState = {
     x: slideSaved.x ?? (isChildNode ? 0 : legacySaved.offsetX ?? 0),
     y: slideSaved.y ?? (isChildNode ? 0 : legacySaved.offsetY ?? 0),
+    xRatio: slideSaved.xRatio,
     width: slideSaved.width ?? (isChildNode ? undefined : legacySaved.customWidthPx),
+    widthRatio: slideSaved.widthRatio,
     height: slideSaved.height ?? (isChildNode ? undefined : legacySaved.minHeightPx),
     widthPreset:
       slideSaved.widthPreset ?? (isChildNode ? undefined : legacySaved.widthPreset),
@@ -2456,21 +2825,24 @@ export function SlidePresentationCanvas({
         : typeof snapToGrid === "number"
           ? snapToGrid >= 20
             ? 20
-            : snapToGrid > 0
+            : snapToGrid === 10
               ? 10
-              : 0
+              : snapToGrid > 0
+                ? GOD_MODE_GRID_SIZE
+                : 0
           : snapToGrid
-            ? 10
+            ? GOD_MODE_GRID_SIZE
             : 0,
   };
 
-  const activeSnapStep = saved.snapStep ?? 10;
+  const activeSnapStep = saved.snapStep ?? GOD_MODE_GRID_SIZE;
 
   useEffect(() => {
     if (!canEdit) {
       setGlobalHoveredId(null);
       setSelected(false);
       setInspectorOpen(false);
+      setToolbarPos(null);
       if (currentEnteredFrameId === id) {
         setEnteredFrameIdGlobal(null);
       }
@@ -2480,13 +2852,56 @@ export function SlidePresentationCanvas({
   useEffect(() => {
     if (!selected) return;
     const onOutside = (e: PointerEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+      const target = e.target as Node | null;
+      if (
+        boxRef.current &&
+        !boxRef.current.contains(target) &&
+        (!portalToolbarRef.current || !portalToolbarRef.current.contains(target))
+      ) {
         setSelected(false);
       }
     };
     window.addEventListener("pointerdown", onOutside);
     return () => window.removeEventListener("pointerdown", onOutside);
   }, [selected]);
+
+  const shouldShowPortalToolbar =
+    mounted && showHandles && !isMicroNode && (hovered || selected || inspectorOpen);
+
+  useEffect(() => {
+    if (!shouldShowPortalToolbar) {
+      setToolbarPos(null);
+      return;
+    }
+    let raf = 0;
+    const syncPos = () => {
+      if (!boxRef.current || typeof window === "undefined") return;
+      const rect = boxRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const flipBelow = rect.top < 88;
+      const top = flipBelow
+        ? Math.min(vh - 54, Math.max(8, Math.round(rect.bottom + 8)))
+        : Math.max(8, Math.round(rect.top - 42));
+      const left = Math.max(8, Math.min(Math.round(rect.left), Math.max(8, vw - 360)));
+      setToolbarPos({ top, left, flipBelow });
+    };
+    syncPos();
+    const onTick = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        syncPos();
+      });
+    };
+    window.addEventListener("scroll", onTick, true);
+    window.addEventListener("resize", onTick);
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onTick, true);
+      window.removeEventListener("resize", onTick);
+    };
+  }, [shouldShowPortalToolbar, saved.x, saved.y, saved.width, activeOp, viewportWidth]);
 
   const persistCanvas = async (
     patch: Partial<SlideCanvasState>,
@@ -2566,42 +2981,14 @@ export function SlidePresentationCanvas({
     const initialY = isFloatingWidget ? floatingPosCheck.bottom : (saved.y || 0);
     const baseRot = saved.rotation || 0;
 
-    // Measure element & parent card container ONCE on pointerdown (never during pointermove)
+    // Measure element, container bounds & sibling alignment targets ONCE on pointerdown (zero DOM reads in pointermove)
     const el = boxRef.current;
     const elRect = el ? el.getBoundingClientRect() : null;
     const parentEl = findParentCardElement(el);
-    const parentRectRaw = parentEl ? parentEl.getBoundingClientRect() : null;
+    const snapCtx = captureSnapContext(el, parentEl, initialX, initialY, isMicroNode);
 
     // Capture static inverse-transform projector once on pointerdown
     const invMatrix = isMicroNode ? captureInverseMatrix(parentEl) : null;
-
-    const exactCenterX =
-      elRect && parentRectRaw
-        ? Math.round(
-            initialX +
-              (parentRectRaw.left +
-                parentRectRaw.width / 2 -
-                (elRect.left + elRect.width / 2))
-          )
-        : null;
-    const exactCenterY =
-      elRect && parentRectRaw
-        ? Math.round(
-            initialY +
-              (parentRectRaw.top +
-                parentRectRaw.height / 2 -
-                (elRect.top + elRect.height / 2))
-          )
-        : null;
-
-    const guideRect = parentRectRaw
-      ? {
-          top: parentRectRaw.top,
-          left: parentRectRaw.left,
-          width: parentRectRaw.width,
-          height: parentRectRaw.height,
-        }
-      : undefined;
 
     if (el) {
       el.setAttribute("data-dragging", "true");
@@ -2625,8 +3012,7 @@ export function SlidePresentationCanvas({
       rafId: null,
     };
 
-    let prevHitV = false;
-    let prevHitH = false;
+    let prevGuideKey = "";
     setActiveOp("drag");
     setDraggingBodyLock(true);
 
@@ -2661,32 +3047,15 @@ export function SlidePresentationCanvas({
       }
 
       const { dx, dy } = applyInverseMatrix(invMatrix, screenDx, screenDy);
-
-      const rawX = snap.initialX + dx;
-      const rawY = snap.initialY + dy;
-
-      let hitV = false;
-      let hitH = false;
-
-      if (exactCenterX !== null && Math.abs(rawX - exactCenterX) <= 10) {
-        snap.latestX = exactCenterX;
-        hitV = true;
-      } else {
-        snap.latestX =
-          activeSnapStep > 0
-            ? Math.round(rawX / activeSnapStep) * activeSnapStep
-            : Math.round(rawX);
-      }
-
-      if (exactCenterY !== null && Math.abs(rawY - exactCenterY) <= 10) {
-        snap.latestY = exactCenterY;
-        hitH = true;
-      } else {
-        snap.latestY =
-          activeSnapStep > 0
-            ? Math.round(rawY / activeSnapStep) * activeSnapStep
-            : Math.round(rawY);
-      }
+      const res = resolveSnappedPosition(
+        snap.initialX + dx,
+        snap.initialY + dy,
+        snapCtx,
+        activeSnapStep,
+        ev.shiftKey
+      );
+      snap.latestX = res.x;
+      snap.latestY = res.y;
 
       if (snap.rafId === null) {
         snap.rafId = window.requestAnimationFrame(() => {
@@ -2699,10 +3068,12 @@ export function SlidePresentationCanvas({
         });
       }
 
-      if (hitV !== prevHitV || hitH !== prevHitH) {
-        prevHitV = hitV;
-        prevHitH = hitH;
-        setSmartGuides(hitV || hitH ? { v: hitV, h: hitH, rect: guideRect } : null);
+      const nextGuideKey = `${res.vGuide?.px ?? ""}|${res.hGuide?.px ?? ""}`;
+      if (nextGuideKey !== prevGuideKey) {
+        prevGuideKey = nextGuideKey;
+        setSmartGuides(
+          res.vGuide || res.hGuide ? { v: res.vGuide, h: res.hGuide } : null
+        );
       }
     };
 
@@ -2741,7 +3112,14 @@ export function SlidePresentationCanvas({
             }
           );
         } else {
-          void persistCanvas({ x: snap.latestX, y: snap.latestY });
+          void persistCanvas({
+            x: snap.latestX,
+            y: snap.latestY,
+            xRatio:
+              snapCtx.parentWidth > 0
+                ? Math.round((snap.latestX / snapCtx.parentWidth) * 10000) / 10000
+                : undefined,
+          });
         }
       }
     };
@@ -2770,6 +3148,7 @@ export function SlidePresentationCanvas({
     const startClientY = e.clientY;
     const initialX = saved.x || 0;
     const initialY = saved.y || 0;
+    const snapCtx = captureSnapContext(el, parentEl, initialX, initialY, isMicroNode);
     const minW = isMicroNode ? 20 : 80;
     const minH = isMicroNode ? 20 : 36;
     const initialW = saved.width || Math.max(minW, Math.round(rect.width));
@@ -2804,8 +3183,8 @@ export function SlidePresentationCanvas({
     setActiveOp("resize");
     setDraggingBodyLock(true);
 
-    const snapVal = (v: number) =>
-      activeSnapStep > 0
+    const snapVal = (v: number, bypass: boolean) =>
+      !bypass && activeSnapStep > 0
         ? Math.round(v / activeSnapStep) * activeSnapStep
         : Math.round(v);
 
@@ -2824,23 +3203,32 @@ export function SlidePresentationCanvas({
       let x = snap.initialX;
       let y = snap.initialY;
 
-      if (dir.includes("e")) w = Math.max(minW, snapVal(snap.initialW + dx));
-      if (dir.includes("s")) h = Math.max(minH, snapVal(snap.initialH + dy));
+      if (dir.includes("e")) {
+        w = Math.min(snapCtx.maxAllowedW, Math.max(minW, snapVal(snap.initialW + dx, ev.shiftKey)));
+      }
+      if (dir.includes("s")) {
+        h = Math.max(minH, snapVal(snap.initialH + dy, ev.shiftKey));
+      }
       if (dir.includes("w")) {
-        const candidateW = Math.max(minW, snapVal(snap.initialW - dx));
-        x = Math.round(snap.initialX + (snap.initialW - candidateW));
+        const candidateW = Math.min(
+          snapCtx.maxAllowedW,
+          Math.max(minW, snapVal(snap.initialW - dx, ev.shiftKey))
+        );
+        const candidateX = Math.round(snap.initialX + (snap.initialW - candidateW));
+        x = Math.round(Math.min(snapCtx.maxX, Math.max(snapCtx.minX, candidateX)));
         w = candidateW;
       }
       if (dir.includes("n")) {
-        const candidateH = Math.max(minH, snapVal(snap.initialH - dy));
-        y = Math.round(snap.initialY + (snap.initialH - candidateH));
+        const candidateH = Math.max(minH, snapVal(snap.initialH - dy, ev.shiftKey));
+        const candidateY = Math.round(snap.initialY + (snap.initialH - candidateH));
+        y = Math.round(Math.min(snapCtx.maxY, Math.max(snapCtx.minY, candidateY)));
         h = candidateH;
       }
 
       if (saved.lockAspectRatio && (dir.length === 2 || dir === "e" || dir === "w")) {
         h = Math.max(minH, Math.round(w / aspect));
       } else if (saved.lockAspectRatio && (dir === "n" || dir === "s")) {
-        w = Math.max(minW, Math.round(h * aspect));
+        w = Math.min(snapCtx.maxAllowedW, Math.max(minW, Math.round(h * aspect)));
       }
 
       snap.latestX = x;
@@ -2892,6 +3280,14 @@ export function SlidePresentationCanvas({
           width: snap.latestW,
           height: snap.latestH,
           widthPreset: "custom",
+          xRatio:
+            snapCtx.parentWidth > 0
+              ? Math.round((snap.latestX / snapCtx.parentWidth) * 10000) / 10000
+              : undefined,
+          widthRatio:
+            snapCtx.parentWidth > 0
+              ? Math.round((snap.latestW / snapCtx.parentWidth) * 10000) / 10000
+              : undefined,
         });
       }
     };
@@ -3055,11 +3451,29 @@ export function SlidePresentationCanvas({
 
   const activeZ = isFloatingWidget
     ? Math.max(95, typeof curZ === "number" ? curZ : 95)
-    : isMicroNode && showHandles && (selected || hovered || activeOp !== "idle")
-      ? Math.max(60, typeof curZ === "number" ? curZ : 60)
+    : showHandles && (selected || hovered || inspectorOpen || activeOp !== "idle")
+      ? Math.max(999, typeof curZ === "number" ? curZ : 999)
       : curZ;
 
+  // Cross-device viewport clamping for free-form desktop transforms & fixed widths
+  const isNarrowMobile = mounted && viewportWidth <= 768 && !mobilePreview;
+  const maxSafeVwWidth = mounted && viewportWidth > 0 ? Math.max(160, viewportWidth - 24) : undefined;
+  const clampedRenderW =
+    !isFloatingWidget && curW && !isNarrowMobile
+      ? maxSafeVwWidth
+        ? Math.min(curW, maxSafeVwWidth)
+        : curW
+      : curW;
+  const clampedRenderX =
+    !isFloatingWidget && mounted && !isNarrowMobile && curX !== 0
+      ? Math.max(
+          -Math.round(viewportWidth * 0.45),
+          Math.min(Math.round(viewportWidth * 0.45), curX)
+        )
+      : curX;
+
   const canvasStyle: React.CSSProperties = {
+    boxSizing: "border-box",
     ...style,
     ...(isFloatingWidget
       ? {
@@ -3070,15 +3484,17 @@ export function SlidePresentationCanvas({
           top: "auto",
           transform: curRot ? `rotate(${curRot}deg)` : "none",
         }
-      : curX !== 0 || curY !== 0 || curRot !== 0
+      : !isNarrowMobile && (clampedRenderX !== 0 || curY !== 0 || curRot !== 0)
         ? {
-            transform: `translate3d(${curX}px, ${curY}px, 0)${
+            transform: `translate3d(${clampedRenderX}px, ${curY}px, 0)${
               curRot ? ` rotate(${curRot}deg)` : ""
             }`,
           }
         : {}),
-    ...(curW ? { width: `${curW}px`, maxWidth: isFloatingWidget ? "95vw" : "100%" } : {}),
-    ...(curH ? { minHeight: `${curH}px` } : {}),
+    ...(clampedRenderW && !isNarrowMobile
+      ? { width: `${clampedRenderW}px`, maxWidth: isFloatingWidget ? "95vw" : "100%" }
+      : {}),
+    ...(curH && !isNarrowMobile ? { minHeight: `${curH}px` } : {}),
     ...(typeof activeZ === "number" ? { zIndex: activeZ } : {}),
     ...(canEdit ? { overflow: "visible" } : {}),
     ...(saved.textColor ? { color: saved.textColor } : {}),
@@ -3122,12 +3538,17 @@ export function SlidePresentationCanvas({
     );
   }
 
+  const hasFreeformDesktop =
+    !isFloatingWidget && (curX !== 0 || curY !== 0 || Boolean(curW) || Boolean(curH));
+
   const canvasMarkup = (
     <div
       ref={boxRef}
+      data-canvas-id={id}
       data-god-card={!isMicroNode && !isFloatingWidget ? "true" : undefined}
       data-dragging={activeOp !== "idle" ? "true" : undefined}
       data-edit-mode={canEdit ? "true" : undefined}
+      data-desktop-freeform={hasFreeformDesktop ? "true" : undefined}
       style={canvasStyle}
       onMouseOver={(e) => {
         if (!showHandles) return;
@@ -3136,7 +3557,11 @@ export function SlidePresentationCanvas({
       }}
       onMouseOut={(e) => {
         if (!showHandles) return;
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+        const nextTarget = e.relatedTarget as Node | null;
+        if (
+          !e.currentTarget.contains(nextTarget) &&
+          (!portalToolbarRef.current || !portalToolbarRef.current.contains(nextTarget))
+        ) {
           if (currentHoveredCanvasId === id) {
             setGlobalHoveredId(null);
           }
@@ -3183,6 +3608,8 @@ export function SlidePresentationCanvas({
       }}
       className={[
         "god-mode-box",
+        isFloatingWidget ? "god-mode-floating-widget" : "",
+        hasFreeformDesktop ? "god-mode-desktop-freeform" : "",
         canEdit ? "overflow-visible" : "",
         isMicroNode && showHandles ? "cursor-grab active:cursor-grabbing" : "",
         presetWidthCls,
@@ -3280,105 +3707,157 @@ export function SlidePresentationCanvas({
       )}
 
       {showHandles && !isMicroNode && (
-        /* Top Floating Drag & Inspector Pill for Root/Child Containers */
-        <div
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          className={`mb-1.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-lg ${
-            isChildNode
-              ? "bg-[#1E1B4B]/95 border-[#A855F7]/80"
-              : "bg-[#0F172A]/92 border-[#2563EB]/75"
-          }`}
+        /* Lightweight in-corner Move Grip (always accessible); Full Toolbar Portaled at z-[99999] */
+        <button
+          type="button"
+          onPointerDown={handleDragStart}
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelected(true);
+          }}
+          title={`Drag ${label || id} (16px Magnetic Grid + Sibling Guides; hold Shift to free-move)`}
+          className="mb-1 inline-flex items-center gap-1 rounded-md border border-[#2563EB]/65 bg-[#0F172A]/90 px-2 py-0.5 text-[10px] font-bold text-[#93C5FD] shadow cursor-grab active:cursor-grabbing select-none"
         >
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              onPointerDown={handleDragStart}
-              title="Drag outer frame anywhere (Magnetic Grid + Center Snapping ON)"
-              className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/25 text-[#93C5FD] border border-[#2563EB]/50 select-none"
-            >
-              ✥ Move Frame · {label || id}
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelected(true);
-                setInspectorOpen((v) => !v);
-              }}
-              className={`px-2 py-0.5 rounded border transition ${
-                inspectorOpen
-                  ? "bg-[#2563EB] text-white border-[#60A5FA]"
-                  : "border-white/20 text-[#E5C158] hover:border-[#d4af37]"
-              }`}
-            >
-              ⚙️ Inspector
-            </button>
-            {!isChildNode && (
+          ✥ {label || id}
+        </button>
+      )}
+
+      {shouldShowPortalToolbar &&
+        toolbarPos &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={portalToolbarRef}
+            onMouseEnter={() => setGlobalHoveredId(id)}
+            onMouseLeave={(e) => {
+              const nextTarget = e.relatedTarget as Node | null;
+              if (!boxRef.current || !boxRef.current.contains(nextTarget)) {
+                if (currentHoveredCanvasId === id) {
+                  setGlobalHoveredId(null);
+                }
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: `${toolbarPos.top}px`,
+              left: `${toolbarPos.left}px`,
+              zIndex: 99999,
+            }}
+            className={`flex flex-wrap items-center justify-between gap-1.5 rounded-xl border px-2.5 py-1 text-[10px] font-bold text-[#FAF7F0] shadow-2xl shadow-black/60 backdrop-blur-md max-w-[calc(100vw-16px)] ${
+              isChildNode
+                ? "bg-[#1E1B4B]/95 border-[#A855F7]/90"
+                : "bg-[#0F172A]/95 border-[#2563EB]/90"
+            }`}
+          >
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                onPointerDown={handleDragStart}
+                title="Drag outer frame (16px Magnetic Grid + Sibling Snapping ON; Shift = Free)"
+                className="cursor-grab active:cursor-grabbing px-1.5 py-0.5 rounded bg-[#2563EB]/30 text-[#93C5FD] border border-[#2563EB]/60 select-none"
+              >
+                ✥ Move · {label || id}
+              </button>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setEnteredFrameId(id);
+                  setSelected(true);
+                  setInspectorOpen((v) => !v);
                 }}
-                title="Double-click frame or click here to move inner elements"
-                className="px-1.5 py-0.5 rounded border border-[#d4af37]/45 text-[#E5C158] hover:bg-[#d4af37]/20"
+                className={`px-2 py-0.5 rounded border transition ${
+                  inspectorOpen
+                    ? "bg-[#2563EB] text-white border-[#60A5FA]"
+                    : "border-white/20 text-[#E5C158] hover:border-[#d4af37]"
+                }`}
               >
-                🔍 Enter
+                ⚙️ Inspector
               </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1 opacity-90">
-            <span className="font-mono text-[9px] text-sky-200 hidden sm:inline">
-              ({curX}, {curY})
-              {curW ? ` ${curW}px` : ""}
-              {curRot ? ` ${curRot}°` : ""}
-            </span>
-            {(isFloatingWidget ||
-              curX !== 0 ||
-              curY !== 0 ||
-              curRot !== 0 ||
-              saved.width ||
-              saved.height ||
-              saved.widthPreset ||
-              saved.layoutWidth ||
-              saved.layoutAlign ||
-              saved.textColor ||
-              saved.bgColor ||
-              saved.borderColor) && (
+              {!isChildNode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEnteredFrameId(id);
+                  }}
+                  title="Double-click frame or click here to move inner elements"
+                  className="px-1.5 py-0.5 rounded border border-[#d4af37]/45 text-[#E5C158] hover:bg-[#d4af37]/20"
+                >
+                  🔍 Enter
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() =>
-                  void persistCanvas(
-                    {
-                      x: 0,
-                      y: 0,
-                      width: undefined,
-                      height: undefined,
-                      widthPreset: undefined,
-                      layoutWidth: undefined,
-                      layoutAlign: undefined,
-                      rotation: 0,
-                      zIndex: undefined,
-                      alignSelf: undefined,
-                      textColor: undefined,
-                      bgColor: undefined,
-                      borderColor: undefined,
-                    },
-                    isFloatingWidget
-                      ? { supportWidgetPos: { right: 24, bottom: 24 } }
-                      : undefined
-                  )
-                }
-                className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMobilePreview();
+                }}
+                title="Toggle Mobile Responsive Clamp vs Desktop Free-Form Preview"
+                className={`px-1.5 py-0.5 rounded border ${
+                  mobilePreview
+                    ? "bg-[#d4af37] text-[#18181B] border-[#d4af37]"
+                    : "border-white/20 text-sky-200 hover:border-sky-400"
+                }`}
               >
-                {isFloatingWidget ? "↺ Reset Position" : "↺ Reset"}
+                📱 {mobilePreview ? "Free" : "Mobile"}
               </button>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+
+            <div className="flex items-center gap-1.5 opacity-95">
+              <span className="font-mono text-[9px] text-sky-200 hidden sm:inline">
+                ({curX}, {curY})
+                {curW ? ` ${curW}px` : ""}
+                {curRot ? ` ${curRot}°` : ""}
+              </span>
+              {(isFloatingWidget ||
+                curX !== 0 ||
+                curY !== 0 ||
+                curRot !== 0 ||
+                saved.width ||
+                saved.height ||
+                saved.widthPreset ||
+                saved.layoutWidth ||
+                saved.layoutAlign ||
+                saved.textColor ||
+                saved.bgColor ||
+                saved.borderColor) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void persistCanvas(
+                      {
+                        x: 0,
+                        y: 0,
+                        xRatio: undefined,
+                        width: undefined,
+                        widthRatio: undefined,
+                        height: undefined,
+                        widthPreset: undefined,
+                        layoutWidth: undefined,
+                        layoutAlign: undefined,
+                        rotation: 0,
+                        zIndex: undefined,
+                        alignSelf: undefined,
+                        textColor: undefined,
+                        bgColor: undefined,
+                        borderColor: undefined,
+                      },
+                      isFloatingWidget
+                        ? { supportWidgetPos: { right: 24, bottom: 24 } }
+                        : undefined
+                    )
+                  }
+                  className="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-400/50 text-red-200 hover:bg-red-500/35"
+                >
+                  ↺ {isFloatingWidget ? "Reset Position" : "Reset to Grid"}
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
 
       {showHandles && isMicroNode && (selected || inspectorOpen) && (
         /* Compact Out-of-Flow Action Bar for Micro-Elements inside Cards */
@@ -3461,38 +3940,32 @@ export function SlidePresentationCanvas({
 
       {frameContent}
 
-      {/* Smart Center-Alignment Laser Guides Portal */}
-      {smartGuides?.rect &&
+      {/* Smart Center & Sibling Alignment Laser Guides Portal */}
+      {(smartGuides?.v || smartGuides?.h) &&
         typeof document !== "undefined" &&
         createPortal(
-          <div
-            style={{
-              position: "fixed",
-              top: `${smartGuides.rect.top}px`,
-              left: `${smartGuides.rect.left}px`,
-              width: `${smartGuides.rect.width}px`,
-              height: `${smartGuides.rect.height}px`,
-              pointerEvents: "none",
-              zIndex: 99,
-            }}
-          >
+          <>
             {smartGuides.v && (
-              <>
-                <div className="smart-guide-v" />
-                <span className="absolute top-2 left-1/2 -translate-x-1/2 rounded bg-pink-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow">
-                  CENTER X 50%
+              <div
+                style={{ left: `${smartGuides.v.px}px` }}
+                className="sibling-guide-v"
+              >
+                <span className="fixed top-16 -translate-x-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                  {smartGuides.v.label}
                 </span>
-              </>
+              </div>
             )}
             {smartGuides.h && (
-              <>
-                <div className="smart-guide-h" />
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 rounded bg-pink-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow">
-                  CENTER Y 50%
+              <div
+                style={{ top: `${smartGuides.h.px}px` }}
+                className="sibling-guide-h"
+              >
+                <span className="fixed left-3 -translate-y-1/2 rounded bg-cyan-400 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shadow">
+                  {smartGuides.h.label}
                 </span>
-              </>
+              </div>
             )}
-          </div>,
+          </>,
           document.body
         )}
 
@@ -3562,7 +4035,7 @@ export function SlidePresentationCanvas({
                 🧲 Grid Snap
               </span>
               <div className="flex gap-1">
-                {([10, 20, 0] as const).map((step) => (
+                {([16, 10, 20, 0] as const).map((step) => (
                   <button
                     key={step}
                     type="button"

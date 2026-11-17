@@ -486,6 +486,8 @@ a.from-\[\#C59B27\] {
      GOD MODE CANVAS FREE-FORM POSITIONING & TEXT EDITING
      ============================================================================ */
   .god-mode-text-editable {
+    box-sizing: border-box;
+    max-width: 100%;
     outline: 1.5px dashed rgba(212, 175, 55, 0.55);
     outline-offset: 2px;
     border-radius: 0.375rem;
@@ -493,12 +495,16 @@ a.from-\[\#C59B27\] {
     transition: outline-color 0.2s ease, background-color 0.2s ease;
   }
 
-  .god-mode-text-editable:hover {
+  .god-mode-text-editable:hover,
+  [data-edit-mode="true"].god-mode-text-editable:hover {
     outline-color: #d4af37;
     background-color: rgba(212, 175, 55, 0.1);
+    z-index: 999 !important;
+    position: relative;
   }
 
   .god-mode-box {
+    box-sizing: border-box;
     position: relative;
     max-width: 100%;
     transition: box-shadow 220ms ease,
@@ -516,6 +522,7 @@ a.from-\[\#C59B27\] {
     will-change: transform, width, height;
     user-select: none !important;
     -webkit-user-select: none !important;
+    z-index: 999 !important;
   }
 
   .god-mode-box-active {
@@ -527,13 +534,21 @@ a.from-\[\#C59B27\] {
   }
 
   body.god-mode-active .god-mode-box,
-  body.god-mode-active article {
+  body.god-mode-active article,
+  body.god-mode-active section,
+  body.god-mode-active [data-god-card="true"] {
     overflow: visible !important;
+  }
+
+  [data-edit-mode="true"].god-mode-box:hover,
+  .god-mode-hover,
+  .god-mode-selected {
+    z-index: 999 !important;
   }
 
   .god-mode-box-dragging {
     transition: none !important;
-    z-index: 60 !important;
+    z-index: 999 !important;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
     outline: 2px solid #d4af37;
   }
@@ -561,20 +576,16 @@ a.from-\[\#C59B27\] {
   /* ============================================================================
      FIGMA / SLIDES 8-HANDLE CANVAS ENGINE & GOD-MODE DOT GRID
      ============================================================================ */
-  .god-mode-grid {
-    background-image: radial-gradient(
-      rgba(212, 175, 55, 0.28) 1.25px,
-      transparent 1.25px
-    );
-    background-size: 20px 20px;
-  }
-
+  .god-mode-grid,
+  .god-mode-canvas-active,
   body.god-mode-active {
     background-image: radial-gradient(
-      rgba(212, 175, 55, 0.24) 1px,
-      transparent 1px
+      circle,
+      rgba(212, 175, 55, 0.45) 1.5px,
+      transparent 1.5px
     );
-    background-size: 20px 20px;
+    background-size: 16px 16px;
+    background-position: top left;
   }
 
   .smart-guide-v {
@@ -582,11 +593,11 @@ a.from-\[\#C59B27\] {
     top: 0;
     bottom: 0;
     left: 50%;
-    width: 1.5px;
-    background: #ec4899;
-    box-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+    width: 1px;
+    background: #22d3ee;
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.85), 0 0 2px #d4af37;
     pointer-events: none;
-    z-index: 60;
+    z-index: 99990;
     transform: translateX(-50%);
   }
 
@@ -595,12 +606,34 @@ a.from-\[\#C59B27\] {
     left: 0;
     right: 0;
     top: 50%;
-    height: 1.5px;
-    background: #ec4899;
-    box-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+    height: 1px;
+    background: #22d3ee;
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.85), 0 0 2px #d4af37;
     pointer-events: none;
-    z-index: 60;
+    z-index: 99990;
     transform: translateY(-50%);
+  }
+
+  .sibling-guide-v {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.2), #22d3ee 20%, #d4af37 80%, rgba(212, 175, 55, 0.2));
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.85);
+    pointer-events: none;
+    z-index: 99990;
+  }
+
+  .sibling-guide-h {
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.2), #22d3ee 20%, #d4af37 80%, rgba(212, 175, 55, 0.2));
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.85);
+    pointer-events: none;
+    z-index: 99990;
   }
 
   body.god-mode-dragging,
@@ -684,6 +717,26 @@ a.from-\[\#C59B27\] {
       rgba(197, 155, 39, 0.25) 80%,
       transparent 100%
     );
+  }
+}
+
+/* Cross-device responsive viewport clamping for free-form God Mode canvases */
+@media (max-width: 768px) {
+  body:not(.god-mode-mobile-preview) .god-mode-box:not(.god-mode-floating-widget) {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  body:not(.god-mode-mobile-preview) .god-mode-desktop-freeform:not(.god-mode-floating-widget),
+  body:not(.god-mode-mobile-preview) .god-mode-text-editable[data-desktop-freeform="true"] {
+    transform: none !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+
+  html,
+  body {
+    overflow-x: clip;
   }
 }
 
