@@ -10,7 +10,6 @@ import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import {
   EditableHeritageImage,
   useCmsSiteState,
-  applyCmsOrder,
   checkVerifiedAdminStatus,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
@@ -26,7 +25,10 @@ import {
   SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
+  HiddenItemBadgeBar,
+  applyCmsVisibilityOrder,
   useGodModeTextValue,
+  useVerifiedLiveEdit,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
@@ -520,6 +522,7 @@ export default function GranthsAndKirtanPage() {
 
   const { user } = useAuth();
   const cms = useCmsSiteState();
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
 
   // Remote Kirtan Vault, Edits, Frames & Approval Queue Submission State
   const [remoteKirtanTracks, setRemoteKirtanTracks] = useState<RemoteKirtanTrack[]>([]);
@@ -666,7 +669,13 @@ export default function GranthsAndKirtanPage() {
             t.tantiSaaj.toLowerCase().includes(q) ||
             t.gurmukhiTitle.includes(q)
         );
-    return applyCmsOrder(matched, (t) => t.id, "granths", cms);
+    return applyCmsVisibilityOrder(
+      matched,
+      (t) => t.id,
+      "granths",
+      cms,
+      isVerifiedLiveEdit
+    );
   }, [
     kirtanCollectionFilter,
     kirtanQuery,
@@ -675,6 +684,7 @@ export default function GranthsAndKirtanPage() {
     remoteKirtanTracks,
     remoteKirtanEdits,
     cms,
+    isVerifiedLiveEdit,
   ]);
 
   const fetchLiveAng = useCallback(async (angNumber: number) => {
@@ -707,7 +717,7 @@ export default function GranthsAndKirtanPage() {
   }, [fetchLiveAng, selectedGranth]);
 
   const filteredGranths = useMemo(() => {
-    return HISTORICAL_GRANTHS.filter((g) => {
+    const matched = HISTORICAL_GRANTHS.filter((g) => {
       const matchesCat =
         granthCategory === "All" || g.category === granthCategory;
       const q = granthQuery.trim().toLowerCase();
@@ -720,7 +730,14 @@ export default function GranthsAndKirtanPage() {
           g.gurmukhiTitle.includes(q))
       );
     });
-  }, [granthCategory, granthQuery]);
+    return applyCmsVisibilityOrder(
+      matched,
+      (g) => g.id,
+      "granths",
+      cms,
+      isVerifiedLiveEdit
+    );
+  }, [granthCategory, granthQuery, cms, isVerifiedLiveEdit]);
 
   const handleTrackClick = (track: KirtanTrack) => {
     if (currentTrack.id === track.id) {
@@ -1371,11 +1388,16 @@ export default function GranthsAndKirtanPage() {
                           : undefined,
                       }}
                       className={`p-5 rounded-2xl border border-[#d4af37]/30 transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between gap-3 ${cardLayoutCls} ${
+                        (cms.archivedIds || []).includes(track.id)
+                          ? "opacity-55 ring-2 ring-amber-400/70"
+                          : ""
+                      } ${
                         active
                           ? "bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-2xl shadow-black/30"
                           : "bg-[#F3ECE0] text-[#171917] hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30"
                       }`}
                     >
+                      <HiddenItemBadgeBar itemId={track.id} />
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
                         <InlineOrderControls
                           pageKey="granths"
@@ -1677,16 +1699,40 @@ export default function GranthsAndKirtanPage() {
               label="Granth BookReader Grid"
             >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredGranths.map((granth) => (
+              {filteredGranths.map((granth) => {
+                const gOv = cms.topicEdits?.[granth.id];
+                return (
                 <article
                   key={granth.id}
-                  className="rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6"
+                  className={`rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 shadow-sm hover:border-[#C59B27] transition flex flex-col justify-between gap-6 ${
+                    (cms.archivedIds || []).includes(granth.id)
+                      ? "opacity-55 ring-2 ring-amber-400/70"
+                      : ""
+                  }`}
                 >
                   <div className="space-y-3">
+                    <HiddenItemBadgeBar itemId={granth.id} />
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <InlineOrderControls
+                        pageKey="granths"
+                        itemId={granth.id}
+                        allIds={filteredGranths.map((g) => g.id)}
+                      />
+                      <InlineTopicEditor
+                        itemId={granth.id}
+                        defaults={{
+                          title: granth.title,
+                          gurmukhi: granth.gurmukhiTitle,
+                          subtitle: `${granth.author} • ${granth.period}`,
+                          badge: granth.category,
+                          description: granth.summary,
+                        }}
+                      />
+                    </div>
                     <ChitrakariCardHeader
                       artKey={granth.id}
                       variant="manuscript"
-                      title={granth.title}
+                      title={gOv?.title || granth.title}
                       heightClass="h-40"
                       editable
                     />
@@ -1702,7 +1748,7 @@ export default function GranthsAndKirtanPage() {
                         </span>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C59B27] px-2.5 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/30">
-                        {granth.category}
+                        {gOv?.badge || granth.category}
                       </span>
                     </div>
 
@@ -1711,18 +1757,18 @@ export default function GranthsAndKirtanPage() {
                         lang="pa"
                         className="font-gurmukhi text-base font-medium text-[#D97706]"
                       >
-                        {granth.gurmukhiTitle}
+                        {gOv?.gurmukhi || granth.gurmukhiTitle}
                       </p>
                       <h3 className="text-xl font-serif font-bold mt-0.5">
-                        {granth.title}
+                        {gOv?.title || granth.title}
                       </h3>
                       <p className="text-xs font-semibold text-[#4A554E] mt-1">
-                        {granth.author} • {granth.period}
+                        {gOv?.subtitle || `${granth.author} • ${granth.period}`}
                       </p>
                     </div>
 
                     <p className="text-sm text-[#4A554E] leading-relaxed">
-                      {granth.summary}
+                      {gOv?.description || granth.summary}
                     </p>
 
                     <div className="p-3.5 rounded-xl bg-[#121C15] border border-[#C59B27]/25 text-xs text-[#4A554E] leading-relaxed">
@@ -1752,7 +1798,8 @@ export default function GranthsAndKirtanPage() {
                     </button>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
             </SlidePresentationCanvas>
           </div>

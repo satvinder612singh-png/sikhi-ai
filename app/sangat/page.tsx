@@ -15,7 +15,6 @@ import {
   useAdminEditMode,
   useCmsSiteState,
   writeCmsCache,
-  applyCmsOrder,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
@@ -32,7 +31,10 @@ import {
   SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
+  HiddenItemBadgeBar,
+  applyCmsVisibilityOrder,
   useGodModeTextValue,
+  useVerifiedLiveEdit,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import {
@@ -800,6 +802,7 @@ function SangatHubContent() {
   // SikhStack & SikhInterest unified feed
   const cms = useCmsSiteState();
   const [liveEditMode] = useAdminEditMode();
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
   const [feedTab, setFeedTab] = useState<FeedTabId>("all");
   const [curatedLinks, setCuratedLinks] = useState<CuratedLink[]>(CURATED_LINK_SEED);
   const [readingItem, setReadingItem] = useState<FeedItem | null>(null);
@@ -1132,8 +1135,11 @@ function SangatHubContent() {
   }, [dilPosts, selectedMoodFilter]);
 
   const feedItems: FeedItem[] = useMemo(() => {
+    const cmsDeletedSet = new Set(cms.deletedIds || []);
     const isVisible = (kind: FeedItem["kind"], id: string) =>
-      !deletedIds.includes(`${kind}:${id}`);
+      !deletedIds.includes(`${kind}:${id}`) &&
+      !cmsDeletedSet.has(id) &&
+      !cmsDeletedSet.has(`${kind}:${id}`);
 
     const essayItems: FeedItem[] = blogs
       .filter((b) => isVisible("essay", b.id))
@@ -1235,8 +1241,14 @@ function SangatHubContent() {
       };
     });
 
-    return applyCmsOrder(edited, (i) => i.id, "sangat", cms);
-  }, [blogs, pins, curatedLinks, feedTab, deletedIds, cms]);
+    return applyCmsVisibilityOrder(
+      edited,
+      (i) => i.id,
+      "sangat",
+      cms,
+      isVerifiedLiveEdit
+    );
+  }, [blogs, pins, curatedLinks, feedTab, deletedIds, cms, isVerifiedLiveEdit]);
 
   const feedCounts = useMemo(
     () => ({
@@ -2736,9 +2748,14 @@ function SangatHubContent() {
                           }}
                           className={`group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37]/70 transition-all duration-300 ease-out ${
                             liveEditMode ? "overflow-visible" : ""
+                          } ${
+                            (cms.archivedIds || []).includes(item.id)
+                              ? "opacity-55 ring-2 ring-amber-400/70"
+                              : ""
                           } ${cardLayoutCls}`}
                         >
                           <div className="space-y-3 flex-1">
+                            <HiddenItemBadgeBar itemId={item.id} />
                             <div className="flex flex-wrap items-center justify-between gap-1.5">
                               <InlineOrderControls
                                 pageKey="sangat"

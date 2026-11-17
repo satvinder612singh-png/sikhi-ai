@@ -16,6 +16,7 @@ import {
   type CmsCustomTopic,
   type CmsFontFamily,
   type CmsFontScale,
+  type CmsSiteState,
   type CmsTopicEdit,
 } from "@/components/editable-heritage-image";
 
@@ -27,7 +28,7 @@ type SectionLayoutInfo = {
   hidden?: boolean;
 };
 
-function useVerifiedLiveEdit(): boolean {
+export function useVerifiedLiveEdit(): boolean {
   const { user } = useAuth();
   const [liveEditMode] = useAdminEditMode();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -56,6 +57,127 @@ function useVerifiedLiveEdit(): boolean {
   }, [user?.email]);
 
   return isAdmin && liveEditMode;
+}
+
+export async function toggleCmsArchiveItem(
+  cms: CmsSiteState,
+  itemId: string
+): Promise<boolean> {
+  const existingArchived = Array.isArray(cms.archivedIds) ? cms.archivedIds : [];
+  const existingPinned = Array.isArray(cms.pinnedIds) ? cms.pinnedIds : [];
+  const isArchived = existingArchived.includes(itemId);
+  const nextArchived = isArchived
+    ? existingArchived.filter((id) => id !== itemId)
+    : Array.from(new Set([...existingArchived, itemId]));
+
+  return pushAdminCmsPatch({
+    archivedIds: nextArchived,
+    pinnedIds: isArchived
+      ? existingPinned
+      : existingPinned.filter((id) => id !== itemId),
+  });
+}
+
+export async function permanentlyDeleteCmsItem(
+  cms: CmsSiteState,
+  itemId: string
+): Promise<boolean> {
+  const existingDeleted = Array.isArray(cms.deletedIds) ? cms.deletedIds : [];
+  const existingArchived = Array.isArray(cms.archivedIds) ? cms.archivedIds : [];
+  const existingPinned = Array.isArray(cms.pinnedIds) ? cms.pinnedIds : [];
+
+  const nextCustomTopics: Record<string, CmsCustomTopic[]> = {};
+  for (const [k, list] of Object.entries(cms.customTopics || {})) {
+    if (Array.isArray(list)) {
+      nextCustomTopics[k] = list.filter((t) => t.id !== itemId);
+    }
+  }
+
+  const filterPostList = (arr?: unknown[]) =>
+    Array.isArray(arr)
+      ? arr.filter(
+          (entry) =>
+            !(
+              entry &&
+              typeof entry === "object" &&
+              "id" in entry &&
+              String((entry as { id: unknown }).id) === itemId
+            )
+        )
+      : undefined;
+
+  return pushAdminCmsPatch({
+    deletedIds: Array.from(new Set([...existingDeleted, itemId])),
+    archivedIds: existingArchived.filter((id) => id !== itemId),
+    pinnedIds: existingPinned.filter((id) => id !== itemId),
+    customTopics: nextCustomTopics,
+    ...(cms.customPosts
+      ? {
+          customPosts: {
+            links: filterPostList(cms.customPosts.links) || [],
+            blogs: filterPostList(cms.customPosts.blogs) || [],
+            pins: filterPostList(cms.customPosts.pins) || [],
+          },
+        }
+      : {}),
+  });
+}
+
+export function applyCmsVisibilityOrder<T>(
+  items: T[],
+  getId: (item: T) => string,
+  pageKey: string,
+  cms: CmsSiteState,
+  showArchivedForAdmin: boolean
+): T[] {
+  const deleted = new Set(cms.deletedIds || []);
+  const archived = new Set(cms.archivedIds || []);
+  const pinned = new Set(cms.pinnedIds || []);
+  const savedOrder = cms.sectionOrder?.[pageKey] || [];
+  const orderMap = new Map(savedOrder.map((id, idx) => [id, idx]));
+
+  return items
+    .filter((item) => {
+      const id = getId(item);
+      if (deleted.has(id)) return false;
+      if (!showArchivedForAdmin && archived.has(id)) return false;
+      return true;
+    })
+    .map((item, idx) => ({ item, idx, id: getId(item) }))
+    .sort((a, b) => {
+      const aPinned = pinned.has(a.id) ? 0 : 1;
+      const bPinned = pinned.has(b.id) ? 0 : 1;
+      if (aPinned !== bPinned) return aPinned - bPinned;
+      const ai = orderMap.has(a.id) ? orderMap.get(a.id)! : 10000 + a.idx;
+      const bi = orderMap.has(b.id) ? orderMap.get(b.id)! : 10000 + b.idx;
+      return ai - bi;
+    })
+    .map((x) => x.item);
+}
+
+export function HiddenItemBadgeBar({ itemId }: { itemId: string }) {
+  const cms = useCmsSiteState();
+  const canEdit = useVerifiedLiveEdit();
+  const [busy, setBusy] = useState(false);
+
+  const isArchived = Array.isArray(cms.archivedIds) && cms.archivedIds.includes(itemId);
+  if (!canEdit || !isArchived) return null;
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setBusy(true);
+        void toggleCmsArchiveItem(cms, itemId).finally(() => setBusy(false));
+      }}
+      className="w-full rounded-xl border border-amber-400 bg-amber-500/20 px-3 py-1.5 text-left text-[11px] font-extrabold text-amber-300 shadow-sm hover:bg-amber-500/30 transition"
+    >
+      👁️‍🗨️ HIDDEN FROM USERS — Click to Unhide
+    </button>
+  );
 }
 
 export interface InlineTopicEditData extends CmsTopicEdit {
@@ -92,7 +214,9 @@ export function InlineTopicEditor({
   const canEdit = useVerifiedLiveEdit();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const isArchived = Array.isArray(cms.archivedIds) && cms.archivedIds.includes(itemId);
 
   const existing = (cms.topicEdits?.[itemId] || {}) as InlineTopicEditData;
 
@@ -360,22 +484,88 @@ export function InlineTopicEditor({
               ))}
             </div>
 
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={handleResetItem}
-                className="px-3 py-1.5 rounded-lg border border-red-500/40 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
-              >
-                Reset Default
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-[11px] font-extrabold uppercase tracking-wider"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleResetItem}
+                  className="px-3 py-1.5 rounded-lg border border-red-500/40 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
+                >
+                  Reset Default
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-[11px] font-extrabold uppercase tracking-wider"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-white/10">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSaving(true);
+                    await toggleCmsArchiveItem(cms, itemId);
+                    setSaving(false);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition ${
+                    isArchived
+                      ? "border-amber-400 bg-amber-500 text-[#18181B]"
+                      : "border-white/20 text-[#FAF7F0] hover:border-amber-400"
+                  }`}
+                >
+                  {isArchived ? "👁️‍🗨️ Hidden (Click to Unhide)" : "👁️ Hide from Users"}
+                </button>
+                {confirmDelete ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSaving(true);
+                        await permanentlyDeleteCmsItem(cms, itemId);
+                        setSaving(false);
+                        setConfirmDelete(false);
+                        setOpen(false);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-[11px] font-extrabold"
+                    >
+                      Confirm Delete?
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmDelete(false);
+                      }}
+                      className="px-2 py-1.5 rounded-lg border border-white/20 text-[11px]"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setConfirmDelete(true);
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg border border-red-500/50 bg-red-500/15 text-red-200 text-[11px] font-bold hover:bg-red-500/25"
+                  >
+                    🗑️ Delete Forever
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </div>
@@ -398,8 +588,12 @@ export function InlineOrderControls({
   const cms = useCmsSiteState();
   const canEdit = useVerifiedLiveEdit();
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!canEdit) return null;
+
+  const isArchived =
+    Array.isArray(cms.archivedIds) && cms.archivedIds.includes(itemId);
 
   const idx = allIds.indexOf(itemId);
   const canMovePrev = idx > 0;
@@ -439,10 +633,7 @@ export function InlineOrderControls({
 
     if (action === "hide") {
       setBusy(true);
-      await pushAdminCmsPatch({
-        archivedIds: Array.from(new Set([...existingArchived, itemId])),
-        pinnedIds: existingPinned.filter((id) => id !== itemId),
-      });
+      await toggleCmsArchiveItem(cms, itemId);
       setBusy(false);
       return;
     }
@@ -614,11 +805,59 @@ export function InlineOrderControls({
         type="button"
         disabled={busy}
         onClick={(e) => applyReorder(e, "hide")}
-        title="Hide / Archive Card"
-        className="px-1.5 py-0.5 rounded hover:bg-red-500/25 text-red-300 disabled:opacity-35 transition"
+        title={isArchived ? "Restore visibility to visitors" : "Hide card from visitors"}
+        className={`px-1.5 py-0.5 rounded border transition disabled:opacity-35 ${
+          isArchived
+            ? "bg-amber-400 border-amber-200 text-[#18181B] font-extrabold"
+            : "border-transparent hover:bg-amber-500/20 text-amber-200"
+        }`}
       >
-        👁️ Hide
+        {isArchived ? "👁️‍🗨️ Hidden (Click to Unhide)" : "👁️ Hide from Users"}
       </button>
+      {confirmDelete ? (
+        <span className="inline-flex items-center gap-1">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setBusy(true);
+              await permanentlyDeleteCmsItem(cms, itemId);
+              setBusy(false);
+              setConfirmDelete(false);
+            }}
+            className="px-1.5 py-0.5 rounded bg-red-600 text-white font-extrabold"
+          >
+            Confirm Delete?
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setConfirmDelete(false);
+            }}
+            className="px-1 py-0.5 rounded border border-white/25"
+          >
+            ✕
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setConfirmDelete(true);
+          }}
+          title="Permanently delete this card"
+          className="px-1.5 py-0.5 rounded hover:bg-red-500/25 text-red-300 disabled:opacity-35 transition"
+        >
+          🗑️ Delete Forever
+        </button>
+      )}
     </div>
   );
 }
@@ -2027,6 +2266,46 @@ const HANDLE_DEFS: {
   },
 ];
 
+export function clampFloatingWidgetPos(
+  rawRight?: unknown,
+  rawBottom?: unknown
+): { right: number; bottom: number; needsHeal: boolean } {
+  const r = typeof rawRight === "number" ? rawRight : Number.NaN;
+  const b = typeof rawBottom === "number" ? rawBottom : Number.NaN;
+  if (typeof window === "undefined") {
+    return {
+      right: Number.isFinite(r) && r >= 16 ? Math.round(r) : 24,
+      bottom: Number.isFinite(b) && b >= 16 ? Math.round(b) : 24,
+      needsHeal: false,
+    };
+  }
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const maxR = Math.max(16, vw - 72);
+  const maxB = Math.max(16, vh - 72);
+  if (
+    !Number.isFinite(r) ||
+    !Number.isFinite(b) ||
+    r < 0 ||
+    b < 0 ||
+    r > vw ||
+    b > vh
+  ) {
+    return {
+      right: Math.min(maxR, 24),
+      bottom: Math.min(maxB, 24),
+      needsHeal: rawRight !== undefined || rawBottom !== undefined,
+    };
+  }
+  const clampedR = Math.round(Math.min(maxR, Math.max(16, r)));
+  const clampedB = Math.round(Math.min(maxB, Math.max(16, b)));
+  return {
+    right: clampedR,
+    bottom: clampedB,
+    needsHeal: clampedR !== Math.round(r) || clampedB !== Math.round(b),
+  };
+}
+
 export function SlidePresentationCanvas({
   id,
   label,
@@ -2118,6 +2397,36 @@ export function SlidePresentationCanvas({
     {}
   ) as SlideCanvasState;
 
+  const [mounted, setMounted] = useState(false);
+  const [, setViewportTick] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+    if (!isFloatingWidget) return;
+    const onResize = () => setViewportTick((t) => t + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isFloatingWidget]);
+
+  const storedSupportPos = isFloatingWidget
+    ? (layoutMap.supportWidgetPos as { right?: unknown; bottom?: unknown } | undefined)
+    : undefined;
+  const rawFloatingRight =
+    storedSupportPos?.right !== undefined
+      ? storedSupportPos.right
+      : typeof slideSaved.x === "number" && slideSaved.x !== 0
+        ? 24 - slideSaved.x
+        : 24;
+  const rawFloatingBottom =
+    storedSupportPos?.bottom !== undefined
+      ? storedSupportPos.bottom
+      : typeof slideSaved.y === "number" && slideSaved.y !== 0
+        ? 24 - slideSaved.y
+        : 24;
+  const floatingPosCheck = isFloatingWidget
+    ? clampFloatingWidgetPos(rawFloatingRight, rawFloatingBottom)
+    : { right: 24, bottom: 24, needsHeal: false };
+
   const saved: SlideCanvasState = {
     x: slideSaved.x ?? (isChildNode ? 0 : legacySaved.offsetX ?? 0),
     y: slideSaved.y ?? (isChildNode ? 0 : legacySaved.offsetY ?? 0),
@@ -2179,7 +2488,10 @@ export function SlidePresentationCanvas({
     return () => window.removeEventListener("pointerdown", onOutside);
   }, [selected]);
 
-  const persistCanvas = async (patch: Partial<SlideCanvasState>) => {
+  const persistCanvas = async (
+    patch: Partial<SlideCanvasState>,
+    extraSectionMap?: Record<string, unknown>
+  ) => {
     const nextX = patch.x !== undefined ? patch.x : (saved.x ?? 0);
     const nextY = patch.y !== undefined ? patch.y : (saved.y ?? 0);
     const nextMerged: SlideCanvasState = {
@@ -2197,9 +2509,26 @@ export function SlidePresentationCanvas({
       sectionLayoutMap: {
         ...(cms.sectionLayoutMap || {}),
         [storageKey]: nextMerged,
+        ...(extraSectionMap || {}),
       },
     });
   };
+
+  useEffect(() => {
+    if (!isFloatingWidget || !canEdit || !mounted) return;
+    if (floatingPosCheck.needsHeal || (storedSupportPos === undefined && (saved.x || saved.y))) {
+      void persistCanvas(
+        { x: 0, y: 0 },
+        {
+          supportWidgetPos: {
+            right: floatingPosCheck.right,
+            bottom: floatingPosCheck.bottom,
+          },
+        }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFloatingWidget, canEdit, mounted]);
 
   const setDraggingBodyLock = (locked: boolean) => {
     if (typeof document === "undefined") return;
@@ -2233,8 +2562,8 @@ export function SlidePresentationCanvas({
 
     const startClientX = e.clientX;
     const startClientY = e.clientY;
-    const initialX = saved.x || 0;
-    const initialY = saved.y || 0;
+    const initialX = isFloatingWidget ? floatingPosCheck.right : (saved.x || 0);
+    const initialY = isFloatingWidget ? floatingPosCheck.bottom : (saved.y || 0);
     const baseRot = saved.rotation || 0;
 
     // Measure element & parent card container ONCE on pointerdown (never during pointermove)
@@ -2310,6 +2639,27 @@ export function SlidePresentationCanvas({
         snap.moved = true;
       }
 
+      if (isFloatingWidget && typeof window !== "undefined") {
+        const maxR = Math.max(16, window.innerWidth - 72);
+        const maxB = Math.max(16, window.innerHeight - 72);
+        snap.latestX = Math.round(Math.min(maxR, Math.max(16, snap.initialX - screenDx)));
+        snap.latestY = Math.round(Math.min(maxB, Math.max(16, snap.initialY - screenDy)));
+
+        if (snap.rafId === null) {
+          snap.rafId = window.requestAnimationFrame(() => {
+            const cur = dragSnapshotRef.current;
+            if (!cur || !boxRef.current) return;
+            cur.rafId = null;
+            boxRef.current.style.right = `${cur.latestX}px`;
+            boxRef.current.style.bottom = `${cur.latestY}px`;
+            boxRef.current.style.left = "auto";
+            boxRef.current.style.top = "auto";
+            boxRef.current.style.transform = cur.latestRot ? `rotate(${cur.latestRot}deg)` : "none";
+          });
+        }
+        return;
+      }
+
       const { dx, dy } = applyInverseMatrix(invMatrix, screenDx, screenDy);
 
       const rawX = snap.initialX + dx;
@@ -2380,7 +2730,19 @@ export function SlidePresentationCanvas({
       setDraggingBodyLock(false);
       setSmartGuides(null);
       if (snap?.moved) {
-        void persistCanvas({ x: snap.latestX, y: snap.latestY });
+        if (isFloatingWidget) {
+          void persistCanvas(
+            { x: 0, y: 0 },
+            {
+              supportWidgetPos: {
+                right: snap.latestX,
+                bottom: snap.latestY,
+              },
+            }
+          );
+        } else {
+          void persistCanvas({ x: snap.latestX, y: snap.latestY });
+        }
       }
     };
 
@@ -2691,20 +3053,30 @@ export function SlidePresentationCanvas({
     return Math.max(0, Math.min((curZ ?? 20) - 10, minZ - 1));
   };
 
-  const activeZ =
-    isMicroNode && showHandles && (selected || hovered || activeOp !== "idle")
+  const activeZ = isFloatingWidget
+    ? Math.max(95, typeof curZ === "number" ? curZ : 95)
+    : isMicroNode && showHandles && (selected || hovered || activeOp !== "idle")
       ? Math.max(60, typeof curZ === "number" ? curZ : 60)
       : curZ;
 
   const canvasStyle: React.CSSProperties = {
     ...style,
-    ...(curX !== 0 || curY !== 0 || curRot !== 0
+    ...(isFloatingWidget
       ? {
-          transform: `translate3d(${curX}px, ${curY}px, 0)${
-            curRot ? ` rotate(${curRot}deg)` : ""
-          }`,
+          position: "fixed",
+          right: `${floatingPosCheck.right}px`,
+          bottom: `${floatingPosCheck.bottom}px`,
+          left: "auto",
+          top: "auto",
+          transform: curRot ? `rotate(${curRot}deg)` : "none",
         }
-      : {}),
+      : curX !== 0 || curY !== 0 || curRot !== 0
+        ? {
+            transform: `translate3d(${curX}px, ${curY}px, 0)${
+              curRot ? ` rotate(${curRot}deg)` : ""
+            }`,
+          }
+        : {}),
     ...(curW ? { width: `${curW}px`, maxWidth: isFloatingWidget ? "95vw" : "100%" } : {}),
     ...(curH ? { minHeight: `${curH}px` } : {}),
     ...(typeof activeZ === "number" ? { zIndex: activeZ } : {}),
@@ -2750,7 +3122,7 @@ export function SlidePresentationCanvas({
     );
   }
 
-  return (
+  const canvasMarkup = (
     <div
       ref={boxRef}
       data-god-card={!isMicroNode && !isFloatingWidget ? "true" : undefined}
@@ -2963,7 +3335,8 @@ export function SlidePresentationCanvas({
               {curW ? ` ${curW}px` : ""}
               {curRot ? ` ${curRot}°` : ""}
             </span>
-            {(curX !== 0 ||
+            {(isFloatingWidget ||
+              curX !== 0 ||
               curY !== 0 ||
               curRot !== 0 ||
               saved.width ||
@@ -2977,25 +3350,30 @@ export function SlidePresentationCanvas({
               <button
                 type="button"
                 onClick={() =>
-                  void persistCanvas({
-                    x: 0,
-                    y: 0,
-                    width: undefined,
-                    height: undefined,
-                    widthPreset: undefined,
-                    layoutWidth: undefined,
-                    layoutAlign: undefined,
-                    rotation: 0,
-                    zIndex: undefined,
-                    alignSelf: undefined,
-                    textColor: undefined,
-                    bgColor: undefined,
-                    borderColor: undefined,
-                  })
+                  void persistCanvas(
+                    {
+                      x: 0,
+                      y: 0,
+                      width: undefined,
+                      height: undefined,
+                      widthPreset: undefined,
+                      layoutWidth: undefined,
+                      layoutAlign: undefined,
+                      rotation: 0,
+                      zIndex: undefined,
+                      alignSelf: undefined,
+                      textColor: undefined,
+                      bgColor: undefined,
+                      borderColor: undefined,
+                    },
+                    isFloatingWidget
+                      ? { supportWidgetPos: { right: 24, bottom: 24 } }
+                      : undefined
+                  )
                 }
                 className="px-1.5 py-0.5 rounded text-red-300 hover:bg-red-500/20"
               >
-                ↺ Reset
+                {isFloatingWidget ? "↺ Reset Position" : "↺ Reset"}
               </button>
             )}
           </div>
@@ -3493,27 +3871,32 @@ export function SlidePresentationCanvas({
                 <button
                   type="button"
                   onClick={() =>
-                    void persistCanvas({
-                      x: 0,
-                      y: 0,
-                      width: undefined,
-                      height: undefined,
-                      widthPreset: undefined,
-                      layoutWidth: undefined,
-                      layoutAlign: undefined,
-                      rotation: 0,
-                      zIndex: undefined,
-                      lockAspectRatio: false,
-                      alignSelf: undefined,
-                      textColor: undefined,
-                      bgColor: undefined,
-                      borderColor: undefined,
-                      deleted: false,
-                    })
+                    void persistCanvas(
+                      {
+                        x: 0,
+                        y: 0,
+                        width: undefined,
+                        height: undefined,
+                        widthPreset: undefined,
+                        layoutWidth: undefined,
+                        layoutAlign: undefined,
+                        rotation: 0,
+                        zIndex: undefined,
+                        lockAspectRatio: false,
+                        alignSelf: undefined,
+                        textColor: undefined,
+                        bgColor: undefined,
+                        borderColor: undefined,
+                        deleted: false,
+                      },
+                      isFloatingWidget
+                        ? { supportWidgetPos: { right: 24, bottom: 24 } }
+                        : undefined
+                    )
                   }
                   className="px-2.5 py-1.5 rounded-lg border border-red-500/40 text-red-300 font-bold text-[11px]"
                 >
-                  ↺ Reset
+                  {isFloatingWidget ? "↺ Reset Position" : "↺ Reset"}
                 </button>
                 <button
                   type="button"
@@ -3540,6 +3923,11 @@ export function SlidePresentationCanvas({
         )}
     </div>
   );
+
+  if (isFloatingWidget && mounted && typeof document !== "undefined") {
+    return createPortal(canvasMarkup, document.body);
+  }
+  return canvasMarkup;
 }
 
 export type GodModeBoxProps = SlidePresentationCanvasProps;

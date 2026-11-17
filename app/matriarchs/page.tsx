@@ -9,7 +9,6 @@ import {
   EditableHeritageImage,
   useAdminEditMode,
   useCmsSiteState,
-  applyCmsOrder,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
@@ -25,7 +24,10 @@ import {
   SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
+  HiddenItemBadgeBar,
+  applyCmsVisibilityOrder,
   useGodModeTextValue,
+  useVerifiedLiveEdit,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { AnimatedModal } from "@/components/animated-modal";
@@ -302,6 +304,7 @@ const CATEGORIES: ("All" | MatriarchCategory)[] = [
 export default function MatriarchsPage() {
   const cms = useCmsSiteState();
   const [liveEditMode] = useAdminEditMode();
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
   const [selectedCategory, setSelectedCategory] =
     useState<"All" | MatriarchCategory>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -358,8 +361,14 @@ export default function MatriarchsPage() {
       );
     });
 
-    return applyCmsOrder(filtered, (p) => p.id, "matriarchs", cms);
-  }, [selectedCategory, searchQuery, cms]);
+    return applyCmsVisibilityOrder(
+      filtered,
+      (p) => p.id,
+      "matriarchs",
+      cms,
+      isVerifiedLiveEdit
+    );
+  }, [selectedCategory, searchQuery, cms, isVerifiedLiveEdit]);
 
   const layoutCfg = cms.layoutConfig || {};
   const searchPlaceholder = useGodModeTextValue(
@@ -605,9 +614,14 @@ export default function MatriarchsPage() {
                 }}
                 className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 ${
                   liveEditMode ? "overflow-visible" : ""
+                } ${
+                  (cms.archivedIds || []).includes(profile.id)
+                    ? "opacity-55 ring-2 ring-amber-400/70"
+                    : ""
                 } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               >
               <div className="space-y-3">
+                <HiddenItemBadgeBar itemId={profile.id} />
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <InlineOrderControls
                     pageKey="matriarchs"

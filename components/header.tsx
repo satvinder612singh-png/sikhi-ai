@@ -18,6 +18,11 @@ import {
   type CmsPageTransition,
   type CmsLayoutConfig,
 } from "@/components/editable-heritage-image";
+import {
+  toggleCmsArchiveItem,
+  permanentlyDeleteCmsItem,
+  clampFloatingWidgetPos,
+} from "@/components/inline-cms-editor";
 
 const VISITOR_THEME_KEY = "learn_sikhi_theme_v2";
 
@@ -64,10 +69,45 @@ export function Header({ solid = false }: { solid?: boolean }) {
   const [open, setOpen] = useState(false);
   const [isStealthAdmin, setIsStealthAdmin] = useState(false);
   const [isAdminBarOpen, setIsAdminBarOpen] = useState(false);
+  const [isHiddenDrawerOpen, setIsHiddenDrawerOpen] = useState(false);
+  const [confirmDrawerDeleteId, setConfirmDrawerDeleteId] = useState<string | null>(null);
   const [adminSaving, setAdminSaving] = useState<string | null>(null);
   const menuId = useId();
 
   const layoutCfg: CmsLayoutConfig = cms.layoutConfig || {};
+  const deletedSet = new Set(Array.isArray(cms.deletedIds) ? cms.deletedIds : []);
+  const archivedIds = (Array.isArray(cms.archivedIds) ? cms.archivedIds : []).filter(
+    (id) => !deletedSet.has(id)
+  );
+
+  const resolveHiddenItemLabel = (id: string): string => {
+    const editedTitle = cms.topicEdits?.[id]?.title;
+    if (editedTitle) return editedTitle;
+    for (const list of Object.values(cms.customTopics || {})) {
+      const found = Array.isArray(list) ? list.find((t) => t.id === id) : undefined;
+      if (found?.title) return found.title;
+    }
+    return id;
+  };
+
+  useEffect(() => {
+    if (!isStealthAdmin || typeof window === "undefined") return;
+    const rawPos = (
+      cms.sectionLayoutMap as
+        | { supportWidgetPos?: { right?: unknown; bottom?: unknown } }
+        | undefined
+    )?.supportWidgetPos;
+    if (!rawPos) return;
+    const check = clampFloatingWidgetPos(rawPos.right, rawPos.bottom);
+    if (check.needsHeal) {
+      void pushAdminCmsPatch({
+        sectionLayoutMap: {
+          ...(cms.sectionLayoutMap || {}),
+          supportWidgetPos: { right: 24, bottom: 24 },
+        },
+      });
+    }
+  }, [isStealthAdmin, cms.sectionLayoutMap]);
 
   const applyAdminLayoutPatch = async (
     patch: Partial<CmsLayoutConfig>,
@@ -413,6 +453,38 @@ export function Header({ solid = false }: { solid?: boolean }) {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsHiddenDrawerOpen((v) => !v)}
+                  className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition ${
+                    isHiddenDrawerOpen
+                      ? "bg-amber-500 text-[#18181B] border-amber-400"
+                      : archivedIds.length > 0
+                        ? "border-amber-400/70 bg-amber-500/15 text-amber-500 dark:text-amber-300"
+                        : "border-[#C59B27]/40 opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  👁️ Hidden Items Drawer ({archivedIds.length} Hidden)
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setAdminSaving("Resetting Khoj AI...");
+                    await pushAdminCmsPatch({
+                      sectionLayoutMap: {
+                        ...(cms.sectionLayoutMap || {}),
+                        supportWidgetPos: { right: 24, bottom: 24 },
+                        "__slide_canvas_support-widget-canvas": { x: 0, y: 0 },
+                      },
+                    });
+                    setAdminSaving("✓ Khoj AI Position Reset");
+                    window.setTimeout(() => setAdminSaving(null), 2000);
+                  }}
+                  title="Reset Khoj AI floating support icon to bottom-right"
+                  className="px-3 py-2 rounded-xl border border-sky-500/45 bg-sky-500/10 text-sky-600 dark:text-sky-300 text-xs font-bold hover:bg-sky-500/20 transition"
+                >
+                  ↺ Reset Position
+                </button>
                 <Link
                   href="/admin"
                   onClick={() => setIsAdminBarOpen(false)}
@@ -430,6 +502,83 @@ export function Header({ solid = false }: { solid?: boolean }) {
                 </button>
               </div>
             </div>
+
+            {isHiddenDrawerOpen && (
+              <div
+                style={{ borderColor: "var(--border-subtle)" }}
+                className="rounded-xl border bg-black/5 dark:bg-black/30 p-3 space-y-2 text-xs"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-extrabold text-amber-600 dark:text-amber-300">
+                    👁️‍🗨️ Hidden Items ({archivedIds.length}) — Hidden from regular visitors
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsHiddenDrawerOpen(false)}
+                    className="text-[11px] opacity-75 hover:opacity-100"
+                  >
+                    Hide Drawer ✕
+                  </button>
+                </div>
+                {archivedIds.length === 0 ? (
+                  <p className="text-[11px] opacity-70">
+                    No hidden cards or articles right now.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-52 overflow-y-auto">
+                    {archivedIds.map((hid) => (
+                      <div
+                        key={hid}
+                        style={{ borderColor: "var(--border-subtle)" }}
+                        className="flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 bg-[var(--bg-surface)]"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-bold truncate">{resolveHiddenItemLabel(hid)}</p>
+                          <p className="text-[10px] opacity-60 font-mono truncate">{hid}</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setAdminSaving("Unhiding...");
+                              await toggleCmsArchiveItem(cms, hid);
+                              setAdminSaving("✓ Restored");
+                              window.setTimeout(() => setAdminSaving(null), 1800);
+                            }}
+                            className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:brightness-110"
+                          >
+                            Unhide
+                          </button>
+                          {confirmDrawerDeleteId === hid ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setAdminSaving("Deleting...");
+                                await permanentlyDeleteCmsItem(cms, hid);
+                                setConfirmDrawerDeleteId(null);
+                                setAdminSaving("✓ Deleted Forever");
+                                window.setTimeout(() => setAdminSaving(null), 1800);
+                              }}
+                              className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-extrabold"
+                            >
+                              Confirm?
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDrawerDeleteId(hid)}
+                              className="px-2 py-1 rounded border border-red-500/40 text-red-500 text-[10px] font-bold hover:bg-red-500/15"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Row 2: Page Transition + Quick Theme Switches + Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">

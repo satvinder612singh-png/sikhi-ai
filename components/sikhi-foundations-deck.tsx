@@ -11,7 +11,6 @@ import {
   EditableHeritageImage,
   useAdminEditMode,
   useCmsSiteState,
-  applyCmsOrder,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
@@ -28,6 +27,9 @@ import {
   SlidePresentationCanvas,
   GodModeText,
   GodModeBox,
+  HiddenItemBadgeBar,
+  applyCmsVisibilityOrder,
+  useVerifiedLiveEdit,
   type InlineTopicEditData,
 } from "@/components/inline-cms-editor";
 import { SikhiIcon, type SikhiIconName } from "@/components/sikhi-icons";
@@ -585,7 +587,8 @@ function SlideFiveKs({
   cms: CmsSiteState;
 }) {
   const [liveEditMode] = useAdminEditMode();
-  const orderedKs = applyCmsOrder(FIVE_KS, (item) => item.art.artKey, "foundations", cms);
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
+  const orderedKs = applyCmsVisibilityOrder(FIVE_KS, (item) => item.art.artKey, "foundations", cms, isVerifiedLiveEdit);
   const [sel, setSel] = useState(0);
   const rawK = orderedKs[Math.min(sel, Math.max(0, orderedKs.length - 1))] || FIVE_KS[0];
   const kEdit = cms.topicEdits?.[rawK.art.artKey];
@@ -642,6 +645,7 @@ function SlideFiveKs({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-start">
+        {orderedKs.length > 0 && (
         <article
           key={k.id}
           role="button"
@@ -655,6 +659,10 @@ function SlideFiveKs({
           }}
           className={`rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
             liveEditMode ? "overflow-visible" : ""
+          } ${
+            (cms.archivedIds || []).includes(rawK.art.artKey)
+              ? "opacity-55 ring-2 ring-amber-400/70"
+              : ""
           } ${resolveCmsCardLayoutClass(kEdit, "grid-2")}`}
           style={{
             ...card,
@@ -667,6 +675,7 @@ function SlideFiveKs({
           }}
         >
           <div className="space-y-4">
+            <HiddenItemBadgeBar itemId={rawK.art.artKey} />
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <InlineOrderControls
                 pageKey="foundations"
@@ -727,6 +736,7 @@ function SlideFiveKs({
             </span>
           </SlidePresentationCanvas>
         </article>
+        )}
 
         <div className="md:col-span-3 rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out" style={card}>
           <Eyebrow>All 5 Articles • Click Any Card for Sakhi</Eyebrow>
@@ -945,7 +955,8 @@ function SlidePyare({
   cms: CmsSiteState;
 }) {
   const [liveEditMode] = useAdminEditMode();
-  const orderedPyare = applyCmsOrder(PANJ_PYARE, (p) => p.art.artKey, "foundations", cms);
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
+  const orderedPyare = applyCmsVisibilityOrder(PANJ_PYARE, (p) => p.art.artKey, "foundations", cms, isVerifiedLiveEdit);
   const layoutCfg = cms.layoutConfig || {};
   const openPyareModal = (p: (typeof PANJ_PYARE)[number]) => {
     onOpenModal({
@@ -1004,6 +1015,10 @@ function SlidePyare({
               }}
               className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
                 liveEditMode ? "overflow-visible" : ""
+              } ${
+                (cms.archivedIds || []).includes(p.art.artKey)
+                  ? "opacity-55 ring-2 ring-amber-400/70"
+                  : ""
               } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               style={{
                 ...card,
@@ -1016,6 +1031,7 @@ function SlidePyare({
               }}
             >
               <div className="space-y-2.5">
+                <HiddenItemBadgeBar itemId={p.art.artKey} />
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <InlineOrderControls
                     pageKey="foundations"
@@ -1100,7 +1116,8 @@ function SlideSahibzaade({
   cms: CmsSiteState;
 }) {
   const [liveEditMode] = useAdminEditMode();
-  const orderedSahibzaade = applyCmsOrder(SAHIBZAADE, (s) => s.art.artKey, "foundations", cms);
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
+  const orderedSahibzaade = applyCmsVisibilityOrder(SAHIBZAADE, (s) => s.art.artKey, "foundations", cms, isVerifiedLiveEdit);
   const layoutCfg = cms.layoutConfig || {};
   const openSahibzaadaModal = (s: (typeof SAHIBZAADE)[number]) => {
     onOpenModal({
@@ -1171,6 +1188,10 @@ function SlideSahibzaade({
               }}
               className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
                 liveEditMode ? "overflow-visible" : ""
+              } ${
+                (cms.archivedIds || []).includes(s.art.artKey)
+                  ? "opacity-55 ring-2 ring-amber-400/70"
+                  : ""
               } ${resolveCmsCardLayoutClass(ov, "grid-2")}`}
               style={{
                 ...card,
@@ -1183,6 +1204,7 @@ function SlideSahibzaade({
               }}
             >
               <div className="space-y-2.5">
+                <HiddenItemBadgeBar itemId={s.art.artKey} />
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <InlineOrderControls
                     pageKey="foundations"
@@ -1301,7 +1323,8 @@ function SlideShaheeds({
   cms: CmsSiteState;
 }) {
   const [liveEditMode] = useAdminEditMode();
-  const orderedShaheeds = applyCmsOrder(SHAHEEDS, (s) => s.art.artKey, "foundations", cms);
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
+  const orderedShaheeds = applyCmsVisibilityOrder(SHAHEEDS, (s) => s.art.artKey, "foundations", cms, isVerifiedLiveEdit);
   const layoutCfg = cms.layoutConfig || {};
   const openShaheedModal = (s: (typeof SHAHEEDS)[number]) => {
     onOpenModal({
@@ -1350,6 +1373,10 @@ function SlideShaheeds({
               }}
               className={`space-y-3 rounded-2xl border border-[#d4af37]/30 p-4 cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
                 liveEditMode ? "overflow-visible" : ""
+              } ${
+                (cms.archivedIds || []).includes(s.art.artKey)
+                  ? "opacity-55 ring-2 ring-amber-400/70"
+                  : ""
               } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
               style={{
                 ...card,
@@ -1362,6 +1389,7 @@ function SlideShaheeds({
               }}
             >
               <div className="space-y-2.5">
+                <HiddenItemBadgeBar itemId={s.art.artKey} />
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <InlineOrderControls
                     pageKey="foundations"
@@ -1521,6 +1549,7 @@ function NS_NAME(i: number) {
 export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 2 }) {
   const cms = useCmsSiteState();
   const [liveEditMode] = useAdminEditMode();
+  const isVerifiedLiveEdit = useVerifiedLiveEdit();
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [modalItem, setModalItem] = useState<FoundationModalItem | null>(null);
@@ -1573,11 +1602,12 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
       : deckSec?.widthMode === "contained"
         ? "max-w-5xl mx-auto"
         : "";
-  const customFoundations = applyCmsOrder(
+  const customFoundations = applyCmsVisibilityOrder(
     cms.customTopics?.foundations || [],
     (t) => t.id,
     "foundations",
-    cms
+    cms,
+    isVerifiedLiveEdit
   );
 
   if (deckSec?.hidden) {
@@ -1737,8 +1767,13 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
                   }}
                   className={`rounded-2xl border border-[#d4af37]/30 p-4 space-y-2.5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out ${
                     liveEditMode ? "overflow-visible" : ""
+                  } ${
+                    (cms.archivedIds || []).includes(ct.id)
+                      ? "opacity-55 ring-2 ring-amber-400/70"
+                      : ""
                   } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
                 >
+                  <HiddenItemBadgeBar itemId={ct.id} />
                   <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <InlineOrderControls
                       pageKey="foundations"
