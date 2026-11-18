@@ -583,6 +583,11 @@ a.from-\[\#C59B27\] {
     border-color: rgba(245, 158, 11, 0.5);
   }
 
+  .admin-studio-bar-top {
+    position: relative;
+    z-index: 99999 !important;
+  }
+
   .admin-studio-ui .admin-label-muted {
     color: #cbd5e1 !important;
   }
@@ -608,18 +613,21 @@ a.from-\[\#C59B27\] {
     font-weight: 800;
   }
 
-  /* Toggleable Smart Alignment Grid & Crisp 1px #f59e0b Crosshair Guides */
+  /* Magnetic dot grid & free-form grid overlays paused cleanly */
   .god-mode-grid,
   body.god-mode-grid-visible .god-mode-canvas-active,
   body.god-mode-grid-visible {
-    background-image: linear-gradient(
-        to right,
-        rgba(245, 158, 11, 0.08) 1px,
-        transparent 1px
-      ),
-      linear-gradient(to bottom, rgba(245, 158, 11, 0.08) 1px, transparent 1px);
-    background-size: 16px 16px;
-    background-position: top left;
+    background-image: none !important;
+  }
+
+  @keyframes kirtanBarPulse {
+    0%, 100% { transform: scaleY(0.35); }
+    50% { transform: scaleY(1); }
+  }
+
+  .kirtan-eq-bar {
+    transform-origin: bottom;
+    animation: kirtanBarPulse 0.85s ease-in-out infinite;
   }
 
   .smart-guide-v {

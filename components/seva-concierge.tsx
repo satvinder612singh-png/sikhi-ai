@@ -4,11 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useKirtanAudio, PURATAN_KIRTAN_TRACKS } from "@/components/kirtan-audio-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import {
-  useCmsSiteState,
-  pushAdminCmsPatch,
-} from "@/components/editable-heritage-image";
-import { SlidePresentationCanvas } from "@/components/inline-cms-editor";
+import { useCmsSiteState } from "@/components/editable-heritage-image";
 
 export type IntentRouteItem = {
   id: string;
@@ -715,18 +711,6 @@ export function SevaConcierge() {
     }
   }, [supportCfg.defaultOpen, hasAppliedDefaultOpen]);
 
-  const updateSupportConfig = async (patch: Partial<SupportPanelConfig>) => {
-    await pushAdminCmsPatch({
-      sectionLayoutMap: {
-        ...(cms.sectionLayoutMap || {}),
-        __support_panel_config: {
-          ...supportCfg,
-          ...patch,
-        },
-      },
-    });
-  };
-
   const greeting =
     supportCfg.greetingText ||
     "Sat Sri Akal! Ask Khoj AI anything about Gurbani, Nitnem, History, or Granths.";
@@ -808,110 +792,28 @@ export function SevaConcierge() {
     setAsking(false);
   };
 
-  const supportInspector = (
-    <div className="space-y-2.5 text-xs">
-      <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#E5C158]">
-        Khoj AI God Mode Inspector
-      </p>
-      <label className="block space-y-0.5">
-        <span className="text-[10px] opacity-75 font-bold">Widget Title</span>
-        <input
-          type="text"
-          value={headerTitle}
-          onChange={(e) =>
-            void updateSupportConfig({ headerTitle: e.target.value })
-          }
-          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
-        />
-      </label>
-      <label className="block space-y-0.5">
-        <span className="text-[10px] opacity-75 font-bold">Greeting Text</span>
-        <input
-          type="text"
-          value={greeting}
-          onChange={(e) =>
-            void updateSupportConfig({ greetingText: e.target.value })
-          }
-          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
-        />
-      </label>
-      <label className="block space-y-0.5">
-        <span className="text-[10px] opacity-75 font-bold">
-          Input Placeholder
-        </span>
-        <input
-          type="text"
-          value={inputPlaceholder}
-          onChange={(e) =>
-            void updateSupportConfig({ placeholderText: e.target.value })
-          }
-          className="w-full rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs"
-        />
-      </label>
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <label className="flex items-center gap-1.5">
-          <span className="text-[10px] opacity-75 font-bold">Theme Color</span>
-          <input
-            type="color"
-            value={
-              /^#[0-9a-f]{6}$/i.test(panelColor || "") ? panelColor : "#0F172A"
-            }
-            onChange={(e) =>
-              void updateSupportConfig({ themeColor: e.target.value })
-            }
-            className="w-6 h-6 rounded border-0 bg-transparent p-0 cursor-pointer"
-          />
-          <button
-            type="button"
-            onClick={() => void updateSupportConfig({ themeColor: undefined })}
-            className="text-[10px] underline opacity-70"
-          >
-            Reset
-          </button>
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            const nextDefault = !supportCfg.defaultOpen;
-            setOpen(nextDefault);
-            void updateSupportConfig({ defaultOpen: nextDefault });
-          }}
-          className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${
-            supportCfg.defaultOpen
-              ? "border-emerald-500 bg-emerald-500/20 text-emerald-300"
-              : "border-white/20 opacity-80"
-          }`}
-        >
-          Default: {supportCfg.defaultOpen ? "Open" : "Closed"}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
-    <SlidePresentationCanvas
-      id="support-widget-canvas"
-      pageKey="global"
-      label="Khoj AI"
-      elementType="Widget"
-      isFloatingWidget={true}
-      extraInspectorContent={supportInspector}
-      className={`fixed right-5 z-40 ${
-        isMiniPlayerVisible ? "bottom-24" : "bottom-5"
-      }`}
+    <div
+      style={{
+        position: "fixed",
+        right: "24px",
+        bottom: isMiniPlayerVisible ? "92px" : "24px",
+        zIndex: 55,
+      }}
+      className="transition-all duration-300"
     >
       {open ? (
         <div
           role="dialog"
           aria-label="Khoj AI Assistant"
           style={panelColor ? { backgroundColor: panelColor } : undefined}
-          className="w-[90vw] max-w-sm rounded-2xl border border-[#d4af37]/45 bg-[#0F172A]/95 text-[#FAF7F0] shadow-2xl shadow-black/40 backdrop-blur-xl overflow-hidden flex flex-col animate-fade-in-up"
+          className="w-[90vw] max-w-sm rounded-2xl border border-amber-400/50 bg-[#090d16]/95 text-[#f8fafc] shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden flex flex-col animate-fade-in-up"
         >
           <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 lang="pa"
-                className="h-6 w-6 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-gurmukhi text-xs font-extrabold flex items-center justify-center shrink-0"
+                className="h-6 w-6 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#090d16] font-gurmukhi text-xs font-extrabold flex items-center justify-center shrink-0"
               >
                 ੴ
               </span>
@@ -923,7 +825,7 @@ export function SevaConcierge() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Minimize Khoj AI"
-              className="h-7 w-7 rounded-full border border-white/20 text-xs font-bold hover:border-[#d4af37] flex items-center justify-center"
+              className="h-7 w-7 rounded-full border border-white/20 text-xs font-bold hover:border-amber-400 flex items-center justify-center"
             >
               ✕
             </button>
@@ -939,12 +841,12 @@ export function SevaConcierge() {
                 key={m.id}
                 className={`rounded-xl px-3 py-2 leading-relaxed space-y-1.5 ${
                   m.role === "user"
-                    ? "ml-6 bg-[#d4af37]/20 border border-[#d4af37]/40 text-[#FAF7F0]"
-                    : "mr-4 bg-black/35 border border-white/10 text-[#E2E8F0]"
+                    ? "ml-6 bg-amber-500/20 border border-amber-400/40 text-white"
+                    : "mr-4 bg-slate-900/90 border border-white/10 text-slate-200"
                 }`}
               >
                 {m.citation && (
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#E5C158]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
                     {m.citation}
                   </p>
                 )}
@@ -952,7 +854,7 @@ export function SevaConcierge() {
                 {m.href && m.ctaLabel && (
                   <Link
                     href={m.href}
-                    className="inline-block text-[11px] font-bold text-[#E5C158] hover:underline"
+                    className="inline-block text-[11px] font-bold text-amber-300 hover:underline"
                   >
                     {m.ctaLabel}
                   </Link>
@@ -961,7 +863,7 @@ export function SevaConcierge() {
             ))}
 
             {asking && (
-              <div className="rounded-xl bg-black/30 px-3 py-2 text-[11px] text-[#E5C158] animate-pulse">
+              <div className="rounded-xl bg-black/30 px-3 py-2 text-[11px] text-amber-300 animate-pulse">
                 Khoj AI is consulting Sanctuary sources...
               </div>
             )}
@@ -969,7 +871,7 @@ export function SevaConcierge() {
 
           <form
             onSubmit={handleKhojSubmit}
-            className="p-2.5 border-t border-white/10 flex items-center gap-2 bg-black/25"
+            className="p-2.5 border-t border-white/10 flex items-center gap-2 bg-black/35"
           >
             <input
               type="text"
@@ -977,12 +879,12 @@ export function SevaConcierge() {
               onChange={(e) => setPromptInput(e.target.value)}
               placeholder={inputPlaceholder}
               aria-label={inputPlaceholder}
-              className="flex-1 min-w-0 rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-xs text-[#FAF7F0] placeholder:text-zinc-400 focus:outline-none focus:border-[#d4af37]"
+              className="flex-1 min-w-0 rounded-xl border border-white/20 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-400"
             />
             <button
               type="submit"
               disabled={asking || !promptInput.trim()}
-              className="shrink-0 h-8 px-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold disabled:opacity-45"
+              className="shrink-0 h-8 px-3 rounded-xl bg-amber-400 text-[#090d16] text-xs font-extrabold disabled:opacity-45 hover:bg-amber-300 transition"
             >
               Ask
             </button>
@@ -993,18 +895,21 @@ export function SevaConcierge() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open Khoj AI"
-          title="Khoj AI"
+          title="Open Khoj AI Assistant"
           style={panelColor ? { backgroundColor: panelColor } : undefined}
-          className="w-12 h-12 rounded-full border border-[#d4af37]/60 bg-[#0F172A]/85 backdrop-blur-xl shadow-2xl shadow-black/40 flex items-center justify-center hover:scale-105 transition-all duration-300"
+          className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-[#090d16]/85 pl-1.5 pr-3.5 py-1.5 text-white backdrop-blur-xl shadow-2xl shadow-black/45 hover:scale-105 hover:border-amber-300 transition-all duration-300"
         >
           <span
             lang="pa"
-            className="h-8 w-8 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-gurmukhi text-sm font-black flex items-center justify-center shadow"
+            className="h-8 w-8 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#090d16] font-gurmukhi text-sm font-black flex items-center justify-center shadow"
           >
             ੴ
           </span>
+          <span className="text-xs font-serif font-bold tracking-wide text-amber-100">
+            {headerTitle}
+          </span>
         </button>
       )}
-    </SlidePresentationCanvas>
+    </div>
   );
 }

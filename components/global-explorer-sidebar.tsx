@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -223,6 +223,7 @@ export function GlobalExplorerSidebar({
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"map" | "news">("map");
+  const touchStartXRef = useRef<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedPages, setExpandedPages] = useState<Record<string, boolean>>({
     sangat: true,
@@ -521,6 +522,44 @@ export function GlobalExplorerSidebar({
     await loadNewsFeed(true);
   };
 
+  const pinnedSet = useMemo(() => new Set(cms.pinnedIds || []), [cms.pinnedIds]);
+
+  const handleTogglePinNews = async (newsId: string) => {
+    const key = `news:${newsId}`;
+    const currentPinned = Array.isArray(cms.pinnedIds) ? cms.pinnedIds : [];
+    const isPinned = currentPinned.includes(key);
+    const nextPinned = isPinned
+      ? currentPinned.filter((id) => id !== key)
+      : [key, ...currentPinned];
+    await pushAdminCmsPatch({ pinnedIds: nextPinned });
+  };
+
+  const handleToggleHideNews = async (newsId: string) => {
+    const key = `news:${newsId}`;
+    const currentArchived = Array.isArray(cms.archivedIds) ? cms.archivedIds : [];
+    const isHidden = currentArchived.includes(key);
+    const nextArchived = isHidden
+      ? currentArchived.filter((id) => id !== key)
+      : [...currentArchived, key];
+    await pushAdminCmsPatch({ archivedIds: nextArchived });
+  };
+
+  const visibleNewsItems = useMemo(() => {
+    return [...newsItems]
+      .filter((story) => {
+        const key = `news:${story.id}`;
+        if (!isAdmin && archivedSet.has(key)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const aPinned = Boolean(a.isCustom || pinnedSet.has(`news:${a.id}`));
+        const bPinned = Boolean(b.isCustom || pinnedSet.has(`news:${b.id}`));
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return 0;
+      });
+  }, [newsItems, isAdmin, archivedSet, pinnedSet]);
+
   if (!mounted || typeof document === "undefined") {
     return null;
   }
@@ -549,7 +588,18 @@ export function GlobalExplorerSidebar({
           <aside
             aria-label="Global Topic Explorer & Hourly Sikhi News"
             onClick={(e) => e.stopPropagation()}
-            className="h-full w-[92vw] max-w-md bg-[#0B101B] text-[#FAF7F0] border-r-2 border-[#C59B27]/60 shadow-2xl flex flex-col overflow-hidden"
+            onTouchStart={(e) => {
+              touchStartXRef.current = e.touches[0]?.clientX ?? null;
+            }}
+            onTouchEnd={(e) => {
+              const startX = touchStartXRef.current;
+              touchStartXRef.current = null;
+              const endX = e.changedTouches[0]?.clientX ?? null;
+              if (startX !== null && endX !== null && startX - endX > 60) {
+                setIsOpen(false);
+              }
+            }}
+            className="admin-studio-ui h-full w-[92vw] max-w-md bg-[#090d16] text-[#f8fafc] border-r-2 border-amber-400/60 shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="px-4 py-3.5 border-b border-white/10 flex items-center justify-between gap-2 bg-[#111827]">
@@ -800,54 +850,112 @@ export function GlobalExplorerSidebar({
 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
                   {newsLoading && newsItems.length === 0 ? (
-                    <div className="rounded-xl border border-white/10 p-4 text-xs text-zinc-300 animate-pulse">
-                      Aggregating hourly uplifting Sikhi &amp; Gurdwara heritage updates...
-                    </div>
-                  ) : (
-                    newsItems.map((story) => (
-                      <article
-                        key={story.id}
-                        className="rounded-xl border border-white/12 bg-white/[0.04] p-3 space-y-1.5 hover:border-[#C59B27]/60 transition"
-                      >
-                        <div className="flex items-center justify-between gap-2 text-[10px]">
-                          <span className="px-2 py-0.5 rounded-full bg-[#C59B27]/20 text-[#E5C158] font-bold uppercase tracking-wider">
-                            {story.isCustom ? "📌 Pinned • " : ""}
-                            {story.category}
-                          </span>
-                          <span className="text-zinc-400">
-                            {formatRelativeDate(story.publishedAt)}
-                          </span>
-                        </div>
-                        <h3 className="font-serif text-sm font-bold leading-snug text-[#FAF7F0]">
-                          {story.title}
-                        </h3>
-                        <p className="text-xs text-zinc-300 leading-relaxed line-clamp-3">
-                          {story.summary}
-                        </p>
-                        <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
-                          <span className="text-zinc-400 truncate">{story.source}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {isAdmin && story.isCustom && (
-                              <button
-                                type="button"
-                                onClick={() => void handleDeleteCustomNews(story.id)}
-                                className="text-red-300 hover:underline text-[10px] font-bold"
-                              >
-                                Remove
-                              </button>
-                            )}
-                            <a
-                              href={story.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-bold text-[#E5C158] hover:underline"
-                            >
-                              Read Story ↗
-                            </a>
+                    <div className="space-y-2.5" aria-busy="true" aria-label="Loading hourly Sikhi news">
+                      {[1, 2, 3].map((sk) => (
+                        <div
+                          key={sk}
+                          className="rounded-xl border border-white/10 bg-white/[0.04] p-3 space-y-2.5 animate-pulse"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="h-4 w-28 rounded-full bg-amber-400/20" />
+                            <span className="h-3 w-14 rounded bg-white/10" />
+                          </div>
+                          <div className="h-4 w-5/6 rounded bg-white/15" />
+                          <div className="space-y-1.5">
+                            <div className="h-3 w-full rounded bg-white/10" />
+                            <div className="h-3 w-4/5 rounded bg-white/10" />
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="h-3 w-24 rounded bg-white/10" />
+                            <span className="h-3 w-16 rounded bg-amber-400/25" />
                           </div>
                         </div>
-                      </article>
-                    ))
+                      ))}
+                    </div>
+                  ) : (
+                    visibleNewsItems.map((story) => {
+                      const storyKey = `news:${story.id}`;
+                      const isPinned = Boolean(story.isCustom || pinnedSet.has(storyKey));
+                      const isHidden = archivedSet.has(storyKey);
+                      return (
+                        <article
+                          key={story.id}
+                          className={`rounded-xl border p-3 space-y-1.5 transition ${
+                            isHidden
+                              ? "opacity-50 border-amber-400/40 bg-amber-500/5"
+                              : isPinned
+                                ? "border-amber-400/65 bg-amber-500/10"
+                                : "border-white/12 bg-white/[0.04] hover:border-amber-400/60"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[10px]">
+                            <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-bold uppercase tracking-wider">
+                              {isPinned ? "📌 Pinned • " : ""}
+                              {story.category}
+                            </span>
+                            <span className="text-slate-400">
+                              {formatRelativeDate(story.publishedAt)}
+                            </span>
+                          </div>
+                          <h3 className="font-serif text-sm font-bold leading-snug text-[#f8fafc]">
+                            {story.title}
+                          </h3>
+                          <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
+                            {story.summary}
+                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px]">
+                            <span className="text-slate-400 truncate">{story.source}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleTogglePinNews(story.id)}
+                                    title={isPinned ? "Unpin story" : "Pin story to top"}
+                                    className={`px-1.5 py-0.5 rounded border text-[10px] font-bold transition ${
+                                      isPinned
+                                        ? "bg-amber-400 text-[#090d16] border-amber-300"
+                                        : "border-white/20 text-amber-200 hover:border-amber-400"
+                                    }`}
+                                  >
+                                    {isPinned ? "📌 Pinned" : "📌 Pin"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleToggleHideNews(story.id)}
+                                    title={isHidden ? "Unhide story" : "Hide story from visitors"}
+                                    className={`px-1.5 py-0.5 rounded border text-[10px] font-bold transition ${
+                                      isHidden
+                                        ? "bg-emerald-500 text-[#090d16] border-emerald-400"
+                                        : "border-white/20 text-slate-300 hover:border-red-400 hover:text-red-300"
+                                    }`}
+                                  >
+                                    {isHidden ? "Unhide" : "👁️ Hide"}
+                                  </button>
+                                </>
+                              )}
+                              {isAdmin && story.isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteCustomNews(story.id)}
+                                  className="text-red-300 hover:underline text-[10px] font-bold"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                              <a
+                                href={story.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-amber-300 hover:underline"
+                              >
+                                Read Story ↗
+                              </a>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
                   )}
                 </div>
               </div>

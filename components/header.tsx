@@ -23,9 +23,6 @@ import {
   toggleCmsArchiveItem,
   permanentlyDeleteCmsItem,
   clampFloatingWidgetPos,
-  useUnlockAllElements,
-  useSmartGridOverlay,
-  useRegisteredCanvasNodes,
   getRegisteredCanvasNodesSnapshot,
 } from "@/components/inline-cms-editor";
 import {
@@ -81,9 +78,6 @@ export function Header({ solid = false }: { solid?: boolean }) {
   const [isHiddenDrawerOpen, setIsHiddenDrawerOpen] = useState(false);
   const [confirmDrawerDeleteId, setConfirmDrawerDeleteId] = useState<string | null>(null);
   const [adminSaving, setAdminSaving] = useState<string | null>(null);
-  const [unlockAll, toggleUnlockAll] = useUnlockAllElements();
-  const [gridOverlay, toggleGridOverlay] = useSmartGridOverlay();
-  const registeredNodes = useRegisteredCanvasNodes();
   const [aiCommand, setAiCommand] = useState("");
   const [aiBusy, setAiBusy] = useState<string | null>(null);
   const [aiOutput, setAiOutput] = useState<{
@@ -323,9 +317,11 @@ export function Header({ solid = false }: { solid?: boolean }) {
         color: "var(--text-primary)",
       }}
       className={
-        solid
-          ? "sticky top-0 z-30 border-b backdrop-blur-md shadow-sm"
-          : "sticky top-0 z-30 border-b backdrop-blur-md"
+        isAdminBarOpen
+          ? "sticky top-0 z-[99999] border-b backdrop-blur-md shadow-sm"
+          : solid
+            ? "sticky top-0 z-30 border-b backdrop-blur-md shadow-sm"
+            : "sticky top-0 z-30 border-b backdrop-blur-md"
       }
     >
       <nav
@@ -560,10 +556,10 @@ export function Header({ solid = false }: { solid?: boolean }) {
       {/* Live Top Admin Studio Dropdown Toolbar */}
       {isStealthAdmin && isAdminBarOpen && (
         <div
-          className="admin-studio-ui border-t border-b border-amber-400/50 bg-slate-950/95 text-white shadow-2xl px-4 sm:px-6 lg:px-8 py-4"
+          className="admin-studio-ui admin-studio-bar-top border-t border-b border-amber-400/50 bg-[#090d16] text-[#f8fafc] shadow-2xl px-4 sm:px-6 lg:px-8 py-4"
         >
           <div className="mx-auto max-w-7xl space-y-4">
-            {/* Top Action Row: Master Live Edit Mode + Unlock All + Status + Vault Link */}
+            {/* Top Action Row: Master Live Edit Mode + Hidden Items + Vault Link */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -572,41 +568,15 @@ export function Header({ solid = false }: { solid?: boolean }) {
                   onClick={() => setLiveEditMode(!liveEditMode)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-extrabold border transition ${
                     liveEditMode
-                      ? "bg-emerald-500 text-[#090d16] border-emerald-300 shadow-sm"
+                      ? "admin-pill-active shadow-sm"
                       : "border-amber-400/50 bg-slate-900 text-amber-300 hover:border-amber-400"
                   }`}
                 >
-                  ✏️ Live Page Edit Mode: {liveEditMode ? "ON" : "OFF"}
+                  ✏️ Edit Text &amp; Cards: {liveEditMode ? "ON" : "OFF"}
                 </button>
-                <button
-                  type="button"
-                  data-admin-active={unlockAll ? "true" : undefined}
-                  onClick={() => {
-                    if (!liveEditMode) setLiveEditMode(true);
-                    toggleUnlockAll();
-                  }}
-                  title="Strip restrictive overflow/pointer locks and unlock every card & nested item on this page"
-                  className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition ${
-                    unlockAll
-                      ? "admin-pill-active shadow-sm"
-                      : "border-amber-400/45 bg-slate-900 text-amber-200 hover:border-amber-400"
-                  }`}
-                >
-                  🔓 Unlock All Elements on Page ({Object.keys(registeredNodes).length})
-                </button>
-                <button
-                  type="button"
-                  data-admin-active={gridOverlay ? "true" : undefined}
-                  onClick={() => toggleGridOverlay()}
-                  title="Toggle 16px Smart Alignment Grid"
-                  className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition ${
-                    gridOverlay
-                      ? "admin-pill-active shadow-sm"
-                      : "border-white/25 bg-slate-900 text-slate-200 hover:border-amber-400/60"
-                  }`}
-                >
-                  ⊞ Smart Grid
-                </button>
+                <span className="admin-label-muted text-[11px] font-medium hidden sm:inline">
+                  Drag &amp; dot-grid paused for rock-solid layout stability
+                </span>
                 {adminSaving && (
                   <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-bold text-emerald-200">
                     {adminSaving}
@@ -627,26 +597,7 @@ export function Header({ solid = false }: { solid?: boolean }) {
                         : "border-white/25 bg-slate-900 text-slate-200 hover:border-amber-400/60"
                   }`}
                 >
-                  👁️ Hidden Items Drawer ({archivedIds.length} Hidden)
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setAdminSaving("Resetting Khoj AI...");
-                    await pushAdminCmsPatch({
-                      sectionLayoutMap: {
-                        ...(cms.sectionLayoutMap || {}),
-                        supportWidgetPos: { right: 24, bottom: 24 },
-                        "__slide_canvas_support-widget-canvas": { x: 0, y: 0 },
-                      },
-                    });
-                    setAdminSaving("✓ Khoj AI Position Reset");
-                    window.setTimeout(() => setAdminSaving(null), 2000);
-                  }}
-                  title="Reset Khoj AI floating support icon to bottom-right"
-                  className="px-3 py-2 rounded-xl border border-sky-400/50 bg-slate-900 text-sky-200 text-xs font-bold hover:bg-sky-500/20 transition"
-                >
-                  ↺ Reset Position
+                  👁️ Hide / Unhide &amp; Delete ({archivedIds.length} Hidden)
                 </button>
                 <Link
                   href="/admin"
@@ -979,9 +930,9 @@ export function Header({ solid = false }: { solid?: boolean }) {
 
                   {(
                     [
-                      { id: "grid-3", label: "3-Col" },
+                      { id: "editorial", label: "1-Col" },
                       { id: "grid-2", label: "2-Col" },
-                      { id: "editorial", label: "Editorial" },
+                      { id: "grid-3", label: "3-Col" },
                     ] as const
                   ).map((g) => (
                     <button

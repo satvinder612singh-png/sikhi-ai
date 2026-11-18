@@ -20,6 +20,8 @@ import {
   type CmsTopicEdit,
 } from "@/components/editable-heritage-image";
 
+export const FREEFORM_DRAG_PAUSED = true;
+
 export type SectionLayoutPreset =
   | "split-50-50"
   | "bento-3"
@@ -1068,8 +1070,6 @@ export function InlineSectionBanner({
   const canEdit = useVerifiedLiveEdit();
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const [deviceViewport, setDeviceViewport] = useDevicePreviewViewport();
-  const [gridOverlay, toggleGridOverlay] = useSmartGridOverlay();
-  const [unlockAll, toggleUnlockAll] = useUnlockAllElements();
   const registeredNodes = useRegisteredCanvasNodes();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -1761,32 +1761,6 @@ export function InlineSectionBanner({
             className="px-2.5 py-1 rounded-lg border border-purple-400/45 bg-slate-900 text-purple-200 font-bold hover:bg-purple-500/25 transition disabled:opacity-50"
           >
             {alignBusy === "distribute" ? "Distributing..." : "↔️ Distribute Evenly"}
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleGridOverlay()}
-            data-admin-active={gridOverlay ? "true" : undefined}
-            title="Toggle 16px Smart Alignment Grid lines across canvas"
-            className={`px-2 py-1 rounded-lg border font-bold transition ${
-              gridOverlay
-                ? "admin-pill-active"
-                : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
-            }`}
-          >
-            ⊞ Grid
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleUnlockAll()}
-            data-admin-active={unlockAll ? "true" : undefined}
-            title="Unlock all nested cards, children, and hidden overflow locks on this page"
-            className={`px-2 py-1 rounded-lg border font-bold transition ${
-              unlockAll
-                ? "admin-pill-active"
-                : "border-white/20 bg-slate-900 text-slate-200 hover:border-amber-400/60"
-            }`}
-          >
-            🔓 {unlockAll ? "Unlocked" : "Unlock All"}
           </button>
           {alignNotice && (
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-400/55 text-emerald-200 text-[10px] font-bold">
@@ -2910,9 +2884,9 @@ export function GodModeText({
             : undefined
         }
         onClick={canEdit ? openToolbar : undefined}
-        title={canEdit ? `Click to edit or drag/resize "${id}"` : undefined}
+        title={canEdit ? `Click to edit text "${id}"` : undefined}
       >
-        {canEdit && (hovered || selected) && (
+        {canEdit && !FREEFORM_DRAG_PAUSED && (hovered || selected) && (
           <>
             <span
               role="button"
@@ -3447,6 +3421,7 @@ export function SlidePresentationCanvas({
   const isEnteredAsParent = !isChildNode && enteredFrameId === id;
   const isInteractiveChild = canEdit && isChildNode;
   const showHandles =
+    !FREEFORM_DRAG_PAUSED &&
     canEdit &&
     (unlockAll || (!isChildNode ? !isEnteredAsParent : isInteractiveChild));
 
@@ -4317,14 +4292,14 @@ export function SlidePresentationCanvas({
           top: "auto",
           transform: curRot ? `rotate(${curRot}deg)` : "none",
         }
-      : !isNarrowMobile && (clampedRenderX !== 0 || curY !== 0 || curRot !== 0)
+      : !FREEFORM_DRAG_PAUSED && !isNarrowMobile && (clampedRenderX !== 0 || curY !== 0 || curRot !== 0)
         ? {
             transform: `translate3d(${clampedRenderX}px, ${curY}px, 0)${
               curRot ? ` rotate(${curRot}deg)` : ""
             }`,
           }
         : {}),
-    ...(clampedRenderW && !isNarrowMobile
+    ...(!FREEFORM_DRAG_PAUSED && clampedRenderW && !isNarrowMobile
       ? { width: `${clampedRenderW}px`, maxWidth: isFloatingWidget ? "95vw" : "100%" }
       : {}),
     ...(curH && !isNarrowMobile ? { minHeight: `${curH}px` } : {}),
@@ -5283,89 +5258,39 @@ export function GodModeTopicCard({
       className={className}
       style={style}
     >
-      <div className="space-y-2.5">
-        {(icon || badge) && (
-          <div className="flex items-center justify-between gap-2">
-            {icon && (
-              <SlidePresentationCanvas
-                id={`${id}-icon`}
-                parentId={`card-${id}`}
-                pageKey={pageKey}
-                label="Icon"
-                elementType="Icon"
-                isMicroElement={true}
-                className="inline-block w-fit"
-              >
-                {icon}
-              </SlidePresentationCanvas>
-            )}
-            {badge && (
-              <SlidePresentationCanvas
-                id={`${id}-badge`}
-                parentId={`card-${id}`}
-                pageKey={pageKey}
-                label="Badge"
-                elementType="Badge"
-                isMicroElement={true}
-                className="inline-block w-fit"
-              >
-                <span className="inline-flex items-center rounded-full border border-[#C59B27]/40 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#C59B27]">
+      <div className="h-full flex flex-col justify-between gap-3">
+        <div className="space-y-2">
+          <h3 className="font-serif text-lg font-bold leading-snug">{title}</h3>
+
+          {/* Structured Icon Metadata Subtitle Row underneath main title */}
+          {(icon || badge || gurmukhi) && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-amber-600 dark:text-amber-300/90">
+              {icon && (
+                <span className="inline-flex h-5 w-5 items-center justify-center shrink-0">
+                  {icon}
+                </span>
+              )}
+              {badge && (
+                <span className="font-bold uppercase tracking-wider text-[11px]">
                   {badge}
                 </span>
-              </SlidePresentationCanvas>
-            )}
-          </div>
-        )}
+              )}
+              {badge && gurmukhi && <span className="opacity-50">•</span>}
+              {gurmukhi && (
+                <span lang="pa" className="font-gurmukhi text-xs font-semibold">
+                  {gurmukhi}
+                </span>
+              )}
+            </div>
+          )}
 
-        {gurmukhi && (
-          <SlidePresentationCanvas
-            id={`${id}-gurmukhi`}
-            parentId={`card-${id}`}
-            pageKey={pageKey}
-            label="Gurmukhi"
-            elementType="Text"
-            isMicroElement={true}
-          >
-            <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">
-              {gurmukhi}
-            </p>
-          </SlidePresentationCanvas>
-        )}
-
-        <SlidePresentationCanvas
-          id={`${id}-title`}
-          parentId={`card-${id}`}
-          pageKey={pageKey}
-          label="Title"
-          elementType="Text"
-          isMicroElement={true}
-        >
-          <h3 className="font-serif text-lg font-bold">{title}</h3>
-        </SlidePresentationCanvas>
-
-        <SlidePresentationCanvas
-          id={`${id}-description`}
-          parentId={`card-${id}`}
-          pageKey={pageKey}
-          label="Description"
-          elementType="Text"
-          isMicroElement={true}
-        >
           <p className="text-sm leading-relaxed opacity-85">{description}</p>
-        </SlidePresentationCanvas>
+        </div>
 
         {actionButton && (
-          <SlidePresentationCanvas
-            id={`${id}-action`}
-            parentId={`card-${id}`}
-            pageKey={pageKey}
-            label="Button"
-            elementType="Widget"
-            isMicroElement={true}
-            className="inline-block w-fit"
-          >
+          <div className="pt-1">
             {actionButton}
-          </SlidePresentationCanvas>
+          </div>
         )}
       </div>
     </SlidePresentationCanvas>

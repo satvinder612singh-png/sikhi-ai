@@ -113,9 +113,24 @@ export interface CmsSecurityConfig {
   hideSubmitterIdentity?: boolean;
 }
 
+export interface CmsKirtanTrack {
+  id: string;
+  title: string;
+  gurmukhi?: string;
+  ragi: string;
+  raag?: string;
+  pehar?: string;
+  sourceUrl: string;
+  duration?: string;
+  imageUrl?: string;
+  imageKey?: string;
+  createdAt: string;
+}
+
 export interface CmsSiteState {
   frames: Record<string, HeritageFrameSettings>;
   customPosts?: { links?: unknown[]; blogs?: unknown[]; pins?: unknown[] };
+  kirtanTracks?: CmsKirtanTrack[];
   deletedIds: string[];
   heroBannerUrl: string | null;
   sectionOrder: Record<string, string[]>;
@@ -230,6 +245,7 @@ export function writeCmsCache(data: Partial<CmsSiteState>): CmsSiteState {
     pinnedIds: Array.isArray(data.pinnedIds) ? data.pinnedIds : prev.pinnedIds,
     archivedIds: Array.isArray(data.archivedIds) ? data.archivedIds : prev.archivedIds,
     deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds : prev.deletedIds,
+    kirtanTracks: Array.isArray(data.kirtanTracks) ? data.kirtanTracks : prev.kirtanTracks,
     topicEdits: mergedTopicEdits,
     customTopics: data.customTopics
       ? { ...(prev.customTopics || {}), ...data.customTopics }

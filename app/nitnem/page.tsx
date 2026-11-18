@@ -458,20 +458,6 @@ function NitnemReaderContent() {
   const [liveEditMode] = useAdminEditMode();
   const layoutCfg = cms.layoutConfig || {};
   const pageFont = resolveCmsFontFamily(layoutCfg.fontFamily);
-  const layoutMap = (cms.sectionLayoutMap || {}) as Record<
-    string,
-    { layoutWidth?: string } | undefined
-  >;
-  const heroIntroLayout =
-    layoutMap["__slide_micro_nitnem-hero-canvas::nitnem-hero-intro-block"]?.layoutWidth ||
-    layoutMap["__slide_canvas_nitnem-hero-intro-block"]?.layoutWidth;
-  const heroOuterLayout =
-    layoutMap["__slide_canvas_nitnem-hero-canvas"]?.layoutWidth;
-  const isHeroConstrained =
-    heroIntroLayout === "half" ||
-    heroIntroLayout === "compact" ||
-    heroOuterLayout === "half" ||
-    heroOuterLayout === "compact";
 
   const currentSection = sections[currentPageIdx] || sections[0];
   const displayedSections = continuousView
@@ -516,71 +502,105 @@ function NitnemReaderContent() {
             liveEditMode ? "overflow-visible" : ""
           }`}
         >
-          <SlidePresentationCanvas
-            id="nitnem-hero-intro-block"
-            parentId="nitnem-hero-canvas"
-            pageKey="nitnem"
-            label="Hero Text & Buttons"
-            elementType="Card"
-            isMicroElement={true}
-          >
-          <div
-            className={
-              isHeroConstrained
-                ? "flex flex-col items-start justify-start gap-5"
-                : "flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-            }
-          >
-            <div className="space-y-2 max-w-3xl">
-              <div className="inline-flex flex-wrap items-center gap-2.5">
+          {/* Balanced 2-Column Split Hero */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-4">
+              <div className="space-y-2.5">
+                <div className="inline-flex flex-wrap items-center gap-2.5">
+                  <GodModeText
+                    id="nitnem-hero-gurmukhi"
+                    pageKey="nitnem"
+                    tag="span"
+                    lang="pa"
+                    defaultText="ਨਿਤਨੇਮ ਅਤੇ ਬਾਣੀ ਪੋਥੀ"
+                    className="font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded bg-[var(--theme-card-darker)] text-[#E5C158] border border-[#C59B27]/45"
+                  />
+                  <GodModeText
+                    id="nitnem-hero-badge"
+                    pageKey="nitnem"
+                    tag="span"
+                    defaultText="Complete BaniDB Reader • Padchhed & Larivaar"
+                    className="text-xs uppercase tracking-[0.22em] text-[#D97706] font-semibold"
+                  />
+                </div>
                 <GodModeText
-                  id="nitnem-hero-gurmukhi"
+                  id="nitnem-hero-title"
                   pageKey="nitnem"
-                  tag="span"
-                  lang="pa"
-                  defaultText="ਨਿਤਨੇਮ ਅਤੇ ਬਾਣੀ ਪੋਥੀ"
-                  className="font-gurmukhi text-sm font-bold px-2.5 py-0.5 rounded bg-[var(--theme-card-darker)] text-[#E5C158] border border-[#C59B27]/45"
+                  tag="h1"
+                  defaultText="Nitnem, Sukhmani Sahib & Sacred Bani Reader"
+                  className="text-3xl sm:text-5xl font-serif font-bold text-[var(--text-primary)] leading-tight"
                 />
                 <GodModeText
-                  id="nitnem-hero-badge"
+                  id="nitnem-hero-desc"
                   pageKey="nitnem"
-                  tag="span"
-                  defaultText="Complete BaniDB Reader • Padchhed & Larivaar"
-                  className="text-xs uppercase tracking-[0.22em] text-[#D97706] font-semibold"
+                  tag="p"
+                  defaultText="Read every Pauri, Chhand, and Ashtpadi with customizable Gurmukhi font size, Padchhed/Larivaar script toggle, Punjabi Viakhia (Teeka), and English translation."
+                  className="text-sm sm:text-base text-[var(--theme-text-muted)] leading-relaxed max-w-2xl"
                 />
               </div>
-              <GodModeText
-                id="nitnem-hero-title"
-                pageKey="nitnem"
-                tag="h1"
-                defaultText="Nitnem, Sukhmani Sahib & Sacred Bani Reader"
-                className="text-3xl sm:text-5xl font-serif font-bold text-[var(--text-primary)]"
-              />
-              <GodModeText
-                id="nitnem-hero-desc"
-                pageKey="nitnem"
-                tag="p"
-                defaultText="Read every Pauri, Chhand, and Ashtpadi with customizable Gurmukhi font size, Padchhed/Larivaar script toggle, Punjabi Viakhia (Teeka), and English translation."
-                className="text-sm sm:text-base text-[var(--theme-text-muted)] leading-relaxed"
-              />
+
+              {/* Category Filter Tabs */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(
+                  [
+                    { id: "morning", label: "੧ · Morning Nitnem (5 Banis)" },
+                    { id: "evening", label: "੨ · Evening & Night" },
+                    { id: "extended", label: "੩ · Sukhmani, Asa Di Vaar & Ardas" },
+                  ] as { id: BaniCategory; label: string }[]
+                ).map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+                      activeCategory === cat.id
+                        ? "bg-[#E5C158] text-[#171917] shadow-sm"
+                        : "bg-[#121C15] text-[#F3ECE0] border border-[#C59B27]/35 hover:border-[#E5C158]"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div
-              className={
-                isHeroConstrained
-                  ? "flex flex-wrap items-center gap-3"
-                  : "flex flex-wrap items-center gap-3 shrink-0"
-              }
-            >
-              <SlidePresentationCanvas
-                id="nitnem-hero-btn-music"
-                parentId="nitnem-hero-intro-block"
-                pageKey="nitnem"
-                label="Music Button"
-                elementType="Badge"
-                isMicroElement={true}
-                className="inline-block w-fit"
-              >
+            {/* Right Column: Featured Daily Highlight & Action Card */}
+            <div className="lg:col-span-5 rounded-2xl border border-[#C59B27]/45 bg-[#121C15] text-[#FAF6EE] p-5 shadow-lg flex flex-col justify-between gap-4">
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#E5C158]">
+                  ✦ Featured Daily Highlight
+                </span>
+                <h2 className="font-serif text-xl font-bold text-[#FAF6EE] leading-snug">
+                  {selectedBani.title}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[#E5C158]/90">
+                  <span lang="pa" className="font-gurmukhi font-bold">
+                    {selectedBani.gurmukhi}
+                  </span>
+                  <span className="opacity-45">•</span>
+                  <span className="text-[#CBD5E1]">{selectedBani.author}</span>
+                </div>
+                <p className="text-xs text-[#CBD5E1] leading-relaxed line-clamp-2 pt-0.5">
+                  {selectedBani.description}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Link
+                    href="/hukamnama"
+                    className="text-center px-3 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] text-xs font-extrabold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                  >
+                    Daily Hukamnama →
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShowMoolMantarDeepDive((v) => !v)}
+                    className="px-3 py-2.5 rounded-xl border border-[#C59B27]/60 bg-[#1B2A20] text-xs font-bold text-[#E5C158] hover:border-[#E5C158] transition"
+                  >
+                    {showMoolMantarDeepDive ? "Hide Mool Mantar" : "Mool Mantar 9-Slide"}
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -590,55 +610,19 @@ function NitnemReaderContent() {
                       startReadingInstrumental();
                     }
                   }}
-                  className={`px-4 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition ${
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-bold transition ${
                     currentTrack.category === "Background Raag Instrumentals" && isPlaying
-                      ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] border-[#E5C158] shadow-sm"
-                      : "border-[#C59B27] bg-[#121C15] text-[#E5C158] hover:border-[#D97706]"
+                      ? "bg-[#E5C158] text-[#171917] border-[#E5C158]"
+                      : "border-[#C59B27]/40 bg-black/30 text-[#E5C158] hover:border-[#C59B27]"
                   }`}
                 >
                   {currentTrack.category === "Background Raag Instrumentals" && isPlaying
-                    ? "⏸ Pause Background Reading Music (25%)"
-                    : "🎻 Play Background Reading Music (Dilruba / Sitar / Veena)"}
+                    ? "⏸ Pause Background Reading Kirtan (25%)"
+                    : "🎻 Play 25% Background Reading Music"}
                 </button>
-              </SlidePresentationCanvas>
-              <SlidePresentationCanvas
-                id="nitnem-hero-btn-mool-mantar"
-                parentId="nitnem-hero-intro-block"
-                pageKey="nitnem"
-                label="Mool Mantar Button"
-                elementType="Badge"
-                isMicroElement={true}
-                className="inline-block w-fit"
-              >
-                <button
-                  type="button"
-                  onClick={() => setShowMoolMantarDeepDive((v) => !v)}
-                  className="px-4 py-2.5 rounded-xl border border-[#C59B27] bg-[#121C15] text-xs font-bold uppercase tracking-wider text-[#E5C158] hover:border-[#D97706] transition"
-                >
-                  {showMoolMantarDeepDive
-                    ? "Hide Mool Mantar Deep-Dive"
-                    : "Open Mool Mantar 9-Slide Explorer"}
-                </button>
-              </SlidePresentationCanvas>
-              <SlidePresentationCanvas
-                id="nitnem-hero-btn-hukamnama"
-                parentId="nitnem-hero-intro-block"
-                pageKey="nitnem"
-                label="Hukamnama Button"
-                elementType="Badge"
-                isMicroElement={true}
-                className="inline-block w-fit"
-              >
-                <Link
-                  href="/hukamnama"
-                  className="inline-block px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#171917] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
-                >
-                  Today&apos;s Darbar Sahib Hukamnama →
-                </Link>
-              </SlidePresentationCanvas>
+              </div>
             </div>
           </div>
-          </SlidePresentationCanvas>
 
           {showMoolMantarDeepDive && (
             <div className="pt-4 animate-fade-in-up">
@@ -646,44 +630,16 @@ function NitnemReaderContent() {
             </div>
           )}
 
-          {/* Category Filter Tabs */}
-          <div className="flex flex-wrap gap-2.5 pt-2">
-            {(
-              [
-                { id: "morning", label: "੧ · Morning Nitnem (5 Banis)" },
-                { id: "evening", label: "੨ · Evening & Night Nitnem (Rehras & Sohila)" },
-                { id: "extended", label: "੩ · Sukhmani Sahib (24 Ashtpadis), Asa Di Vaar & Ardas" },
-              ] as { id: BaniCategory; label: string }[]
-            ).map((cat) => (
-              <SlidePresentationCanvas
-                key={cat.id}
-                id={`nitnem-cat-${cat.id}`}
-                parentId="nitnem-hero-canvas"
-                pageKey="nitnem"
-                label={`Tab: ${cat.id}`}
-                elementType="Badge"
-                isMicroElement={true}
-                className="inline-block w-fit"
-              >
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-                    activeCategory === cat.id
-                      ? "bg-[#E5C158] text-[#171917] shadow-sm"
-                      : "bg-[#121C15] text-[#F3ECE0] border border-[#C59B27]/35 hover:border-[#E5C158]"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              </SlidePresentationCanvas>
-            ))}
-          </div>
-
-          {/* Bani Selector Pills */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Equal-Height Bento Bani Selector Cards with Structured Icon Subtitle Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-stretch">
             {BANI_CATALOG.filter((b) => b.category === activeCategory).map((item) => {
               const selected = item.id === selectedBani.id;
+              const categoryLabel =
+                item.category === "morning"
+                  ? "Morning Nitnem"
+                  : item.category === "evening"
+                    ? "Evening & Night"
+                    : "Extended Bani";
               return (
                 <SlidePresentationCanvas
                   key={item.id}
@@ -705,7 +661,7 @@ function NitnemReaderContent() {
                         handleSelectBani(item);
                       }
                     }}
-                    className={`h-full p-4 rounded-2xl border text-left transition-all flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer scroll-mt-28 ${
+                    className={`h-full p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-2.5 hover:-translate-y-0.5 cursor-pointer scroll-mt-28 ${
                       liveEditMode ? "overflow-visible" : ""
                     } ${
                       selected
@@ -713,42 +669,7 @@ function NitnemReaderContent() {
                         : "bg-[#1B2A20]/90 text-[#FAF6EE] border-[#C59B27]/40 hover:border-[#E5C158]"
                     }`}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <SlidePresentationCanvas
-                          id={`nitnem-bani-num-${item.id}`}
-                          parentId={`nitnem-bani-card-${item.id}`}
-                          pageKey="nitnem"
-                          label="Numeral"
-                          elementType="Badge"
-                          isMicroElement={true}
-                          className="inline-block w-fit"
-                        >
-                          <span
-                            lang="pa"
-                            className={`font-gurmukhi text-xs font-bold px-2 py-0.5 rounded border inline-flex items-center justify-center ${
-                              selected
-                                ? "bg-[#1B2A20] text-[#E5C158] border-[#C59B27]"
-                                : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/40"
-                            }`}
-                          >
-                            {item.numeral}
-                          </span>
-                        </SlidePresentationCanvas>
-                        <SlidePresentationCanvas
-                          id={`nitnem-bani-unit-${item.id}`}
-                          parentId={`nitnem-bani-card-${item.id}`}
-                          pageKey="nitnem"
-                          label="Unit Count"
-                          elementType="Badge"
-                          isMicroElement={true}
-                          className="inline-block w-fit"
-                        >
-                          <span className="text-[10px] uppercase tracking-wider opacity-75">
-                            {item.unitLabel}s
-                          </span>
-                        </SlidePresentationCanvas>
-                      </div>
+                    <div className="space-y-1.5">
                       <GodModeText
                         id={`nitnem-bani-pa-${item.id}`}
                         pageKey="nitnem"
@@ -764,8 +685,28 @@ function NitnemReaderContent() {
                         pageKey="nitnem"
                         tag="h2"
                         defaultText={item.title}
-                        className="font-serif text-base font-bold mt-0.5"
+                        className="font-serif text-base font-bold leading-snug"
                       />
+                      {/* Icon Subtitle Row cleanly underneath main title */}
+                      <div
+                        className={`flex items-center gap-1.5 text-[11px] font-medium pt-0.5 ${
+                          selected ? "text-[#57534E]" : "text-[#CBD5E1]"
+                        }`}
+                      >
+                        <span
+                          lang="pa"
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-md border font-gurmukhi text-[11px] font-bold shrink-0 ${
+                            selected
+                              ? "bg-[#1B2A20] text-[#E5C158] border-[#C59B27]"
+                              : "bg-[#121C15] text-[#E5C158] border-[#C59B27]/50"
+                          }`}
+                        >
+                          {item.numeral}
+                        </span>
+                        <span className="truncate">
+                          {item.unitLabel}s • {categoryLabel}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </SlidePresentationCanvas>

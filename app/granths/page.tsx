@@ -11,6 +11,8 @@ import {
   EditableHeritageImage,
   useCmsSiteState,
   checkVerifiedAdminStatus,
+  getVerifiedAdminToken,
+  pushAdminCmsPatch,
   resolveCmsFontFamily,
   resolveCmsHeadingClass,
   resolveCmsBodyClass,
@@ -26,6 +28,8 @@ import {
   GodModeText,
   GodModeBox,
   HiddenItemBadgeBar,
+  toggleCmsArchiveItem,
+  permanentlyDeleteCmsItem,
   applyCmsVisibilityOrder,
   useGodModeTextValue,
   useVerifiedLiveEdit,
@@ -36,6 +40,7 @@ import { SikhiIcon } from "@/components/sikhi-icons";
 import {
   useKirtanAudio,
   formatAudioTime,
+  parseLocalAudioFilename,
   type KirtanTrack,
 } from "@/components/kirtan-audio-context";
 
@@ -472,11 +477,67 @@ type RemoteKirtanTrack = {
   gurmukhi?: string;
   ragi: string;
   raag?: string;
+  pehar?: string;
   sourceUrl: string;
   duration?: string;
   imageUrl?: string;
   imageKey?: string;
+  createdAt?: string;
 };
+
+type PeharInfo = {
+  pehar: "Amrit Vela" | "Morning" | "Afternoon" | "Evening" | "Night";
+  icon: string;
+  windowLabel: string;
+  recommendedRaags: string[];
+  description: string;
+};
+
+function getPeharForHour(hour: number): PeharInfo {
+  if (hour >= 3 && hour < 6) {
+    return {
+      pehar: "Amrit Vela",
+      icon: "🌅",
+      windowLabel: "3:00 AM – 6:00 AM",
+      recommendedRaags: ["Asa", "Bhairao", "Ramkali"],
+      description: "Ambrosial dawn hours — Asa Di Vaar, Bhairao & Ramkali awakening.",
+    };
+  }
+  if (hour >= 6 && hour < 12) {
+    return {
+      pehar: "Morning",
+      icon: "☀️",
+      windowLabel: "6:00 AM – 12:00 PM",
+      recommendedRaags: ["Bilawal", "Gujri", "Suhi", "Devgandhari"],
+      description: "Morning radiance, devotional gratitude, and inner poise.",
+    };
+  }
+  if (hour >= 12 && hour < 18) {
+    return {
+      pehar: "Afternoon",
+      icon: "🌤️",
+      windowLabel: "12:00 PM – 6:00 PM",
+      recommendedRaags: ["Dhanasari", "Majh", "Wadahans", "Maru"],
+      description: "Midday steadiness, cosmic wonder, and serene contemplation.",
+    };
+  }
+  if (hour >= 18 && hour < 21) {
+    return {
+      pehar: "Evening",
+      icon: "🌇",
+      windowLabel: "6:00 PM – 9:00 PM",
+      recommendedRaags: ["Sri Raag", "Gauri", "Jaitsri", "Nat Narayan"],
+      description: "Rehras Sahib twilight — humility, surrender, and tranquil peace.",
+    };
+  }
+  return {
+    pehar: "Night",
+    icon: "🌙",
+    windowLabel: "9:00 PM – 3:00 AM",
+    recommendedRaags: ["Sorath", "Bihagara", "Kedara", "Tukhari"],
+    description: "Nocturnal sanctuary — Kirtan Sohila, deep trust & peaceful rest.",
+  };
+}
 
 type RemoteKirtanEdit = {
   title?: string;
@@ -536,6 +597,30 @@ export default function GranthsAndKirtanPage() {
   const [subUrl, setSubUrl] = useState("");
   const [subBy, setSubBy] = useState("");
   const [subMsg, setSubMsg] = useState<string | null>(null);
+
+  // Pass 2: Admin Supabase Storage (kirtan-audio) Upload Panel State
+  const [isAdminUploadOpen, setIsAdminUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadGurmukhi, setUploadGurmukhi] = useState("");
+  const [uploadRagi, setUploadRagi] = useState("");
+  const [uploadRaag, setUploadRaag] = useState("Raag Asa");
+  const [uploadPehar, setUploadPehar] = useState<string>("Amrit Vela");
+  const [uploadDirectUrl, setUploadDirectUrl] = useState("");
+  const [uploadingKirtan, setUploadingKirtan] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [confirmDeleteTrackId, setConfirmDeleteTrackId] = useState<string | null>(null);
+
+  // Pass 3: Live Pehar (Time of Day) Badge & Random Shabad/Raag Shuffle State
+  const [livePehar, setLivePehar] = useState<PeharInfo>(() => getPeharForHour(6));
+  const [shuffledRaag, setShuffledRaag] = useState<RaagInfo | null>(null);
+
+  useEffect(() => {
+    const syncHour = () => setLivePehar(getPeharForHour(new Date().getHours()));
+    syncHour();
+    const timer = window.setInterval(syncHour, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     void fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" })
@@ -599,8 +684,16 @@ export default function GranthsAndKirtanPage() {
   }, [raagFilterPehar, raagSearch]);
 
   const filteredKirtanTracks = useMemo(() => {
+    const mergedRemoteList: RemoteKirtanTrack[] = [
+      ...(Array.isArray(cms.kirtanTracks) ? cms.kirtanTracks : []),
+      ...remoteKirtanTracks,
+    ].filter(
+      (item, idx, arr) =>
+        Boolean(item?.id) && arr.findIndex((x) => x.id === item.id) === idx
+    );
+
     const convertedRemote: (KirtanTrack & { imageUrl?: string; imageKey?: string })[] =
-      remoteKirtanTracks.map((rt, idx) => {
+      mergedRemoteList.map((rt, idx) => {
         const playable = resolvePlayableAudioUrl(rt.sourceUrl);
         return {
           id: rt.id,
@@ -610,16 +703,16 @@ export default function GranthsAndKirtanPage() {
           gurmukhiTitle: rt.gurmukhi || "ਗੁਰਮਤਿ ਕੀਰਤਨ",
           ragi: rt.ragi,
           raag: rt.raag || "Gurmat Kirtan",
-          angCitation: "5TB Drive Vault",
-          tantiSaaj: "Puratan Kirtan Archive",
-          timeOfDay: "All Pehars",
-          durationLabel: rt.duration || "Stream",
+          angCitation: "Supabase Audio Vault",
+          tantiSaaj: rt.pehar || "All Pehars",
+          timeOfDay: rt.pehar || "All Pehars",
+          durationLabel: rt.duration || "Kirtan",
           durationSec: 0,
           audioUrl: playable,
           directArchiveMp3Url: playable,
           archiveEmbedUrl: "",
           externalArchiveUrl: rt.sourceUrl,
-          raagNotes: `Streamed directly via LearnSikhi Media Proxy (${rt.ragi}).`,
+          raagNotes: `Streamed directly from LearnSikhi Kirtan Sanctuary (${rt.ragi}).`,
           historicalContext: "",
           isCustomOrLocal: true,
           imageUrl: rt.imageUrl,
@@ -627,17 +720,30 @@ export default function GranthsAndKirtanPage() {
         };
       });
 
+    const dedupeById = (
+      list: (KirtanTrack & { imageUrl?: string; imageKey?: string })[]
+    ) => {
+      const seen = new Set<string>();
+      return list.filter((t) => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+    };
+
     const baseSource: (KirtanTrack & { imageUrl?: string; imageKey?: string })[] =
-      kirtanCollectionFilter === "Live 24/7 Gurdwara Broadcasts"
-        ? liveStreams
-        : kirtanCollectionFilter === "All"
-          ? [...convertedRemote, ...tracks]
-          : kirtanCollectionFilter === "Verified Local & Approved Audio"
-            ? [
-                ...convertedRemote,
-                ...tracks.filter((t) => t.category === kirtanCollectionFilter),
-              ]
-            : tracks.filter((t) => t.category === kirtanCollectionFilter);
+      dedupeById(
+        kirtanCollectionFilter === "Live 24/7 Gurdwara Broadcasts"
+          ? liveStreams
+          : kirtanCollectionFilter === "All"
+            ? [...convertedRemote, ...tracks]
+            : kirtanCollectionFilter === "Verified Local & Approved Audio"
+              ? [
+                  ...convertedRemote,
+                  ...tracks.filter((t) => t.category === kirtanCollectionFilter),
+                ]
+              : tracks.filter((t) => t.category === kirtanCollectionFilter)
+      );
 
     const editedSource = baseSource
       .filter((t) => !remoteKirtanEdits[t.id]?.deleted)
@@ -686,6 +792,129 @@ export default function GranthsAndKirtanPage() {
     cms,
     isVerifiedLiveEdit,
   ]);
+
+  const handleAdminKirtanUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadError(null);
+    if (!uploadFile && !uploadDirectUrl.trim()) {
+      setUploadError("Drop an MP3/M4A file or paste a direct audio URL.");
+      return;
+    }
+    setUploadingKirtan(true);
+    try {
+      const token = await getVerifiedAdminToken();
+      const xToken =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("learnsikhi_admin_token_v1") ||
+            (window.localStorage.getItem("learnsikhi_founder_admin_v1") === "true"
+              ? "verified_founder_1313"
+              : "")
+          : "";
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      if (xToken) headers["x-admin-token"] = xToken;
+      else if (token) headers["x-admin-token"] = token;
+
+      const fd = new FormData();
+      if (uploadFile) fd.append("file", uploadFile);
+      fd.append("title", uploadTitle.trim());
+      fd.append("gurmukhi", uploadGurmukhi.trim());
+      fd.append("ragi", uploadRagi.trim() || "Hazoori Ragi Jatha");
+      fd.append("raag", uploadRaag.trim() || "Raag Asa");
+      fd.append("pehar", uploadPehar);
+      if (uploadDirectUrl.trim()) fd.append("sourceUrl", uploadDirectUrl.trim());
+
+      const res = await fetch("/api/kirtan-upload", {
+        method: "POST",
+        headers,
+        body: fd,
+      });
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        track?: RemoteKirtanTrack & { createdAt: string };
+      } | null;
+
+      if (!res.ok || !data?.ok || !data.track) {
+        setUploadError(data?.error || "Upload failed. Check Supabase kirtan-audio settings.");
+        setUploadingKirtan(false);
+        return;
+      }
+
+      const existing = [
+        ...(Array.isArray(cms.kirtanTracks) ? cms.kirtanTracks : []),
+        ...remoteKirtanTracks,
+      ].filter(
+        (item, idx, arr) =>
+          Boolean(item?.id) &&
+          item.id !== data.track!.id &&
+          arr.findIndex((x) => x.id === item.id) === idx
+      );
+      const nextList = [
+        data.track,
+        ...existing.map((item) => ({
+          ...item,
+          createdAt: item.createdAt || new Date().toISOString(),
+        })),
+      ];
+      setRemoteKirtanTracks(nextList);
+      await pushAdminCmsPatch({
+        kirtanTracks: nextList,
+      });
+
+      showRequestToast(`Uploaded "${data.track.title}" to kirtan-audio & added to playlist!`);
+      setUploadFile(null);
+      setUploadTitle("");
+      setUploadGurmukhi("");
+      setUploadRagi("");
+      setUploadRaag("Raag Asa");
+      setUploadDirectUrl("");
+      setIsAdminUploadOpen(false);
+    } catch {
+      setUploadError("Network error while uploading audio file.");
+    } finally {
+      setUploadingKirtan(false);
+    }
+  };
+
+  const handleReorderTrack = async (trackId: string, dir: "up" | "down") => {
+    const ids = filteredKirtanTracks.map((t) => t.id);
+    const idx = ids.indexOf(trackId);
+    if (idx === -1) return;
+    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= ids.length) return;
+    const nextOrder = [...ids];
+    [nextOrder[idx], nextOrder[swapIdx]] = [nextOrder[swapIdx], nextOrder[idx]];
+    await pushAdminCmsPatch({
+      sectionOrder: {
+        ...(cms.sectionOrder || {}),
+        granths: nextOrder,
+      },
+    });
+  };
+
+  const handleRandomShabadOrRaag = () => {
+    const pickRaag =
+      SGGS_31_RAAGS[Math.floor(Math.random() * SGGS_31_RAAGS.length)];
+    setShuffledRaag(pickRaag);
+    setActiveTab("kirtan");
+
+    if (filteredKirtanTracks.length > 0) {
+      const candidates =
+        filteredKirtanTracks.length > 1
+          ? filteredKirtanTracks.filter((t) => t.id !== currentTrack.id)
+          : filteredKirtanTracks;
+      const pickTrack =
+        candidates[Math.floor(Math.random() * candidates.length)] ||
+        filteredKirtanTracks[0];
+      playTrack(pickTrack);
+      showRequestToast(
+        `🎲 Playing "${pickTrack.title}" • Spotlighted Raag ${pickRaag.name}`
+      );
+    } else {
+      showRequestToast(`🎲 Spotlighted Raag ${pickRaag.name} (${pickRaag.pehar})`);
+    }
+  };
 
   const fetchLiveAng = useCallback(async (angNumber: number) => {
     const clamped = Math.max(1, Math.min(1430, angNumber));
@@ -910,99 +1139,185 @@ export default function GranthsAndKirtanPage() {
                   }}
                 />
               </div>
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className={`space-y-3 max-w-3xl flex flex-col ${alignCls}`}>
-                  <div className="flex flex-wrap items-center gap-2.5">
+              {/* Balanced 2-Column Split Hero */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                <div className={`lg:col-span-7 flex flex-col justify-between space-y-5 ${alignCls}`}>
+                  <div className={`space-y-3 flex flex-col ${alignCls}`}>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <GodModeText
+                        id="granths-hero-badge"
+                        pageKey="granths"
+                        tag="span"
+                        defaultText={
+                          heroOv?.badge ||
+                          "SANCTUARY ARCHIVE • PURATAN KIRTAN & GRANTH BOOKREADER"
+                        }
+                        className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#E5C158] px-3 py-1 rounded-full border border-[#C59B27]/45 bg-[#121C15]"
+                      />
+                      <GodModeText
+                        id="granths-hero-gurmukhi"
+                        pageKey="granths"
+                        tag="span"
+                        lang="pa"
+                        defaultText={heroOv?.gurmukhi || "ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ"}
+                        className="font-gurmukhi text-sm text-[#E5C158]"
+                      />
+                    </div>
                     <GodModeText
-                      id="granths-hero-badge"
+                      id="granths-hero-title"
                       pageKey="granths"
-                      tag="span"
+                      tag="h1"
                       defaultText={
-                        heroOv?.badge ||
-                        "SANCTUARY ARCHIVE • PURATAN KIRTAN & GRANTH BOOKREADER"
+                        heroOv?.title ||
+                        hubSec.customTitle ||
+                        "Puratan Raag Darbar & Interactive Granths"
                       }
-                      className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27] px-3 py-1 rounded-full border border-[#C59B27]/40 bg-[#121C15]"
+                      style={{
+                        color: heroOv?.textColor || layoutCfg.headingTextColor || undefined,
+                      }}
+                      className={`text-3xl sm:text-5xl ${heroHeadingCls} font-serif font-bold tracking-tight text-[#FAF6EE] leading-tight`}
                     />
                     <GodModeText
-                      id="granths-hero-gurmukhi"
+                      id="granths-hero-subtitle"
                       pageKey="granths"
-                      tag="span"
-                      lang="pa"
-                      defaultText={heroOv?.gurmukhi || "ਗੁਰਮਤਿ ਸੰਗੀਤ ਅਤੇ ਇਤਿਹਾਸਕ ਗ੍ਰੰਥ"}
-                      className="font-gurmukhi text-sm text-[#D97706]"
+                      tag="p"
+                      defaultText={
+                        heroOv?.subtitle ||
+                        heroOv?.description ||
+                        hubSec.customSubtitle ||
+                        "Stream curated Puratan Kirtan tracks from our Kirtan Sanctuary or open the Dual-Mode Interactive Granth BookReader & Live Ang 1–1430 Darpan Viewer."
+                      }
+                      className={`${heroBodyCls} text-[#CBD5E1] leading-relaxed`}
                     />
                   </div>
-                  <GodModeText
-                    id="granths-hero-title"
-                    pageKey="granths"
-                    tag="h1"
-                    defaultText={
-                      heroOv?.title ||
-                      hubSec.customTitle ||
-                      "Puratan Raag Darbar & Interactive Granths"
-                    }
-                    style={{
-                      color: heroOv?.textColor || layoutCfg.headingTextColor || undefined,
-                    }}
-                    className={`text-3xl sm:text-5xl ${heroHeadingCls} font-serif font-bold tracking-tight`}
-                  />
-                  <GodModeText
-                    id="granths-hero-subtitle"
-                    pageKey="granths"
-                    tag="p"
-                    defaultText={
-                      heroOv?.subtitle ||
-                      heroOv?.description ||
-                      hubSec.customSubtitle ||
-                      "Stream authentic Puratan Gurbani Kirtan recordings by Bhai Avtar Singh Ji Ragi (proxied directly from Archive.org or our 5TB Drive Vault) or open our Dual-Mode Interactive BookReader & Live Ang 1–1430 Darpan Viewer."
-                    }
-                    className={`${heroBodyCls} text-[#4A554E] leading-relaxed`}
-                  />
+
+                  {/* Tab Switcher */}
+                  <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("kirtan")}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                        activeTab === "kirtan"
+                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
+                          : "text-[#CBD5E1] hover:text-white"
+                      }`}
+                    >
+                      <GodModeText
+                        id="granths-tab-kirtan"
+                        pageKey="granths"
+                        tag="span"
+                        defaultText="੧ · Kirtan Playlist & Raags"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("granths")}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                        activeTab === "granths"
+                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
+                          : "text-[#CBD5E1] hover:text-white"
+                      }`}
+                    >
+                      <GodModeText
+                        id="granths-tab-bookreader"
+                        pageKey="granths"
+                        tag="span"
+                        defaultText="੨ · Granth BookReader"
+                      />
+                    </button>
+                    <Link
+                      href="/live-kirtan"
+                      className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-[#C59B27]/45 text-[#E5C158] hover:border-[#E5C158] transition flex items-center gap-1.5"
+                    >
+                      <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                      Live 24/7 Darbar Sahib
+                    </Link>
+                  </div>
                 </div>
 
-            {/* Tab Switcher */}
-            <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab("kirtan")}
-                className={`px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
-                  activeTab === "kirtan"
-                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
-                    : "text-[#4A554E] hover:text-[#171917]"
-                }`}
-              >
-                <GodModeText
-                  id="granths-tab-kirtan"
-                  pageKey="granths"
-                  tag="span"
-                  defaultText="੧ · Puratan Kirtan & Raag Player"
-                />
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("granths")}
-                className={`px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition ${
-                  activeTab === "granths"
-                    ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
-                    : "text-[#4A554E] hover:text-[#171917]"
-                }`}
-              >
-                <GodModeText
-                  id="granths-tab-bookreader"
-                  pageKey="granths"
-                  tag="span"
-                  defaultText="੨ · Interactive Granth BookReader"
-                />
-              </button>
-              <Link
-                href="/live-kirtan"
-                className="px-4 py-3 rounded-xl text-xs sm:text-sm font-bold border border-[#C59B27]/45 text-[#C59B27] hover:border-[#C59B27] transition flex items-center gap-1.5"
-              >
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                Live 24/7 Darbar Sahib
-              </Link>
-            </div>
-          </div>
+                {/* Right Column: Live Pehar (Time of Day) Kirtan Badge & Random Shabad/Raag Shuffle */}
+                <div className="lg:col-span-5 rounded-2xl border border-[#C59B27]/45 bg-[#121C15] text-[#FAF6EE] p-5 shadow-lg flex flex-col justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-[#E5C158] text-[10px] font-extrabold uppercase tracking-wider">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Live Pehar • {livePehar.icon} {livePehar.pehar}
+                      </span>
+                      <span className="text-[11px] font-mono text-[#CBD5E1]">
+                        {livePehar.windowLabel}
+                      </span>
+                    </div>
+                    <h2 className="font-serif text-xl font-bold text-[#FAF6EE]">
+                      Raags for This Hour
+                    </h2>
+                    <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                      {livePehar.description}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {livePehar.recommendedRaags.map((rName) => (
+                        <button
+                          key={rName}
+                          type="button"
+                          onClick={() => {
+                            setActiveTab("kirtan");
+                            setRaagFilterPehar(livePehar.pehar);
+                            setRaagSearch(rName);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-[#1B2A20] border border-[#C59B27]/45 text-[11px] font-bold text-[#E5C158] hover:border-[#E5C158] transition"
+                        >
+                          🎼 Raag {rName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#C59B27]/20">
+                    <button
+                      type="button"
+                      onClick={handleRandomShabadOrRaag}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold shadow-sm hover:brightness-105 transition"
+                    >
+                      🎲 Random Shabad / Raag
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("kirtan");
+                        setRaagFilterPehar(livePehar.pehar);
+                        setRaagSearch("");
+                      }}
+                      className="px-3 py-2.5 rounded-xl border border-[#C59B27]/50 text-[#E5C158] text-xs font-bold hover:bg-[#C59B27]/15 transition"
+                    >
+                      View {livePehar.pehar} Raags
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {shuffledRaag && (
+                <div className="mt-4 rounded-2xl border border-amber-400/55 bg-[#090d16]/90 px-4 py-3 text-xs text-[#FAF6EE] flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-400 text-[#090d16] font-extrabold text-[10px] uppercase">
+                      🎲 Spotlight Raag
+                    </span>
+                    <span className="font-serif text-sm font-bold text-white">
+                      Raag {shuffledRaag.name}
+                    </span>
+                    <span lang="pa" className="font-gurmukhi text-amber-300 font-bold">
+                      {shuffledRaag.gurmukhi}
+                    </span>
+                    <span className="text-slate-300">
+                      • {shuffledRaag.pehar} ({shuffledRaag.timeWindow}) • Ang {shuffledRaag.angRange} — {shuffledRaag.ras}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShuffledRaag(null)}
+                    className="px-2 py-0.5 rounded border border-white/20 text-[11px] text-slate-300 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
         </section>
         </GodModeBox>
           );
@@ -1244,6 +1559,18 @@ export default function GranthsAndKirtanPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 pt-1">
+                  {isVerifiedLiveEdit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadError(null);
+                        setIsAdminUploadOpen((v) => !v);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-amber-400 text-[#090d16] text-xs font-extrabold shadow-sm hover:brightness-105 transition"
+                    >
+                      {isAdminUploadOpen ? "✕ Close Upload Panel" : "+ Upload Kirtan (Supabase)"}
+                    </button>
+                  )}
                   {allowGuestKirtan ? (
                     <>
                       <input
@@ -1265,9 +1592,9 @@ export default function GranthsAndKirtanPage() {
                       <button
                         type="button"
                         onClick={() => localFileInputRef.current?.click()}
-                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold shadow-sm hover:brightness-105 transition"
+                        className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/55 bg-[#121C15] text-[#E5C158] text-xs font-bold hover:border-[#E5C158] transition"
                       >
-                        📂 Play / Upload Local MP3 Files (e.g., Bhai Avtar Singh)
+                        📂 Quick Local MP3 Preview
                       </button>
                     </>
                   ) : (
@@ -1282,6 +1609,13 @@ export default function GranthsAndKirtanPage() {
                   >
                     🎻 25% Reading Mode
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleRandomShabadOrRaag}
+                    className="px-3.5 py-2.5 rounded-xl border border-amber-400/50 bg-[#121C15] text-xs font-bold text-amber-300 hover:bg-amber-500/15 transition"
+                  >
+                    🎲 Shuffle Shabad
+                  </button>
                   {isMaintenancePaused ? (
                     <span className="px-3.5 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs font-bold text-amber-300">
                       🛡️ Submissions Paused (Read-Only)
@@ -1295,10 +1629,168 @@ export default function GranthsAndKirtanPage() {
                       }}
                       className="px-3.5 py-2.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-[#C59B27] transition"
                     >
-                      + Suggest Shabad / Drive Link
+                      + Suggest Shabad
                     </button>
                   )}
                 </div>
+
+                {/* Admin-Only "+ Upload Kirtan" Panel (Supabase Storage bucket: kirtan-audio) */}
+                {isVerifiedLiveEdit && isAdminUploadOpen && (
+                  <form
+                    onSubmit={handleAdminKirtanUpload}
+                    className="admin-studio-ui rounded-2xl border-2 border-amber-400/60 p-4 space-y-3 text-xs shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-2">
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
+                          Supabase Storage • Bucket: kirtan-audio
+                        </p>
+                        <h3 className="text-sm font-serif font-bold text-white">
+                          Upload Kirtan Track to Sanctuary Playlist
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAdminUploadOpen(false)}
+                        className="px-2 py-0.5 rounded border border-white/20 text-[11px] text-slate-300 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {uploadError && (
+                      <div className="rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-red-200 font-semibold">
+                        {uploadError}
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-amber-200">
+                        Audio File (.mp3 / .m4a / .wav — streamed from Supabase Storage)
+                      </label>
+                      <input
+                        type="file"
+                        accept="audio/*,.mp3,.m4a,.wav,.ogg"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setUploadFile(file);
+                          if (file) {
+                            const parsed = parseLocalAudioFilename(file.name);
+                            if (!uploadTitle.trim()) setUploadTitle(parsed.title);
+                            if (!uploadRagi.trim() && parsed.ragi !== "Local Audio File") {
+                              setUploadRagi(parsed.ragi);
+                            }
+                          }
+                        }}
+                        className="w-full rounded-xl border border-amber-400/40 bg-slate-900 px-3 py-2 text-xs text-white file:mr-3 file:rounded-lg file:border-0 file:bg-amber-400 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-[#090d16]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                          Shabad / Track Title (English) *
+                        </label>
+                        <input
+                          type="text"
+                          required={!uploadFile}
+                          value={uploadTitle}
+                          onChange={(e) => setUploadTitle(e.target.value)}
+                          placeholder="e.g., Aaj More Aaye Hai"
+                          className="w-full rounded-lg border border-amber-400/35 bg-slate-900 px-3 py-2 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                          Shabad Title (Gurmukhi)
+                        </label>
+                        <input
+                          type="text"
+                          lang="pa"
+                          value={uploadGurmukhi}
+                          onChange={(e) => setUploadGurmukhi(e.target.value)}
+                          placeholder="e.g., ਆਜੁ ਮੋਰੈ ਆਏ ਹੈ"
+                          className="w-full rounded-lg border border-amber-400/35 bg-slate-900 px-3 py-2 font-gurmukhi text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                          Ragi / Jatha Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={uploadRagi}
+                          onChange={(e) => setUploadRagi(e.target.value)}
+                          placeholder="e.g., Bhai Avtar Singh Ji"
+                          className="w-full rounded-lg border border-amber-400/35 bg-slate-900 px-3 py-2 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                          Raag
+                        </label>
+                        <input
+                          type="text"
+                          value={uploadRaag}
+                          onChange={(e) => setUploadRaag(e.target.value)}
+                          placeholder="e.g., Raag Asa"
+                          className="w-full rounded-lg border border-amber-400/35 bg-slate-900 px-3 py-2 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                          Pehar (Time of Day)
+                        </label>
+                        <select
+                          value={uploadPehar}
+                          onChange={(e) => setUploadPehar(e.target.value)}
+                          className="w-full rounded-lg border border-amber-400/35 bg-slate-900 px-2.5 py-2 text-xs text-white"
+                        >
+                          <option value="Amrit Vela">🌅 Amrit Vela (3–6 AM)</option>
+                          <option value="Morning">☀️ Morning (6 AM–12 PM)</option>
+                          <option value="Afternoon">🌤️ Afternoon (12–6 PM)</option>
+                          <option value="Evening">🌇 Evening (6–9 PM)</option>
+                          <option value="Night">🌙 Night (9 PM–3 AM)</option>
+                          <option value="All Pehars">✨ All Pehars</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                        Or Paste Direct Stream URL (Optional if file selected)
+                      </label>
+                      <input
+                        type="url"
+                        value={uploadDirectUrl}
+                        onChange={(e) => setUploadDirectUrl(e.target.value)}
+                        placeholder="https://.../audio.mp3"
+                        className="w-full rounded-lg border border-amber-400/35 bg-slate-900 px-3 py-2 text-xs text-white"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsAdminUploadOpen(false)}
+                        className="px-3 py-1.5 rounded-lg border border-white/20 text-slate-300 hover:text-white font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={uploadingKirtan}
+                        className="px-4 py-1.5 rounded-lg bg-amber-400 text-[#090d16] font-extrabold hover:bg-amber-300 disabled:opacity-50 transition"
+                      >
+                        {uploadingKirtan ? "Uploading to kirtan-audio..." : "⬆ Upload & Publish Track"}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* Track Search & Playable Tracks (Live Darbar Sahib + Local / Approved) */}
@@ -1343,168 +1835,235 @@ export default function GranthsAndKirtanPage() {
               </div>
               </GodModeBox>
 
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start">
-                {filteredKirtanTracks.map((track) => {
-                  const active = currentTrack.id === track.id;
-                  const imgKey = track.imageKey || `kirtan-art-${track.id}`;
-                  const storedFrame = cms.frames?.[imgKey] || remoteFrames[imgKey];
-                  const hasPicture =
-                    !storedFrame?.hidden &&
-                    Boolean(storedFrame?.src || track.imageUrl);
-                  const ov = cms.topicEdits?.[track.id] as
-                    | InlineTopicEditData
-                    | undefined;
-                  const cardHeadingCls = ov?.fontScale
-                    ? resolveCmsHeadingClass(ov.fontScale)
-                    : headingSizeCls;
-                  const cardBodyCls = ov?.fontScale
-                    ? resolveCmsBodyClass(ov.fontScale)
-                    : bodySizeCls;
-                  const displayTitle = ov?.title || track.title;
-                  const displayGurmukhi = ov?.gurmukhi || track.gurmukhiTitle;
-                  const displayRaag = ov?.badge || track.raag;
-                  const displayRagi = ov?.subtitle || track.ragi;
-                  const cardLayoutCls = resolveCmsCardLayoutClass(ov, "editorial");
-                  return (
-                    <div
-                      key={track.id}
-                      id={`topic-${track.id}`}
-                      onClick={() => handleTrackClick(track)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleTrackClick(track);
-                        }
-                      }}
-                      style={{
-                        backgroundColor:
-                          ov?.bgColor || (!active ? layoutCfg.cardBgColor || undefined : undefined),
-                        borderColor:
-                          ov?.borderColor || layoutCfg.accentColor || undefined,
-                        color: ov?.textColor || undefined,
-                        fontFamily: ov?.fontFamily
-                          ? resolveCmsFontFamily(ov.fontFamily)
-                          : undefined,
-                      }}
-                      className={`p-5 rounded-2xl border border-[#d4af37]/30 transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between gap-3 scroll-mt-28 ${cardLayoutCls} ${
-                        (cms.archivedIds || []).includes(track.id)
-                          ? "opacity-55 ring-2 ring-amber-400/70"
-                          : ""
-                      } ${
-                        active
-                          ? "bg-[#1B2A20] text-[#FAF6EE] border-2 border-[#C59B27] shadow-2xl shadow-black/30"
-                          : "bg-[#F3ECE0] text-[#171917] hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30"
-                      }`}
-                    >
-                      <HiddenItemBadgeBar itemId={track.id} />
-                      <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <InlineOrderControls
-                          pageKey="granths"
-                          itemId={track.id}
-                          allIds={filteredKirtanTracks.map((t) => t.id)}
-                        />
-                        <InlineTopicEditor
-                          itemId={track.id}
-                          label="Edit Shabad"
-                          defaults={{
-                            title: track.title,
-                            gurmukhi: track.gurmukhiTitle,
-                            subtitle: track.ragi,
-                            badge: track.raag,
-                            description: track.raagNotes,
-                          }}
-                        />
-                      </div>
-                      {hasPicture && (
-                        <EditableHeritageImage
-                          imageKey={imgKey}
-                          defaultSrc={storedFrame?.src || track.imageUrl || ""}
-                          alt={displayTitle}
-                          defaultOrientation="natural"
-                        />
-                      )}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span
-                            lang="pa"
-                            className="h-10 w-10 rounded-xl bg-[#121C15] border border-[#C59B27]/45 font-gurmukhi text-base font-bold text-[#C59B27] flex items-center justify-center shrink-0"
-                          >
-                            {track.numeral}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                style={{ color: layoutCfg.accentColor || undefined }}
-                                className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]"
-                              >
-                                {displayRaag}
-                              </span>
-                              <span className={`text-xs ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
-                                • {track.durationLabel}
-                              </span>
-                            </div>
-                            <p
-                              lang="pa"
-                              className={`font-gurmukhi ${gurmukhiSizeCls} font-medium text-[#D97706] mt-0.5`}
-                            >
-                              {displayGurmukhi}
-                            </p>
-                            <h3 className={`${cardHeadingCls} font-serif font-bold truncate`}>
-                              {displayTitle}
-                            </h3>
-                            <p className={`${cardBodyCls} font-medium ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
-                              {displayRagi}
-                            </p>
-                            {ov?.description && (
-                              <p className="text-xs opacity-75 mt-1">
-                                {ov.description}
-                              </p>
+              {/* Sleek Spotify-Style Kirtan Tracklist */}
+              <div className="rounded-3xl border border-[#C59B27]/35 bg-[#121C15] text-[#FAF6EE] shadow-2xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-[#C59B27]/20 bg-black/25 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#CBD5E1]">
+                  <div className="flex items-center gap-4">
+                    <span className="w-7 text-center">#</span>
+                    <span>Shabad Title • Ragi &amp; Raag</span>
+                  </div>
+                  <span className="hidden sm:inline">Pehar / Duration</span>
+                </div>
+
+                <div className="divide-y divide-white/10">
+                  {filteredKirtanTracks.map((track, idx) => {
+                    const active = currentTrack.id === track.id;
+                    const isHidden = (cms.archivedIds || []).includes(track.id);
+                    const ov = cms.topicEdits?.[track.id] as
+                      | InlineTopicEditData
+                      | undefined;
+                    const displayTitle = ov?.title || track.title;
+                    const displayGurmukhi = ov?.gurmukhi || track.gurmukhiTitle;
+                    const displayRaag = ov?.badge || track.raag;
+                    const displayRagi = ov?.subtitle || track.ragi;
+
+                    return (
+                      <div
+                        key={track.id}
+                        id={`topic-${track.id}`}
+                        onClick={() => handleTrackClick(track)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleTrackClick(track);
+                          }
+                        }}
+                        className={`group px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition cursor-pointer scroll-mt-28 ${
+                          isHidden ? "opacity-55 bg-amber-500/5" : ""
+                        } ${
+                          active
+                            ? "bg-[#1B2A20] border-l-4 border-l-amber-400"
+                            : "hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                          {/* Track Number / Animated Equalizer / Play */}
+                          <div className="w-8 h-8 rounded-lg bg-black/35 border border-[#C59B27]/35 flex items-center justify-center shrink-0">
+                            {active && isPlaying ? (
+                              <div className="flex items-end gap-0.5 h-3.5">
+                                <span className="kirtan-eq-bar w-0.5 h-full bg-amber-400 rounded-full" />
+                                <span
+                                  style={{ animationDelay: "0.2s" }}
+                                  className="kirtan-eq-bar w-0.5 h-full bg-amber-400 rounded-full"
+                                />
+                                <span
+                                  style={{ animationDelay: "0.4s" }}
+                                  className="kirtan-eq-bar w-0.5 h-full bg-amber-400 rounded-full"
+                                />
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-xs font-mono font-bold text-[#E5C158] group-hover:hidden">
+                                  {idx + 1}
+                                </span>
+                                <span className="hidden group-hover:inline text-xs text-amber-400">
+                                  ▶
+                                </span>
+                              </>
                             )}
+                          </div>
+
+                          {/* Bold Title + Structured Icon Subtitle Row Underneath */}
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="flex flex-wrap items-baseline gap-2">
+                              <h3
+                                className={`font-serif text-sm sm:text-base font-bold truncate ${
+                                  active ? "text-amber-300" : "text-[#FAF6EE]"
+                                }`}
+                              >
+                                {displayTitle}
+                              </h3>
+                              {displayGurmukhi && (
+                                <span
+                                  lang="pa"
+                                  className="font-gurmukhi text-xs font-medium text-[#E5C158]/90 truncate"
+                                >
+                                  {displayGurmukhi}
+                                </span>
+                              )}
+                              {isHidden && isVerifiedLiveEdit && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-400 text-[#090d16] text-[9px] font-extrabold uppercase">
+                                  Hidden
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Icon Subtitle Row tucked neatly under main title */}
+                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-[#CBD5E1]">
+                              <span className="inline-flex items-center gap-1 truncate">
+                                <span aria-hidden="true">🎙️</span>
+                                <span className="truncate font-medium">{displayRagi}</span>
+                              </span>
+                              <span className="opacity-40">•</span>
+                              <span className="inline-flex items-center gap-1 text-amber-300/90 truncate">
+                                <span aria-hidden="true">🎼</span>
+                                <span className="truncate font-semibold">{displayRaag}</span>
+                              </span>
+                              {track.timeOfDay && (
+                                <>
+                                  <span className="opacity-40 hidden sm:inline">•</span>
+                                  <span className="hidden sm:inline-flex items-center gap-1 text-slate-300">
+                                    <span aria-hidden="true">🕰️</span>
+                                    <span>{track.timeOfDay}</span>
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTrackClick(track);
-                          }}
-                          className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0 transition ${
-                            active && isPlaying
-                              ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                              : "bg-[#121C15] border border-[#C59B27]/50 text-[#C59B27] hover:border-[#C59B27]"
-                          }`}
+                        {/* Right Controls: Play/Duration + Admin Quick Hide / Delete / Reorder */}
+                        <div
+                          className="flex items-center justify-between sm:justify-end gap-2 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {active && isPlaying ? "⏸ Playing" : "▶ Play"}
-                        </button>
-                      </div>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              track.isLiveStream
+                                ? "bg-red-600/90 text-white"
+                                : "bg-white/10 text-slate-200"
+                            }`}
+                          >
+                            {track.durationLabel}
+                          </span>
 
-                      <p className={`text-xs sm:text-sm leading-relaxed ${active ? "text-[#E2E8F0]" : "text-[#4A554E]"}`}>
-                        {track.raagNotes}
+                          <button
+                            type="button"
+                            onClick={() => handleTrackClick(track)}
+                            className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition ${
+                              active && isPlaying
+                                ? "bg-amber-400 text-[#090d16]"
+                                : "border border-[#C59B27]/50 bg-[#1B2A20] text-[#E5C158] hover:border-amber-400"
+                            }`}
+                          >
+                            {active && isPlaying ? "⏸ Pause" : "▶ Play"}
+                          </button>
+
+                          {isVerifiedLiveEdit && (
+                            <div className="flex items-center gap-1 pl-1 border-l border-white/15">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => void handleReorderTrack(track.id, "up")}
+                                title="Move Track Up"
+                                className="px-1.5 py-1 rounded bg-slate-900 border border-white/15 text-[10px] text-slate-200 hover:border-amber-400 disabled:opacity-30"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === filteredKirtanTracks.length - 1}
+                                onClick={() => void handleReorderTrack(track.id, "down")}
+                                title="Move Track Down"
+                                className="px-1.5 py-1 rounded bg-slate-900 border border-white/15 text-[10px] text-slate-200 hover:border-amber-400 disabled:opacity-30"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void toggleCmsArchiveItem(cms, track.id)}
+                                title={isHidden ? "Unhide track for visitors" : "Hide track from visitors"}
+                                className={`px-1.5 py-1 rounded border text-[10px] font-bold ${
+                                  isHidden
+                                    ? "bg-amber-400 text-[#090d16] border-amber-300"
+                                    : "bg-slate-900 border-white/15 text-amber-200 hover:border-amber-400"
+                                }`}
+                              >
+                                {isHidden ? "Unhide" : "👁️"}
+                              </button>
+                              {confirmDeleteTrackId === track.id ? (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await permanentlyDeleteCmsItem(cms, track.id);
+                                    const remaining = remoteKirtanTracks.filter(
+                                      (rt) => rt.id !== track.id
+                                    );
+                                    setRemoteKirtanTracks(remaining);
+                                    await pushAdminCmsPatch({
+                                      kirtanTracks: remaining.map((item) => ({
+                                        ...item,
+                                        createdAt: item.createdAt || new Date().toISOString(),
+                                      })),
+                                    });
+                                    setConfirmDeleteTrackId(null);
+                                  }}
+                                  className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-extrabold"
+                                >
+                                  Confirm?
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteTrackId(track.id)}
+                                  title="Delete track"
+                                  className="px-1.5 py-1 rounded bg-slate-900 border border-red-400/40 text-red-300 text-[10px] hover:bg-red-500/20"
+                                >
+                                  🗑️
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {filteredKirtanTracks.length === 0 && (
+                    <div className="p-6 text-center space-y-3">
+                      <p className="text-sm font-serif font-bold">
+                        No tracks in this filter yet.
+                      </p>
+                      <p className="text-xs text-[#CBD5E1] max-w-md mx-auto leading-relaxed">
+                        {isVerifiedLiveEdit
+                          ? "Click + Upload Kirtan above to upload MP3/M4A files to Supabase Storage (kirtan-audio)."
+                          : "Switch back to All Playable Tracks or load a local MP3 preview."}
                       </p>
                     </div>
-                  );
-                })}
-
-                {filteredKirtanTracks.length === 0 && (
-                  <div className="p-6 rounded-2xl border border-[#C59B27]/40 bg-[#1B2A20] text-[#FAF6EE] text-center space-y-3">
-                    <p className="text-sm font-serif font-bold">
-                      No tracks in this filter yet.
-                    </p>
-                    <p className="text-xs text-[#E2E8F0] max-w-md mx-auto leading-relaxed">
-                      Load `.mp3` files directly from your computer for instant playback or switch back to All Playable Tracks.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => localFileInputRef.current?.click()}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
-                    >
-                      📂 Play / Upload Local MP3 Files
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* ============================================================
@@ -1598,38 +2157,51 @@ export default function GranthsAndKirtanPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[30rem] overflow-y-auto pr-1">
-                    {filteredRaags.map((raag) => (
-                      <article
-                        key={raag.order}
-                        className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-1.5 flex flex-col justify-between"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#C59B27]/20 text-[#E5C158] border border-[#C59B27]/40">
-                              #{raag.order} • Ang {raag.angRange}
-                            </span>
-                            <span className="text-[11px] font-semibold text-[#E2E8F0]">
-                              {raag.pehar} ({raag.timeWindow})
-                            </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch max-h-[30rem] overflow-y-auto pr-1">
+                    {filteredRaags.map((raag) => {
+                      const isCurrentPehar = raag.pehar === livePehar.pehar;
+                      const isSpotlighted = shuffledRaag?.order === raag.order;
+                      return (
+                        <article
+                          key={raag.order}
+                          className={`h-full p-4 rounded-2xl bg-[#121C15] border space-y-1.5 flex flex-col justify-between transition ${
+                            isSpotlighted
+                              ? "border-2 border-amber-400 shadow-lg shadow-amber-500/15"
+                              : isCurrentPehar
+                                ? "border-amber-400/70 bg-[#18261D]"
+                                : "border-[#C59B27]/30"
+                          }`}
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <h5 className="text-base font-serif font-bold text-[#FAF6EE]">
+                                {raag.name}
+                              </h5>
+                              <span lang="pa" className="font-gurmukhi text-sm font-semibold text-[#E5C158]">
+                                {raag.gurmukhi}
+                              </span>
+                            </div>
+                            {/* Structured Icon Subtitle Row underneath Raag title */}
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#CBD5E1]">
+                              <span className="font-bold text-[#E5C158]">
+                                🎼 #{raag.order} • Ang {raag.angRange}
+                              </span>
+                              <span className="opacity-40">•</span>
+                              <span>
+                                {isCurrentPehar ? `${livePehar.icon} LIVE NOW · ` : "🕰️ "}
+                                {raag.pehar} ({raag.timeWindow})
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#E2E8F0] leading-relaxed">
+                              <strong className="text-[#C59B27]">Ras / Mood:</strong> {raag.ras}
+                            </p>
                           </div>
-                          <div className="flex items-baseline justify-between gap-2 pt-0.5">
-                            <h5 className="text-base font-serif font-bold text-[#FAF6EE]">
-                              {raag.name}
-                            </h5>
-                            <span lang="pa" className="font-gurmukhi text-sm font-semibold text-[#E5C158]">
-                              {raag.gurmukhi}
-                            </span>
-                          </div>
-                          <p className="text-xs text-[#E2E8F0] leading-relaxed">
-                            <strong className="text-[#C59B27]">Ras / Mood:</strong> {raag.ras}
+                          <p className="text-[11px] text-[#E2E8F0]/90 pt-1.5 border-t border-[#C59B27]/20">
+                            <strong className="text-[#C59B27]">Voices:</strong> {raag.gurus}
                           </p>
-                        </div>
-                        <p className="text-[11px] text-[#E2E8F0]/90 pt-1.5 border-t border-[#C59B27]/20">
-                          <strong className="text-[#C59B27]">Voices:</strong> {raag.gurus}
-                        </p>
-                      </article>
-                    ))}
+                        </article>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1699,7 +2271,7 @@ export default function GranthsAndKirtanPage() {
               pageKey="granths"
               label="Granth BookReader Grid"
             >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
               {filteredGranths.map((granth) => {
                 const gOv = cms.topicEdits?.[granth.id];
                 return (

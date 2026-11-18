@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useCmsSiteState } from "@/components/editable-heritage-image";
 
 export type KirtanCollectionCategory =
   | "Live 24/7 Gurdwara Broadcasts"
@@ -233,6 +234,7 @@ export function KirtanAudioProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const cms = useCmsSiteState();
   const [localAudioTracks, setLocalAudioTracks] = useState<KirtanTrack[]>([]);
   const [submissions, setSubmissions] = useState<KirtanSubmission[]>(
     INITIAL_SUBMISSIONS_SEED
@@ -243,6 +245,7 @@ export function KirtanAudioProvider({
     LIVE_GURDWARA_STREAMS[0]
   );
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasActivatedPlayer, setHasActivatedPlayer] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -364,6 +367,44 @@ export function KirtanAudioProvider({
     }
   }, []);
 
+  const cmsUploadedTracks = useMemo<KirtanTrack[]>(() => {
+    const raw = Array.isArray(cms.kirtanTracks) ? cms.kirtanTracks : [];
+    const deleted = new Set(cms.deletedIds || []);
+    const archived = new Set(cms.archivedIds || []);
+    const gurmukhiDigits = ["੦", "੧", "੨", "੩", "੪", "੫", "੬", "੭", "੮", "੯"];
+    return raw
+      .filter((t) => t && t.id && !deleted.has(t.id) && !archived.has(t.id))
+      .map((rt, idx) => {
+        const numeral =
+          String(idx + 2)
+            .split("")
+            .map((d) => gurmukhiDigits[Number(d)] || d)
+            .join("") || "੨";
+        const proxiedUrl = buildProxiedAudioUrl(rt.sourceUrl);
+        return {
+          id: rt.id,
+          numeral,
+          category: "Verified Local & Approved Audio",
+          title: rt.title,
+          gurmukhiTitle: rt.gurmukhi || "ਗੁਰਬਾਣੀ ਕੀਰਤਨ",
+          ragi: rt.ragi || "Hazoori Ragi Jatha",
+          raag: rt.raag || "Puratan Raag Kirtan",
+          angCitation: "SUPABASE AUDIO • VERIFIED KIRTAN",
+          tantiSaaj: rt.pehar || "All Pehars",
+          timeOfDay: rt.pehar || "All Pehars",
+          durationLabel: rt.duration || "Kirtan",
+          durationSec: 0,
+          audioUrl: proxiedUrl,
+          directArchiveMp3Url: rt.sourceUrl,
+          archiveEmbedUrl: rt.sourceUrl,
+          externalArchiveUrl: rt.sourceUrl,
+          raagNotes: `Streamed directly from Learn Sikhi Kirtan Sanctuary (${rt.raag || "Gurmat Sangeet"}).`,
+          historicalContext: `Curated by ${rt.ragi || "Hazoori Ragi Jatha"}.`,
+          isCustomOrLocal: true,
+        };
+      });
+  }, [cms.kirtanTracks, cms.deletedIds, cms.archivedIds]);
+
   const approvedTracks = useMemo(
     () =>
       submissions
@@ -373,8 +414,13 @@ export function KirtanAudioProvider({
   );
 
   const allTracks = useMemo(
-    () => [...LIVE_GURDWARA_STREAMS, ...localAudioTracks, ...approvedTracks],
-    [localAudioTracks, approvedTracks]
+    () => [
+      ...LIVE_GURDWARA_STREAMS,
+      ...cmsUploadedTracks,
+      ...localAudioTracks,
+      ...approvedTracks,
+    ],
+    [cmsUploadedTracks, localAudioTracks, approvedTracks]
   );
 
   const instrumentalTracks = useMemo(
@@ -489,6 +535,8 @@ export function KirtanAudioProvider({
 
   const playTrack = useCallback(
     (track: KirtanTrack) => {
+      setHasActivatedPlayer(true);
+      setIsMinimized(false);
       setCurrentTrack(track);
       setCurrentTime(0);
       setDuration(track.durationSec || 0);
@@ -505,6 +553,7 @@ export function KirtanAudioProvider({
       audio.pause();
       setIsPlaying(false);
     } else {
+      setHasActivatedPlayer(true);
       if (!audio.src) {
         loadAndPlayTrack(currentTrack);
       } else {
@@ -730,7 +779,7 @@ export function KirtanAudioProvider({
       isReadingVolumePreset,
       playerMode,
       isMinimized,
-      isMiniPlayerVisible: !isMinimized,
+      isMiniPlayerVisible: (hasActivatedPlayer || isPlaying) && !isMinimized,
       isCustomModalOpen,
       playTrack,
       togglePlayPause,
@@ -765,6 +814,7 @@ export function KirtanAudioProvider({
       isReadingVolumePreset,
       playerMode,
       isMinimized,
+      hasActivatedPlayer,
       isCustomModalOpen,
       playTrack,
       togglePlayPause,
@@ -785,6 +835,7 @@ export function KirtanAudioProvider({
   return (
     <KirtanAudioContext.Provider value={value}>
       {children}
+      {(hasActivatedPlayer || isPlaying) && <GlobalKirtanMiniPlayer />}
       <SuggestKirtanModal />
       {requestToast && (
         <div

@@ -87,6 +87,7 @@ export interface KirtanTrackRecord {
   gurmukhi?: string;
   ragi: string;
   raag?: string;
+  pehar?: string;
   sourceUrl: string;
   duration?: string;
   imageUrl?: string;
