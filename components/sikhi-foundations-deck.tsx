@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   COMMONS_ART,
   ChitrakariCardHeader,
@@ -1695,20 +1696,34 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
       </GodModeBox>
 
       <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Foundations slides">
-        {SLIDES.map((s, i) => (
-          <button
-            key={s.id}
-            role="tab"
-            aria-selected={i === index}
-            type="button"
-            onClick={() => go(i)}
-            className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border px-3.5 py-2 text-sm font-bold transition ${i === index ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]" : ""}`}
-            style={i === index ? undefined : { ...card }}
-          >
-            <SikhiIcon name={s.icon} size={22} />
-            {s.short}
-          </button>
-        ))}
+        {SLIDES.map((s, i) => {
+          const active = i === index;
+          return (
+            <button
+              key={s.id}
+              role="tab"
+              aria-selected={active}
+              type="button"
+              onClick={() => go(i)}
+              className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border px-3.5 py-2 text-sm font-bold transition-colors ${
+                active ? "text-[#18181B] border-transparent" : ""
+              }`}
+              style={active ? undefined : { ...card }}
+            >
+              {active && (
+                <motion.span
+                  layoutId="foundations-slide-pill"
+                  transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#C59B27] to-[#D97706] shadow-sm"
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <SikhiIcon name={s.icon} size={22} />
+                {s.short}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div
@@ -1721,9 +1736,18 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
           if (Math.abs(dx) > 70) go(dx < 0 ? index + 1 : index - 1);
         }}
       >
-        <div key={SLIDES[index].id} className={dir > 0 ? "slide-from-right" : "slide-from-left"}>
-          {body}
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={SLIDES[index].id}
+            initial={{ opacity: 0, x: dir >= 0 ? 28 : -28, scale: 0.99 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: dir >= 0 ? -24 : 24, scale: 0.99 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            style={{ willChange: "transform, opacity" }}
+          >
+            {body}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <div className="flex items-center justify-between gap-3">

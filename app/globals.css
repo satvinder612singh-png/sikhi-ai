@@ -24,16 +24,16 @@ html[data-theme="ivory"] {
   --theme-card-dark: #FFFFFF;
   --theme-card-darker: #F4EFE4;
   --theme-text-primary: #18181B;
-  --theme-text-muted: #52525B;
+  --theme-text-muted: #3A352A;
   --theme-accent-gold: #C59B27;
-  --theme-accent-bright: #9A6B0A;
-  --theme-accent-highlight: #B45309;
+  --theme-accent-bright: #8A5D06;
+  --theme-accent-highlight: #9A3412;
 
   --bg-ivory: #FAF7F0;
   --bg-parchment: #FFFFFF;
   --accent-olive: #18181B;
   --text-charcoal: #18181B;
-  --text-muted-olive: #52525B;
+  --text-muted-olive: #3A352A;
   --highlight-saffron: #B45309;
   --border-gold: #C59B27;
   --border-gold-light: #E5C158;
@@ -1102,6 +1102,32 @@ h1, h2, h3 {
 
 .sanctuary-interactive:active {
   transform: translate3d(0, 0, 0) scale(0.99);
+}
+
+/* ============================================================================
+   7. SUNLIT IVORY & LIGHT-THEME WCAG AA+ SECONDARY TEXT CONTRAST GUARD
+   Darkens faint light-blue / pale slate secondary copy on light surfaces
+   while preserving intentional light text inside explicit dark surfaces.
+============================================================================ */
+:root:not([data-theme]) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
+html[data-theme="ivory"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
+html[data-theme="marble"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300) {
+  color: #1E3A5F;
+}
+
+:root:not([data-theme]) :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-\[\#CBD5E1\]),
+html[data-theme="ivory"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-\[\#CBD5E1\]),
+html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-\[\#CBD5E1\]) {
+  color: #3A352A;
+}
+
+/* Restore crisp light text inside explicit dark cards, modals, and studios */
+:where(.dark-surface, .admin-studio-ui, .bg-\[\#1B2A20\], .bg-\[\#121C15\], .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300) {
+  color: #BAE6FD;
+}
+
+:where(.dark-surface, .admin-studio-ui, .bg-\[\#1B2A20\], .bg-\[\#121C15\], .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-slate-300, .text-slate-400, .text-\[\#CBD5E1\]) {
+  color: #CBD5E1;
 }
 
 .tracklist-row {

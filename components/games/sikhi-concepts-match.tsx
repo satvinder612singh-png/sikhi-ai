@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  type LearnerProfile,
+  formatLearnerProfileBadge,
+} from "./learner-profile";
+import { CelebrationBurst } from "./celebration-burst";
 
 interface ConceptPair {
   id: string;
@@ -9,48 +15,55 @@ interface ConceptPair {
   meaning: string;
 }
 
-const SIKHI_CONCEPTS: ConceptPair[] = [
+const LOCAL_FALLBACK_CONCEPTS: ConceptPair[] = [
   {
     id: "seva",
     term: "Seva",
     gurmukhi: "ਸੇਵਾ",
-    meaning: "Selfless service offered to humanity with humility and without expecting reward.",
+    meaning:
+      "Selfless service offered to humanity with humility and without expecting reward.",
   },
   {
     id: "simran",
     term: "Simran",
     gurmukhi: "ਸਿਮਰਨ",
-    meaning: "Loving, mindful remembrance of the One Divine Creator in daily life.",
+    meaning:
+      "Loving, mindful remembrance of the One Divine Creator in daily life.",
   },
   {
     id: "hukam",
     term: "Hukam",
     gurmukhi: "ਹੁਕਮ",
-    meaning: "Divine Order and cosmic harmony—accepting life with wisdom and serenity.",
+    meaning:
+      "Divine Order and cosmic harmony—accepting life with wisdom and serenity.",
   },
   {
     id: "kirat-karni",
     term: "Kirat Karni",
     gurmukhi: "ਕਿਰਤ ਕਰਨੀ",
-    meaning: "Earning an honest, ethical living through dedicated effort and integrity.",
+    meaning:
+      "Earning an honest, ethical living through dedicated effort and integrity.",
   },
   {
     id: "vand-chakna",
     term: "Vand Chakna",
     gurmukhi: "ਵੰਡ ਛਕਣਾ",
-    meaning: "Sharing one's earnings, food, and blessings generously with those in need.",
+    meaning:
+      "Sharing one's earnings, food, and blessings generously with those in need.",
   },
   {
     id: "chardi-kala",
     term: "Chardi Kala",
     gurmukhi: "ਚੜ੍ਹਦੀ ਕਲਾ",
-    meaning: "Ever-rising spirit—maintaining resilient optimism and courage even in hardship.",
+    meaning:
+      "Ever-rising spirit—maintaining resilient optimism and courage even in hardship.",
   },
   {
     id: "miri-piri",
     term: "Miri-Piri",
     gurmukhi: "ਮੀਰੀ-ਪੀਰੀ",
-    meaning: "The harmony of spiritual devotion (Piri) and ethical social justice (Miri).",
+    meaning:
+      "The harmony of spiritual devotion (Piri) and ethical social justice (Miri).",
   },
 ];
 
@@ -65,11 +78,26 @@ function deterministicShuffle<T>(items: T[], seed: number): T[] {
   return arr;
 }
 
-export function SikhiConceptsMatch() {
-  const [seed, setSeed] = useState(11);
+export function SikhiConceptsMatch({
+  learnerProfile,
+}: {
+  learnerProfile: LearnerProfile;
+}) {
+  const [concepts, setConcepts] = useState<ConceptPair[]>(
+    LOCAL_FALLBACK_CONCEPTS
+  );
+  const [roundSeed, setRoundSeed] = useState(1);
+  const [shuffleSeed, setShuffleSeed] = useState(11);
+  const [loading, setLoading] = useState(true);
+  const [roundSource, setRoundSource] = useState<"gemini" | "fallback">(
+    "fallback"
+  );
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
-  const [selectedMeaningId, setSelectedMeaningId] = useState<string | null>(null);
+  const [selectedMeaningId, setSelectedMeaningId] = useState<string | null>(
+    null
+  );
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
+  const [lastMatchedId, setLastMatchedId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     tone: "neutral" | "success" | "gentle";
     text: string;
@@ -78,25 +106,80 @@ export function SikhiConceptsMatch() {
     text: "Select a Sikhi term on the left, then select its plain-English meaning on the right.",
   });
 
+  const loadRound = useCallback(
+    async (seedValue: number, signal?: AbortSignal) => {
+      setLoading(true);
+      setSelectedTermId(null);
+      setSelectedMeaningId(null);
+      setMatchedIds([]);
+      setLastMatchedId(null);
+      setFeedback({
+        tone: "neutral",
+        text: "Select a Sikhi term on the left, then select its plain-English meaning on the right.",
+      });
+
+      try {
+        const res = await fetch("/api/generate-quiz", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "concepts",
+            ageGroup: learnerProfile.ageGroup,
+            level: learnerProfile.level,
+            seed: seedValue,
+          }),
+          signal,
+        });
+        if (!res.ok) throw new Error("Failed to fetch concepts round");
+        const data = (await res.json()) as {
+          source?: "gemini" | "fallback";
+          pairs?: ConceptPair[];
+        };
+        if (Array.isArray(data.pairs) && data.pairs.length >= 5) {
+          setConcepts(data.pairs);
+          setRoundSource(data.source === "gemini" ? "gemini" : "fallback");
+        } else {
+          setConcepts(LOCAL_FALLBACK_CONCEPTS);
+          setRoundSource("fallback");
+        }
+      } catch (err) {
+        if ((err as { name?: string })?.name === "AbortError") return;
+        setConcepts(LOCAL_FALLBACK_CONCEPTS);
+        setRoundSource("fallback");
+      } finally {
+        setShuffleSeed((s) => s + 7);
+        setLoading(false);
+      }
+    },
+    [learnerProfile.ageGroup, learnerProfile.level]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadRound(roundSeed, controller.signal);
+    return () => controller.abort();
+  }, [loadRound, roundSeed]);
+
   const shuffledMeanings = useMemo(
-    () => deterministicShuffle(SIKHI_CONCEPTS, seed),
-    [seed]
+    () => deterministicShuffle(concepts, shuffleSeed + roundSeed * 19),
+    [concepts, shuffleSeed, roundSeed]
   );
 
   const checkMatch = (termId: string, meaningId: string) => {
-    const termObj = SIKHI_CONCEPTS.find((c) => c.id === termId);
+    const termObj = concepts.find((c) => c.id === termId);
     if (!termObj) return;
 
     if (termId === meaningId) {
       const next = [...matchedIds, termId];
       setMatchedIds(next);
+      setLastMatchedId(termId);
       setSelectedTermId(null);
       setSelectedMeaningId(null);
       setFeedback({
         tone: "success",
         text:
-          next.length === SIKHI_CONCEPTS.length
-            ? `Beautiful! You matched all ${SIKHI_CONCEPTS.length} foundational Sikhi concepts.`
+          next.length === concepts.length
+            ? `Beautiful! You matched all ${concepts.length} Sikhi concepts in this round.`
             : `Matched ${termObj.term} (${termObj.gurmukhi}): ${termObj.meaning}`,
       });
     } else {
@@ -119,7 +202,7 @@ export function SikhiConceptsMatch() {
       checkMatch(id, selectedMeaningId);
     } else {
       setSelectedTermId(id);
-      const item = SIKHI_CONCEPTS.find((c) => c.id === id);
+      const item = concepts.find((c) => c.id === id);
       setFeedback({
         tone: "neutral",
         text: `Selected "${item?.term}". Now choose its matching meaning on the right.`,
@@ -144,18 +227,65 @@ export function SikhiConceptsMatch() {
     }
   };
 
-  const handleRestart = () => {
-    setSeed((s) => s + 7);
+  const handleShuffleSameRound = () => {
+    setShuffleSeed((s) => s + 7);
     setSelectedTermId(null);
     setSelectedMeaningId(null);
     setMatchedIds([]);
+    setLastMatchedId(null);
     setFeedback({
       tone: "neutral",
       text: "Select a Sikhi term on the left, then select its plain-English meaning on the right.",
     });
   };
 
-  const isComplete = matchedIds.length === SIKHI_CONCEPTS.length;
+  const isComplete = concepts.length > 0 && matchedIds.length === concepts.length;
+  const progressRatio =
+    concepts.length > 0 ? matchedIds.length / concepts.length : 0;
+
+  if (loading) {
+    return (
+      <div
+        aria-busy="true"
+        aria-live="polite"
+        style={{
+          backgroundColor: "var(--bg-surface)",
+          borderColor: "var(--border-subtle)",
+          color: "var(--text-primary)",
+        }}
+        className="sanctuary-glass rounded-[var(--radius-card)] border p-6 sm:p-8 space-y-6"
+      >
+        <div className="space-y-2">
+          <div className="h-6 w-56 rounded-lg bg-current opacity-15 animate-pulse" />
+          <p
+            style={{ color: "var(--theme-text-muted)" }}
+            className="text-sm font-medium"
+          >
+            Crafting Sikhi concepts for{" "}
+            {formatLearnerProfileBadge(learnerProfile)}…
+          </p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-5 space-y-2.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <div
+                key={n}
+                className="h-16 rounded-2xl bg-current opacity-10 animate-pulse"
+              />
+            ))}
+          </div>
+          <div className="lg:col-span-7 space-y-2.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <div
+                key={n}
+                className="h-16 rounded-2xl bg-current opacity-10 animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -166,27 +296,65 @@ export function SikhiConceptsMatch() {
       }}
       className="sanctuary-glass rounded-[var(--radius-card)] border p-6 sm:p-8 space-y-6"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4" style={{ borderColor: "var(--border-subtle)" }}>
-        <div className="space-y-1">
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold">
-            Sikhi Concepts Match
-          </h2>
-          <p style={{ color: "var(--theme-text-muted)" }} className="text-sm sm:text-base">
-            Matched {matchedIds.length} of {SIKHI_CONCEPTS.length} concepts
-          </p>
+      {/* Header & Progress */}
+      <div
+        className="space-y-3 border-b pb-4"
+        style={{ borderColor: "var(--border-subtle)" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold">
+              Sikhi Concepts Match
+            </h2>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-sm sm:text-base"
+            >
+              Matched {matchedIds.length} of {concepts.length} concepts •{" "}
+              {roundSource === "gemini" ? "AI-Tailored Round" : "Curated Round"}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleShuffleSameRound}
+              style={{ borderColor: "var(--border-subtle)" }}
+              className="sanctuary-interactive rounded-[var(--radius-control)] border px-3.5 py-2 text-xs sm:text-sm font-semibold hover:border-[#C59B27]"
+            >
+              Shuffle Set
+            </button>
+            <button
+              type="button"
+              onClick={() => setRoundSeed((s) => s + 1)}
+              className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2 text-xs sm:text-sm font-extrabold text-[#18181B]"
+            >
+              ✨ Generate Fresh Round
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleRestart}
-          style={{ borderColor: "var(--border-subtle)" }}
-          className="rounded-[var(--radius-control)] border px-4 py-2 text-sm font-semibold hover:border-[#C59B27] transition"
+        {/* Animated Progress Bar */}
+        <div
+          role="progressbar"
+          aria-valuenow={Math.round(progressRatio * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Concepts match progress"
+          style={{ backgroundColor: "var(--theme-card-darker)" }}
+          className="h-2 w-full rounded-full overflow-hidden"
         >
-          Shuffle &amp; Restart
-        </button>
+          <motion.div
+            initial={false}
+            animate={{ scaleX: Math.max(0.03, progressRatio) }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            style={{ transformOrigin: "left center" }}
+            className="h-full w-full rounded-full bg-gradient-to-r from-[#C59B27] via-[#D97706] to-[#10B981]"
+          />
+        </div>
       </div>
 
-      {/* Live Feedback Region (stable min-height prevents layout shift) */}
+      {/* Live Feedback Region */}
       <div
         role="status"
         aria-live="polite"
@@ -194,12 +362,18 @@ export function SikhiConceptsMatch() {
           backgroundColor: "var(--theme-card-darker)",
           borderColor:
             feedback.tone === "success"
-              ? "#059669"
+              ? "#10B981"
               : feedback.tone === "gentle"
                 ? "#D97706"
                 : "var(--border-subtle)",
+          boxShadow:
+            feedback.tone === "success"
+              ? "0 8px 24px -10px rgba(16, 185, 129, 0.32)"
+              : feedback.tone === "gentle"
+                ? "0 8px 24px -10px rgba(217, 119, 6, 0.28)"
+                : "none",
         }}
-        className="min-h-[3.5rem] flex items-center rounded-[var(--radius-control)] border px-4 py-3 text-base font-medium leading-relaxed"
+        className="min-h-[3.5rem] flex items-center rounded-[var(--radius-control)] border px-4 py-3 text-base font-medium leading-relaxed transition-all duration-200"
       >
         <span>
           {feedback.tone === "success" ? "✓ " : ""}
@@ -207,9 +381,45 @@ export function SikhiConceptsMatch() {
         </span>
       </div>
 
+      {isComplete && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            backgroundColor: "var(--theme-card-darker)",
+            borderColor: "#10B981",
+          }}
+          className="rounded-2xl border p-5 text-center space-y-3"
+        >
+          <CelebrationBurst active />
+          <p className="font-serif text-xl sm:text-2xl font-bold">
+            All Concepts Matched!
+          </p>
+          <p
+            style={{ color: "var(--theme-text-muted)" }}
+            className="text-sm sm:text-base"
+          >
+            Beautiful focus. Generate a fresh round to explore new Gurmat
+            vocabulary.
+          </p>
+          <button
+            type="button"
+            onClick={() => setRoundSeed((s) => s + 1)}
+            className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-2.5 text-sm sm:text-base font-extrabold text-[#18181B]"
+          >
+            ✨ Generate Fresh Round
+          </button>
+        </motion.div>
+      )}
+
       {/* Clean 2-Column Concepts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-5 space-y-2.5" role="group" aria-label="Sikhi terms">
+        <div
+          className="lg:col-span-5 space-y-2.5"
+          role="group"
+          aria-label="Sikhi terms"
+        >
           <p
             style={{ color: "var(--accent-text, var(--accent-primary))" }}
             className="text-xs font-bold uppercase tracking-[0.18em]"
@@ -217,29 +427,37 @@ export function SikhiConceptsMatch() {
             Sikhi Terms
           </p>
           <div className="space-y-2.5">
-            {SIKHI_CONCEPTS.map((item) => {
+            {concepts.map((item) => {
               const matched = matchedIds.includes(item.id);
               const selected = selectedTermId === item.id;
+              const justMatched = lastMatchedId === item.id;
               return (
-                <button
+                <motion.button
                   key={item.id}
                   type="button"
                   disabled={matched}
                   aria-pressed={selected}
                   onClick={() => handleSelectTerm(item.id)}
+                  animate={justMatched ? { scale: [1, 1.025, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.25 }}
                   style={{
                     backgroundColor: matched
                       ? "var(--theme-card-darker)"
                       : "var(--bg-surface)",
                     borderColor: matched
-                      ? "#059669"
+                      ? "#10B981"
                       : selected
                         ? "#C59B27"
                         : "var(--border-subtle)",
+                    boxShadow: matched
+                      ? "0 0 0 2px rgba(16, 185, 129, 0.18)"
+                      : selected
+                        ? "0 0 0 3px rgba(197, 155, 39, 0.28)"
+                        : "none",
                   }}
                   className={`sanctuary-interactive w-full min-h-[4.25rem] rounded-2xl border-2 px-4 py-3 flex items-center justify-between gap-3 text-left transition ${
-                    selected ? "ring-2 ring-[#C59B27] ring-offset-2" : ""
-                  } ${matched ? "opacity-75 cursor-default" : "cursor-pointer"}`}
+                    matched ? "opacity-75 cursor-default" : "cursor-pointer"
+                  }`}
                 >
                   <div>
                     <span className="block font-serif text-lg font-bold">
@@ -247,7 +465,9 @@ export function SikhiConceptsMatch() {
                     </span>
                     <span
                       lang="pa"
-                      style={{ color: "var(--accent-text, var(--accent-primary))" }}
+                      style={{
+                        color: "var(--accent-text, var(--accent-primary))",
+                      }}
                       className="font-gurmukhi text-sm font-semibold"
                     >
                       {item.gurmukhi}
@@ -256,13 +476,17 @@ export function SikhiConceptsMatch() {
                   <span className="text-xs font-bold shrink-0">
                     {matched ? "✓ Matched" : selected ? "Selected" : ""}
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
         </div>
 
-        <div className="lg:col-span-7 space-y-2.5" role="group" aria-label="Plain-English meanings">
+        <div
+          className="lg:col-span-7 space-y-2.5"
+          role="group"
+          aria-label="Plain-English meanings"
+        >
           <p
             style={{ color: "var(--accent-text, var(--accent-primary))" }}
             className="text-xs font-bold uppercase tracking-[0.18em]"
@@ -273,26 +497,34 @@ export function SikhiConceptsMatch() {
             {shuffledMeanings.map((item) => {
               const matched = matchedIds.includes(item.id);
               const selected = selectedMeaningId === item.id;
+              const justMatched = lastMatchedId === item.id;
               return (
-                <button
+                <motion.button
                   key={item.id}
                   type="button"
                   disabled={matched}
                   aria-pressed={selected}
                   onClick={() => handleSelectMeaning(item.id)}
+                  animate={justMatched ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.25 }}
                   style={{
                     backgroundColor: matched
                       ? "var(--theme-card-darker)"
                       : "var(--bg-surface)",
                     borderColor: matched
-                      ? "#059669"
+                      ? "#10B981"
                       : selected
                         ? "#C59B27"
                         : "var(--border-subtle)",
+                    boxShadow: matched
+                      ? "0 0 0 2px rgba(16, 185, 129, 0.18)"
+                      : selected
+                        ? "0 0 0 3px rgba(197, 155, 39, 0.28)"
+                        : "none",
                   }}
                   className={`sanctuary-interactive w-full min-h-[4.25rem] rounded-2xl border-2 px-4 py-3 flex items-center justify-between gap-3 text-left transition ${
-                    selected ? "ring-2 ring-[#C59B27] ring-offset-2" : ""
-                  } ${matched ? "opacity-75 cursor-default" : "cursor-pointer"}`}
+                    matched ? "opacity-75 cursor-default" : "cursor-pointer"
+                  }`}
                 >
                   <span className="text-sm sm:text-base leading-relaxed">
                     {item.meaning}
@@ -302,24 +534,12 @@ export function SikhiConceptsMatch() {
                       ✓ {item.term}
                     </span>
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>
         </div>
       </div>
-
-      {isComplete && (
-        <div className="flex justify-end pt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-          <button
-            type="button"
-            onClick={handleRestart}
-            className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-2.5 text-sm font-extrabold text-[#18181B]"
-          >
-            Play Again
-          </button>
-        </div>
-      )}
     </div>
   );
 }

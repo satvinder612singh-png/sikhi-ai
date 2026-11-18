@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { MoolMantarExplorer } from "@/components/mool-mantar-explorer";
@@ -539,28 +540,40 @@ function NitnemReaderContent() {
                 />
               </div>
 
-              {/* Category Filter Tabs */}
-              <div className="flex flex-wrap gap-2 pt-1">
+              {/* Category Filter Tabs with Shared Sliding Indicator */}
+              <div className="flex flex-wrap gap-2 pt-1" role="tablist" aria-label="Nitnem Bani categories">
                 {(
                   [
                     { id: "morning", label: "੧ · Morning Nitnem (5 Banis)" },
                     { id: "evening", label: "੨ · Evening & Night" },
                     { id: "extended", label: "੩ · Sukhmani, Asa Di Vaar & Ardas" },
                   ] as { id: BaniCategory; label: string }[]
-                ).map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-                      activeCategory === cat.id
-                        ? "bg-[#E5C158] text-[#171917] shadow-sm"
-                        : "bg-[#121C15] text-[#F3ECE0] border border-[#C59B27]/35 hover:border-[#E5C158]"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+                ).map((cat) => {
+                  const active = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={`relative px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
+                        active
+                          ? "text-[#171917]"
+                          : "bg-[#121C15] text-[#F3ECE0] border border-[#C59B27]/35 hover:border-[#E5C158]"
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="nitnem-cat-pill"
+                          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-[#E5C158] shadow-sm"
+                        />
+                      )}
+                      <span className="relative z-10">{cat.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -630,8 +643,16 @@ function NitnemReaderContent() {
             </div>
           )}
 
-          {/* Equal-Height Bento Bani Selector Cards with Structured Icon Subtitle Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-stretch">
+          {/* Equal-Height Bento Bani Selector Cards with Smooth Category Transition */}
+          <AnimatePresence mode="wait">
+          <motion.div
+            key={`nitnem-grid-${activeCategory}`}
+            initial={{ opacity: 0, y: 8, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.99 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-stretch"
+          >
             {BANI_CATALOG.filter((b) => b.category === activeCategory).map((item) => {
               const selected = item.id === selectedBani.id;
               const categoryLabel =
@@ -712,7 +733,8 @@ function NitnemReaderContent() {
                 </SlidePresentationCanvas>
               );
             })}
-          </div>
+          </motion.div>
+          </AnimatePresence>
         </div>
       </section>
       </SlidePresentationCanvas>
@@ -913,9 +935,14 @@ function NitnemReaderContent() {
             Loading complete {selectedBani.title} verses from BaniDB Sanctuary…
           </div>
         ) : (
-          <div
+          <AnimatePresence mode="wait">
+          <motion.div
             key={`${selectedBani.id}-${currentPageIdx}-${continuousView}`}
-            className="space-y-8 animate-fade-in-up"
+            initial={{ opacity: 0, y: 10, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.995 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-8"
           >
             {displayedSections.map((section) => (
               <div
@@ -1014,7 +1041,8 @@ function NitnemReaderContent() {
                 )}
               </div>
             ))}
-          </div>
+          </motion.div>
+          </AnimatePresence>
         )}
         </SlidePresentationCanvas>
       </main>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/brand-logo";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useAuth } from "@/components/auth-provider";
@@ -348,12 +349,20 @@ export function Header({ solid = false }: { solid?: boolean }) {
                   href={l.href}
                   title={l.sub}
                   aria-current={active ? "page" : undefined}
-                  className={`block whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-black/5 ${
-                    active ? "font-bold" : "font-medium opacity-80 hover:opacity-100"
+                  className={`relative block whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-black/5 ${
+                    active ? "font-bold" : "font-medium opacity-85 hover:opacity-100"
                   } ${focusRing}`}
-                  style={active ? { color: "var(--accent-primary)" } : undefined}
+                  style={active ? { color: "var(--accent-text, var(--accent-primary))" } : undefined}
                 >
-                  {l.title}
+                  {active && (
+                    <motion.span
+                      layoutId="header-nav-active-pill"
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      style={{ backgroundColor: "var(--accent-primary)" }}
+                      className="pointer-events-none absolute inset-x-2 -bottom-0.5 h-[2.5px] rounded-full"
+                    />
+                  )}
+                  <span className="relative z-10">{l.title}</span>
                 </Link>
               </li>
             );

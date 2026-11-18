@@ -59,11 +59,36 @@ function formatPlayerTime(seconds: number): string {
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
-function formatBytes(bytes?: number): string | null {
-  if (!bytes || !Number.isFinite(bytes) || bytes <= 0) return null;
-  const mb = bytes / (1024 * 1024);
-  if (mb >= 1) return `${mb.toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+function cleanDisplayTitle(raw: string): string {
+  return raw
+    .replace(/\.(mp3|m4a|wav|ogg|flac|aac|webm)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function EqualizerBars({ active }: { active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex items-end gap-[2.5px] h-3.5 w-4 shrink-0"
+    >
+      <span
+        className={`w-[3px] rounded-full bg-amber-400 transition-all ${
+          active ? "kirtan-eq-bar h-full" : "h-1.5 opacity-60"
+        }`}
+      />
+      <span
+        className={`w-[3px] rounded-full bg-amber-300 transition-all ${
+          active ? "kirtan-eq-bar h-full" : "h-2.5 opacity-70"
+        }`}
+      />
+      <span
+        className={`w-[3px] rounded-full bg-amber-400 transition-all ${
+          active ? "kirtan-eq-bar h-full" : "h-2 opacity-60"
+        }`}
+      />
+    </span>
+  );
 }
 
 export function KirtanPlayerProvider({
@@ -109,15 +134,20 @@ export function KirtanPlayerProvider({
       } | null;
 
       if (!res.ok || !data) {
-        setTracksError(data?.error || "Unable to load Google Drive Kirtan list.");
+        setTracksError(data?.error || "Unable to load Kirtan library.");
         return;
       }
       setConfigured(data.configured !== false);
       if (Array.isArray(data.tracks)) {
-        setTracks(data.tracks);
+        setTracks(
+          data.tracks.map((t) => ({
+            ...t,
+            title: cleanDisplayTitle(t.title),
+          }))
+        );
       }
     } catch {
-      setTracksError("Network error while loading Kirtan folder.");
+      setTracksError("Network error while syncing Kirtan library.");
     } finally {
       setLoadingTracks(false);
     }
@@ -178,7 +208,7 @@ export function KirtanPlayerProvider({
       .catch(() => {
         setIsPlaying(false);
         setIsBuffering(false);
-        setPlaybackError("Could not stream track from Google Drive.");
+        setPlaybackError("Could not start audio stream.");
       });
   }, []);
 
@@ -308,7 +338,7 @@ export function KirtanPlayerProvider({
     const onError = () => {
       setIsPlaying(false);
       setIsBuffering(false);
-      setPlaybackError("Stream error. Verify file sharing permissions on Google Drive.");
+      setPlaybackError("Stream interrupted. Please try again.");
     };
 
     const onAudioFocus = (e: Event) => {
@@ -439,14 +469,17 @@ function StickyDriveMiniPlayer() {
 
   if (!activeTrack) return null;
 
+  const progressPct =
+    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+
   return (
     <motion.aside
-      initial={{ y: 76, opacity: 0 }}
+      initial={{ y: 84, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 76, opacity: 0 }}
+      exit={{ y: 84, opacity: 0 }}
       transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       style={{ willChange: "transform, opacity" }}
-      aria-label="Google Drive Kirtan Mini-Player"
+      aria-label="Kirtan Now Playing Bar"
       onKeyDown={(e) => {
         const tag = (e.target as HTMLElement | null)?.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -461,30 +494,46 @@ function StickyDriveMiniPlayer() {
           seekTo(Math.max(0, currentTime - 10));
         }
       }}
-      className="dark-surface sanctuary-glass fixed bottom-0 inset-x-0 z-40 border-t border-amber-400/50 bg-[#090d16]/95 text-[#f8fafc] shadow-2xl"
+      className="dark-surface sanctuary-glass fixed bottom-0 inset-x-0 z-40 border-t border-[#D4AF37]/45 bg-gradient-to-r from-[#111914]/96 via-[#161f18]/96 to-[#0d131d]/96 text-[#FAF6EE] shadow-2xl"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
+      {/* Subtle top progress shimmer bar */}
+      <div className="h-[2px] w-full bg-white/10 overflow-hidden">
+        <div
+          style={{
+            transform: `scaleX(${progressPct / 100})`,
+            transformOrigin: "left center",
+          }}
+          className="h-full w-full bg-gradient-to-r from-[#C59B27] via-[#F5C542] to-[#D97706] transition-transform duration-150"
+        />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Track Info & Play/Pause */}
-        <div className="flex items-center gap-3 min-w-0 w-full md:w-auto">
+        <div className="flex items-center gap-3.5 min-w-0 w-full md:w-auto md:max-w-xs lg:max-w-sm">
           <button
             type="button"
             onClick={togglePlayPause}
             aria-pressed={isPlaying}
             aria-label={isPlaying ? "Pause track" : "Play track"}
-            className="sanctuary-interactive h-10 w-10 rounded-xl bg-amber-400 text-[#090d16] font-extrabold text-sm flex items-center justify-center shrink-0 shadow hover:bg-amber-300"
+            className="sanctuary-interactive h-11 w-11 rounded-full bg-gradient-to-br from-[#E5C158] to-[#C59B27] text-[#111914] font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md hover:brightness-105"
           >
             {isBuffering ? "•••" : isPlaying ? "⏸" : "▶"}
           </button>
 
           <div className="min-w-0 flex-1">
-            <p className="text-xs sm:text-sm font-serif font-bold text-white truncate">
-              {activeTrack.title}
-            </p>
-            <p className="text-[11px] text-amber-300/95 truncate">
+            <div className="flex items-center gap-2">
+              <EqualizerBars active={isPlaying && !isBuffering} />
+              <p className="text-sm font-serif font-bold text-[#FAF6EE] truncate">
+                {cleanDisplayTitle(activeTrack.title)}
+              </p>
+            </div>
+            <p className="text-xs text-[#E5C158]/95 truncate mt-0.5">
               {playbackError ? (
-                <span role="alert" className="text-red-300 font-semibold">{playbackError}</span>
+                <span role="alert" className="text-red-300 font-semibold">
+                  {playbackError}
+                </span>
               ) : (
-                `🎙️ ${activeTrack.ragi} • Google Drive Kirtan`
+                activeTrack.ragi
               )}
             </p>
           </div>
@@ -493,7 +542,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={closePlayer}
             aria-label="Close Kirtan mini-player"
-            className="md:hidden px-2.5 py-1 rounded-lg border border-white/25 text-xs text-slate-200 hover:text-white"
+            className="md:hidden h-8 w-8 rounded-full border border-white/20 text-xs text-slate-200 hover:text-white flex items-center justify-center shrink-0"
           >
             ✕
           </button>
@@ -505,12 +554,12 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={prevTrack}
             aria-label="Previous track"
-            className="sanctuary-interactive px-2.5 py-1.5 rounded-lg border border-amber-400/40 text-xs text-amber-200 hover:border-amber-400"
+            className="sanctuary-interactive h-8 w-8 rounded-full border border-[#D4AF37]/35 bg-white/5 text-xs text-amber-200 hover:border-amber-400 flex items-center justify-center shrink-0"
           >
             ⏮
           </button>
 
-          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-11 text-right">
+          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-10 text-right">
             {formatPlayerTime(currentTime)}
           </span>
 
@@ -526,7 +575,7 @@ function StickyDriveMiniPlayer() {
             className="w-full accent-amber-400 cursor-pointer h-1.5"
           />
 
-          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-11">
+          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-10">
             {formatPlayerTime(duration)}
           </span>
 
@@ -534,14 +583,14 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={nextTrack}
             aria-label="Next track"
-            className="sanctuary-interactive px-2.5 py-1.5 rounded-lg border border-amber-400/40 text-xs text-amber-200 hover:border-amber-400"
+            className="sanctuary-interactive h-8 w-8 rounded-full border border-[#D4AF37]/35 bg-white/5 text-xs text-amber-200 hover:border-amber-400 flex items-center justify-center shrink-0"
           >
             ⏭
           </button>
         </div>
 
         {/* Volume & Dismiss */}
-        <div className="hidden md:flex items-center gap-2.5 shrink-0">
+        <div className="hidden md:flex items-center gap-3 shrink-0">
           <span aria-hidden="true" className="text-xs text-amber-300">
             🔊
           </span>
@@ -560,7 +609,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={closePlayer}
             aria-label="Close Kirtan mini-player"
-            className="sanctuary-interactive px-2.5 py-1 rounded-lg border border-white/25 text-xs text-slate-200 hover:text-white hover:border-amber-400"
+            className="sanctuary-interactive h-8 w-8 rounded-full border border-white/20 bg-white/5 text-xs text-slate-200 hover:text-white hover:border-amber-400 flex items-center justify-center"
           >
             ✕
           </button>
@@ -587,7 +636,9 @@ export function GoogleDriveKirtanTracklist() {
   const [selectedRagi, setSelectedRagi] = useState<string>("All");
 
   const ragiOptions = useMemo(() => {
-    const unique = Array.from(new Set(tracks.map((t) => t.ragi))).filter(Boolean);
+    const unique = Array.from(new Set(tracks.map((t) => t.ragi))).filter(
+      Boolean
+    );
     return ["All", ...unique];
   }, [tracks]);
 
@@ -606,24 +657,24 @@ export function GoogleDriveKirtanTracklist() {
 
   return (
     <section
-      aria-label="Google Drive Kirtan Auto-Sync Playlist"
-      className="dark-surface rounded-3xl border border-[#C59B27]/45 bg-[#121C15] text-[#FAF6EE] shadow-2xl overflow-hidden"
+      aria-label="Gurbani Kirtan Streaming Player"
+      className="dark-surface sanctuary-glass rounded-[var(--radius-card)] border border-[#D4AF37]/35 bg-gradient-to-br from-[#17241c] via-[#111a15] to-[#0c121a] text-[#FAF6EE] shadow-2xl overflow-hidden"
     >
-      {/* Header + Filter Controls */}
-      <div className="p-5 sm:p-6 border-b border-[#C59B27]/25 bg-[#1B2A20]/80 space-y-4">
+      {/* Header + Search + Ragi Pills */}
+      <div className="p-5 sm:p-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-[#1d2d22]/85 via-[#18251d]/80 to-[#141c24]/85 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#E5C158]">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Auto-Synced Google Drive Kirtan Folder
+            <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#E5C158]">
+              <EqualizerBars active={isPlaying} />
+              <span>Gurbani Kirtan Radio</span>
             </span>
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#FAF6EE]">
-              Gurbani Kirtan Tracklist
+              Sacred Kirtan Stream
             </h2>
-            <p className="text-xs text-[#CBD5E1]">
+            <p className="text-xs sm:text-sm text-[#D6DFD8]">
               {configured
-                ? `${tracks.length} audio track${tracks.length === 1 ? "" : "s"} synced automatically from Google Drive • Range-scrubbing enabled`
-                : "Connect KIRTAN_DRIVE_FOLDER_ID & GOOGLE_DRIVE_API_KEY to auto-sync your MP3 folder."}
+                ? `${tracks.length} Shabad${tracks.length === 1 ? "" : "s"} ready for uninterrupted listening`
+                : "Connect your Kirtan archive to stream Shabads seamlessly."}
             </p>
           </div>
 
@@ -631,29 +682,29 @@ export function GoogleDriveKirtanTracklist() {
             type="button"
             onClick={() => void refreshTracks()}
             disabled={loadingTracks}
-            aria-label="Refresh Google Drive Kirtan folder"
-            className="sanctuary-interactive px-3 py-1.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-amber-400 disabled:opacity-50"
+            aria-label="Refresh Kirtan library"
+            className="sanctuary-interactive rounded-full border border-[#D4AF37]/45 bg-black/30 px-3.5 py-1.5 text-xs font-bold text-[#E5C158] hover:border-amber-300 disabled:opacity-50"
           >
-            {loadingTracks ? "Syncing..." : "↻ Refresh Folder"}
+            {loadingTracks ? "Syncing…" : "↻ Sync Library"}
           </button>
         </div>
 
-        {/* Search & Ragi Filter */}
+        {/* Search Input */}
         <div className="flex flex-col sm:flex-row gap-2.5">
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter by Ragi or Shabad title..."
-            aria-label="Filter Google Drive Kirtan tracks by Ragi or title"
-            className="dark-input flex-1 rounded-xl border border-[#C59B27]/40 bg-[#090d16]/90 px-3.5 py-2 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:border-amber-400"
+            placeholder="Search Shabad title or Ragi…"
+            aria-label="Search Kirtan tracks by Ragi or Shabad title"
+            className="dark-input flex-1 rounded-2xl border border-[#D4AF37]/30 bg-black/35 px-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:border-amber-400"
           />
-          {ragiOptions.length > 2 && (
+          {ragiOptions.length > 6 && (
             <select
               value={selectedRagi}
               onChange={(e) => setSelectedRagi(e.target.value)}
               aria-label="Filter by Ragi"
-              className="dark-input rounded-xl border border-[#C59B27]/40 bg-[#090d16]/90 px-3 py-2 text-xs font-semibold text-white focus:border-amber-400"
+              className="dark-input rounded-2xl border border-[#D4AF37]/30 bg-black/35 px-3.5 py-2.5 text-xs font-semibold text-white focus:border-amber-400"
             >
               {ragiOptions.map((r) => (
                 <option key={r} value={r}>
@@ -663,67 +714,105 @@ export function GoogleDriveKirtanTracklist() {
             </select>
           )}
         </div>
+
+        {/* Shared-element sliding Ragi filter pills (when 2–6 Ragis) */}
+        {ragiOptions.length > 2 && ragiOptions.length <= 6 && (
+          <div
+            className="flex flex-wrap items-center gap-1.5"
+            role="tablist"
+            aria-label="Filter Kirtan by Ragi"
+          >
+            {ragiOptions.map((ragi) => {
+              const active = selectedRagi === ragi;
+              return (
+                <button
+                  key={ragi}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setSelectedRagi(ragi)}
+                  className={`relative rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    active
+                      ? "text-[#111914]"
+                      : "text-[#D6DFD8] hover:text-white"
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="kirtan-ragi-active-pill"
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 32,
+                      }}
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-[#E5C158] to-[#C59B27]"
+                    />
+                  )}
+                  <span className="relative z-10">
+                    {ragi === "All" ? "All Ragis" : ragi}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Tracklist Body (min-height prevents CLS during search/filter updates) */}
-      <div className="divide-y divide-white/10 min-h-[14rem] max-h-[32rem] overflow-y-auto">
+      {/* Streaming Tracklist Body (stable min-height prevents CLS) */}
+      <div className="divide-y divide-white/[0.07] min-h-[14rem] max-h-[32rem] overflow-y-auto">
         {loadingTracks && tracks.length === 0 ? (
           <div className="p-5 space-y-3" aria-busy="true">
             {[1, 2, 3, 4].map((row) => (
               <div
                 key={row}
-                className="flex items-center justify-between gap-3 animate-pulse py-1"
+                className="flex items-center justify-between gap-3 animate-pulse py-1.5"
               >
-                <div className="flex items-center gap-3 flex-1">
-                  <span className="h-9 w-9 rounded-xl bg-white/10 shrink-0" />
+                <div className="flex items-center gap-3.5 flex-1">
+                  <span className="h-10 w-10 rounded-full bg-white/10 shrink-0" />
                   <div className="space-y-1.5 flex-1">
                     <div className="h-3.5 w-2/3 rounded bg-white/15" />
                     <div className="h-2.5 w-1/3 rounded bg-white/10" />
                   </div>
                 </div>
-                <span className="h-7 w-16 rounded-lg bg-amber-400/20" />
+                <span className="h-8 w-16 rounded-full bg-amber-400/15" />
               </div>
             ))}
           </div>
         ) : tracksError ? (
           <div className="p-6 text-center space-y-2 text-xs text-amber-200">
-            <p className="font-bold">Could not load Google Drive folder</p>
+            <p className="font-bold">Could not load Kirtan stream</p>
             <p className="text-slate-300">{tracksError}</p>
           </div>
         ) : !configured ? (
           <div className="p-6 text-center space-y-2 text-xs text-slate-300">
             <p className="font-serif text-sm font-bold text-amber-300">
-              Google Drive Folder Ready to Connect
+              Kirtan Archive Ready to Connect
             </p>
             <p className="max-w-md mx-auto leading-relaxed">
-              Add <code className="text-amber-200">KIRTAN_DRIVE_FOLDER_ID</code> and{" "}
-              <code className="text-amber-200">GOOGLE_DRIVE_API_KEY</code> in your
-              environment settings, then drop MP3s (e.g.{" "}
-              <code className="text-amber-200">
-                Bhai.Avtar.Singh--Asa.Di.Vaar.Part.01.mp3
-              </code>
-              ) into the public folder to auto-sync here.
+              Add <code className="text-amber-200">KIRTAN_DRIVE_FOLDER_ID</code>{" "}
+              and <code className="text-amber-200">GOOGLE_DRIVE_API_KEY</code>{" "}
+              in your environment settings to auto-sync your Kirtan collection.
             </p>
           </div>
         ) : filteredTracks.length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-300">
             {tracks.length === 0
-              ? "No audio files found in the Google Drive folder yet. Drop an MP3 into the folder and click Refresh."
-              : "No tracks match your search filter."}
+              ? "No Shabads are synced in this library yet. Click Sync Library after adding tracks."
+              : "No Shabads match your search filter."}
           </div>
         ) : (
           filteredTracks.map((track, idx) => {
             const isCurrent = activeTrack?.id === track.id;
             const isActivePlaying = isCurrent && isPlaying;
-            const sizeLabel = formatBytes(track.size);
+            const displayTitle = cleanDisplayTitle(track.title);
 
             return (
               <div
                 key={track.id}
-                className={`tracklist-row group px-4 sm:px-5 py-3 flex items-center justify-between gap-3 transition-colors duration-150 ${
+                className={`tracklist-row group px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 transition-all duration-150 ${
                   isCurrent
-                    ? "bg-[#1B2A20] border-l-4 border-l-amber-400"
-                    : "hover:bg-white/[0.04]"
+                    ? "bg-gradient-to-r from-[#C59B27]/18 via-[#1B2A20]/90 to-transparent border-l-4 border-l-[#E5C158]"
+                    : "hover:bg-white/[0.05] hover:-translate-y-[1px]"
                 }`}
               >
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -733,62 +822,58 @@ export function GoogleDriveKirtanTracklist() {
                     aria-pressed={isActivePlaying}
                     aria-label={
                       isActivePlaying
-                        ? `Pause ${track.title} by ${track.ragi}`
-                        : `Play ${track.title} by ${track.ragi}`
+                        ? `Pause ${displayTitle} by ${track.ragi}`
+                        : `Play ${displayTitle} by ${track.ragi}`
                     }
-                    className={`sanctuary-interactive h-9 w-9 rounded-xl border flex items-center justify-center shrink-0 text-xs font-extrabold ${
+                    className={`sanctuary-interactive h-10 w-10 rounded-full border flex items-center justify-center shrink-0 text-xs font-extrabold transition ${
                       isActivePlaying
-                        ? "bg-amber-400 text-[#090d16] border-amber-300"
-                        : "bg-black/40 border-[#C59B27]/45 text-amber-300 hover:bg-amber-400 hover:text-[#090d16]"
+                        ? "bg-gradient-to-br from-[#E5C158] to-[#C59B27] text-[#111914] border-amber-300 shadow-md"
+                        : "bg-black/35 border-[#D4AF37]/40 text-amber-300 group-hover:bg-amber-400 group-hover:text-[#111914] group-hover:border-amber-300"
                     }`}
                   >
-                    {isCurrent && isBuffering ? (
-                      "•••"
-                    ) : isActivePlaying ? (
-                      "⏸"
-                    ) : (
-                      "▶"
-                    )}
+                    {isCurrent && isBuffering
+                      ? "•••"
+                      : isActivePlaying
+                        ? "⏸"
+                        : "▶"}
                   </button>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-400 shrink-0">
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
+                    <div className="flex items-center gap-2.5">
+                      {isCurrent ? (
+                        <EqualizerBars active={isActivePlaying && !isBuffering} />
+                      ) : (
+                        <span className="text-[11px] font-mono tabular-nums text-slate-400 shrink-0 w-4">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => playTrack(track)}
                         className={`text-left font-serif text-sm sm:text-base font-bold truncate hover:underline ${
-                          isCurrent ? "text-amber-300" : "text-[#FAF6EE]"
+                          isCurrent ? "text-[#F5D36C]" : "text-[#FAF6EE]"
                         }`}
                       >
-                        {track.title}
+                        {displayTitle}
                       </button>
                     </div>
-                    <p className="text-xs text-[#CBD5E1] truncate mt-0.5">
-                      <span aria-hidden="true">🎙️ </span>
+                    <p className="text-xs text-[#CBD5E1] truncate mt-0.5 pl-6.5">
                       {track.ragi}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
-                  {sizeLabel && (
-                    <span className="hidden sm:inline text-[11px] font-mono text-slate-400">
-                      {sizeLabel}
-                    </span>
-                  )}
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => playTrack(track)}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition ${
+                    className={`sanctuary-interactive rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${
                       isActivePlaying
-                        ? "bg-amber-400 text-[#090d16]"
-                        : "border border-[#C59B27]/45 bg-black/35 text-[#E5C158] hover:border-amber-400"
+                        ? "bg-gradient-to-r from-[#E5C158] to-[#C59B27] text-[#111914]"
+                        : "border border-[#D4AF37]/40 bg-black/30 text-[#E5C158] hover:border-amber-300 hover:bg-amber-400/15"
                     }`}
                   >
-                    {isActivePlaying ? "Pause" : "Play"}
+                    {isActivePlaying ? "Playing" : isCurrent ? "Resume" : "Play"}
                   </button>
                 </div>
               </div>

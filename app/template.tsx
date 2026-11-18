@@ -25,28 +25,24 @@ interface RouteAnimationPreset {
 
 const ROUTE_ANIMATION_MAP: Record<CmsPageTransition, RouteAnimationPreset> = {
   fade: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    duration: 0.28,
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
+    duration: 0.24,
   },
   "slide-up": {
     initial: { y: 12, opacity: 0 },
     animate: { y: 0, opacity: 1 },
-    duration: 0.32,
+    duration: 0.28,
   },
   "scale-zoom": {
     initial: { scale: 0.985, opacity: 0 },
     animate: { scale: 1, opacity: 1 },
-    duration: 0.32,
+    duration: 0.28,
   },
   "blur-reveal": {
-    initial: { filter: "blur(6px)", opacity: 0 },
-    animate: {
-      filter: "blur(0px)",
-      opacity: 1,
-      transitionEnd: { filter: "none" },
-    },
-    duration: 0.34,
+    initial: { scale: 0.99, y: 8, opacity: 0 },
+    animate: { scale: 1, y: 0, opacity: 1 },
+    duration: 0.28,
   },
   none: {
     initial: false,

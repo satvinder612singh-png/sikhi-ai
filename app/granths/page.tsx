@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useAuth } from "@/components/auth-provider";
@@ -1192,39 +1193,65 @@ export default function GranthsAndKirtanPage() {
                     />
                   </div>
 
-                  {/* Tab Switcher */}
-                  <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] w-fit">
+                  {/* Tab Switcher with Shared Sliding Indicator */}
+                  <div
+                    role="tablist"
+                    aria-label="Granths and Kirtan sections"
+                    className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border border-[#C59B27]/40 bg-[#121C15] w-fit"
+                  >
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={activeTab === "kirtan"}
                       onClick={() => setActiveTab("kirtan")}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                      className={`relative px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${
                         activeTab === "kirtan"
-                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
+                          ? "text-[#18181B]"
                           : "text-[#CBD5E1] hover:text-white"
                       }`}
                     >
-                      <GodModeText
-                        id="granths-tab-kirtan"
-                        pageKey="granths"
-                        tag="span"
-                        defaultText="੧ · Kirtan Playlist & Raags"
-                      />
+                      {activeTab === "kirtan" && (
+                        <motion.span
+                          layoutId="granths-main-tab-pill"
+                          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] shadow-sm"
+                        />
+                      )}
+                      <span className="relative z-10">
+                        <GodModeText
+                          id="granths-tab-kirtan"
+                          pageKey="granths"
+                          tag="span"
+                          defaultText="੧ · Kirtan Playlist & Raags"
+                        />
+                      </span>
                     </button>
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={activeTab === "granths"}
                       onClick={() => setActiveTab("granths")}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                      className={`relative px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${
                         activeTab === "granths"
-                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] shadow-sm"
+                          ? "text-[#18181B]"
                           : "text-[#CBD5E1] hover:text-white"
                       }`}
                     >
-                      <GodModeText
-                        id="granths-tab-bookreader"
-                        pageKey="granths"
-                        tag="span"
-                        defaultText="੨ · Granth BookReader"
-                      />
+                      {activeTab === "granths" && (
+                        <motion.span
+                          layoutId="granths-main-tab-pill"
+                          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] shadow-sm"
+                        />
+                      )}
+                      <span className="relative z-10">
+                        <GodModeText
+                          id="granths-tab-bookreader"
+                          pageKey="granths"
+                          tag="span"
+                          defaultText="੨ · Granth BookReader"
+                        />
+                      </span>
                     </button>
                     <Link
                       href="/live-kirtan"
@@ -1325,10 +1352,18 @@ export default function GranthsAndKirtanPage() {
         })()}
 
         {/* ================================================================
-            TAB A: PURATAN KIRTAN & RAAG DARBAR PLAYER
+            TAB A & TAB B WITH SMOOTH GPU TRANSITION
         ================================================================ */}
+        <AnimatePresence mode="wait">
         {activeTab === "kirtan" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+          <motion.div
+            key="granths-tab-panel-kirtan"
+            initial={{ opacity: 0, x: -16, scale: 0.99 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 16, scale: 0.99 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full"
+          >
             {/* Left Column: Live 24/7 Sri Harmandir Sahib Broadcast & Active Player Card */}
             <SlidePresentationCanvas
               id="granths-audio-player-canvas"
@@ -1493,23 +1528,23 @@ export default function GranthsAndKirtanPage() {
               {/* Raag Musicology & Tanti Saaj Metadata */}
               <div className="space-y-3 text-xs sm:text-sm">
                 <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#E5C158]">
                     Tanti Saaj &amp; Pehar (Time of Day)
                   </p>
-                  <p className="font-semibold mt-1">{currentTrack.tantiSaaj}</p>
-                  <p className="text-xs text-[#4A554E] mt-0.5">
+                  <p className="font-semibold mt-1 text-[#FAF6EE]">{currentTrack.tantiSaaj}</p>
+                  <p className="text-xs text-[#CBD5E1] mt-0.5">
                     Prescribed Pehar: {currentTrack.timeOfDay}
                   </p>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#E5C158]">
                     Raag Musicology &amp; Historical Lineage
                   </p>
-                  <p className="text-[#4A554E] leading-relaxed">
+                  <p className="text-[#E2E8F0] leading-relaxed">
                     {currentTrack.raagNotes}
                   </p>
-                  <p className="text-[#4A554E] leading-relaxed pt-1 border-t border-[#C59B27]/20">
+                  <p className="text-[#CBD5E1] leading-relaxed pt-1 border-t border-[#C59B27]/20">
                     {currentTrack.historicalContext}
                   </p>
                 </div>
@@ -1519,15 +1554,15 @@ export default function GranthsAndKirtanPage() {
                     href={currentTrack.directArchiveMp3Url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#C59B27] hover:underline"
+                    className="text-xs font-bold text-[#E5C158] hover:underline"
                   >
-                    Download Original MP3 ↗
+                    Listen Full Archive ↗
                   </a>
                   <a
                     href={currentTrack.externalArchiveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#4A554E] hover:underline"
+                    className="text-xs font-bold text-[#CBD5E1] hover:text-white hover:underline"
                   >
                     View on Archive.org ↗
                   </a>
@@ -1856,7 +1891,10 @@ export default function GranthsAndKirtanPage() {
                     const ov = cms.topicEdits?.[track.id] as
                       | InlineTopicEditData
                       | undefined;
-                    const displayTitle = ov?.title || track.title;
+                    const displayTitle = (ov?.title || track.title).replace(
+                      /\.(mp3|m4a|wav|ogg|flac|aac)$/i,
+                      ""
+                    );
                     const displayGurmukhi = ov?.gurmukhi || track.gurmukhiTitle;
                     const displayRaag = ov?.badge || track.raag;
                     const displayRagi = ov?.subtitle || track.ragi;
@@ -2142,22 +2180,36 @@ export default function GranthsAndKirtanPage() {
                   </div>
                 </GodModeBox>
 
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter 31 Ragas by Pehar">
                     {(["All", "Amrit Vela", "Morning", "Afternoon", "Evening", "Night"] as const).map(
-                      (pehar) => (
-                        <button
-                          key={pehar}
-                          type="button"
-                          onClick={() => setRaagFilterPehar(pehar)}
-                          className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
-                            raagFilterPehar === pehar
-                              ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                              : "bg-[#121C15] border border-[#C59B27]/35 text-[#E2E8F0] hover:border-[#C59B27]"
-                          }`}
-                        >
-                          {pehar === "All" ? "All 31 Ragas" : pehar}
-                        </button>
-                      )
+                      (pehar) => {
+                        const active = raagFilterPehar === pehar;
+                        return (
+                          <button
+                            key={pehar}
+                            type="button"
+                            role="tab"
+                            aria-selected={active}
+                            onClick={() => setRaagFilterPehar(pehar)}
+                            className={`relative px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                              active
+                                ? "text-[#18181B]"
+                                : "bg-[#121C15] border border-[#C59B27]/35 text-[#E2E8F0] hover:border-[#C59B27]"
+                            }`}
+                          >
+                            {active && (
+                              <motion.span
+                                layoutId="granths-pehar-pill"
+                                transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                                className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706]"
+                              />
+                            )}
+                            <span className="relative z-10">
+                              {pehar === "All" ? "All 31 Ragas" : pehar}
+                            </span>
+                          </button>
+                        );
+                      }
                     )}
                   </div>
 
@@ -2211,42 +2263,63 @@ export default function GranthsAndKirtanPage() {
               </div>
             </div>
             </SlidePresentationCanvas>
-          </div>
+          </motion.div>
         )}
 
         {/* ================================================================
             TAB B: INTERACTIVE GRANTH BOOKREADER & CHAPTER VIEWER
         ================================================================ */}
         {activeTab === "granths" && (
-          <div className="space-y-8">
+          <motion.div
+            key="granths-tab-panel-books"
+            initial={{ opacity: 0, x: 16, scale: 0.99 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -16, scale: 0.99 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-8"
+          >
             {/* Search & Category Filter Bar */}
             <GodModeBox id="granths-books-search-box" pageKey="granths" label="Granths Search & Filter Bar">
-            <div className="p-6 rounded-2xl bg-[#1B2A20] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex flex-wrap gap-2">
+            <div className="dark-surface p-6 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter Granths by category">
                 {[
                   "All",
                   "Scriptural Teeka & Manuscript",
                   "Historical Chronicle",
                   "Gurmat Musicology & Rehit",
-                ].map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setGranthCategory(cat)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
-                      granthCategory === cat
-                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] font-bold"
-                        : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E] hover:border-[#C59B27]"
-                    }`}
-                  >
-                    <GodModeText
-                      id={`granths-cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                      pageKey="granths"
-                      tag="span"
-                      defaultText={cat}
-                    />
-                  </button>
-                ))}
+                ].map((cat) => {
+                  const active = granthCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setGranthCategory(cat)}
+                      className={`relative px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                        active
+                          ? "text-[#18181B] font-bold"
+                          : "bg-[#121C15] border border-[#C59B27]/35 text-[#E2E8F0] hover:border-[#C59B27]"
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="granths-cat-pill"
+                          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706]"
+                        />
+                      )}
+                      <span className="relative z-10">
+                        <GodModeText
+                          id={`granths-cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                          pageKey="granths"
+                          tag="span"
+                          defaultText={cat}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="w-full md:w-80">
@@ -2380,8 +2453,9 @@ export default function GranthsAndKirtanPage() {
               })}
             </div>
             </SlidePresentationCanvas>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* ================================================================
             DUAL-MODE BUILT-IN GRANTH READER EXTENSION MODAL
