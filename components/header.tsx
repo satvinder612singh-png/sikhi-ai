@@ -61,7 +61,7 @@ const LINKS: { href: string; title: string; sub?: string }[] = [
   { href: "/nitnem", title: "Daily Bani" },
   { href: "/granths", title: "Granths & Kirtan" },
   { href: "/matriarchs", title: "Sikh Women" },
-  { href: "/games", title: "Vidyala" },
+  { href: "/games", title: "Games" },
 ];
 
 const focusRing =
