@@ -494,7 +494,7 @@ function NitnemReaderContent() {
       >
       <section
         id="topic-nitnem-hero"
-        className={`border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)] scroll-mt-28 ${
+        className={`sanctuary-hero-glow border-b border-[#C59B27]/40 bg-[var(--bg-surface)] text-[var(--text-primary)] scroll-mt-28 ${
           liveEditMode ? "overflow-visible" : ""
         }`}
       >

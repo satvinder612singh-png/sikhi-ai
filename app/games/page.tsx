@@ -405,21 +405,21 @@ function GamesHubContent() {
                 transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-10"
               >
-                <header className="max-w-2xl space-y-3">
+                <header className="sanctuary-hero-glow max-w-2xl space-y-3">
                   <p
                     style={{
                       color: "var(--accent-text, var(--accent-primary))",
                     }}
-                    className="text-xs font-bold uppercase tracking-[0.22em]"
+                    className="relative z-10 text-xs font-bold uppercase tracking-[0.22em]"
                   >
                     Adaptive Self-Paced Learning
                   </p>
-                  <h1 className="font-serif text-4xl sm:text-5xl font-bold tracking-tight">
+                  <h1 className="relative z-10 font-serif text-4xl sm:text-5xl font-bold tracking-tight">
                     Sikhi Learning Games
                   </h1>
                   <p
                     style={{ color: "var(--theme-text-muted)" }}
-                    className="text-base sm:text-lg leading-relaxed"
+                    className="relative z-10 text-base sm:text-lg leading-relaxed"
                   >
                     A calm, distraction-free space with AI-adapted rounds for
                     Gurmukhi letters, Sikh history, and core Gurmat concepts at
@@ -428,15 +428,23 @@ function GamesHubContent() {
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-                  {GAMES_CATALOG.map((game) => (
-                    <article
+                  {GAMES_CATALOG.map((game, idx) => (
+                    <motion.article
                       key={game.id}
+                      initial={{ opacity: 0, y: 14 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{
+                        duration: 0.28,
+                        delay: idx * 0.06,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
                       style={{
                         backgroundColor: "var(--bg-surface)",
                         borderColor: "var(--border-subtle)",
                         color: "var(--text-primary)",
                       }}
-                      className="sanctuary-glass h-full rounded-[var(--radius-card)] border p-6 sm:p-7 flex flex-col justify-between gap-6"
+                      className="sanctuary-glass sanctuary-interactive h-full rounded-[var(--radius-card)] border p-6 sm:p-7 flex flex-col justify-between gap-6"
                     >
                       <div className="space-y-3">
                         <h2 className="font-serif text-2xl font-bold leading-snug">
@@ -459,7 +467,7 @@ function GamesHubContent() {
                           Read Rules &amp; Play
                         </button>
                       </div>
-                    </article>
+                    </motion.article>
                   ))}
                 </div>
               </motion.div>

@@ -575,7 +575,8 @@ export default function MatriarchsPage() {
               pageKey="matriarchs"
               tag="span"
               defaultText="Search by name, battle, or era..."
-              className="block text-[10px] font-bold uppercase tracking-wider opacity-65 mb-1"
+              style={{ color: "var(--theme-text-muted)" }}
+              className="block text-[10px] font-bold uppercase tracking-wider mb-1"
             />
             <input
               type="search"

@@ -1090,24 +1090,45 @@ h1, h2, h3 {
 
 .sanctuary-interactive {
   transition: transform 200ms var(--ease-out-expo),
-    box-shadow 200ms var(--ease-out-expo),
+    box-shadow 220ms var(--ease-out-expo),
     border-color 180ms ease,
     background-color 180ms ease;
   will-change: transform;
 }
 
 .sanctuary-interactive:hover {
-  transform: translate3d(0, -1.5px, 0);
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 12px 30px -12px rgba(197, 155, 39, 0.28),
+    0 0 0 1px rgba(197, 155, 39, 0.35);
 }
 
 .sanctuary-interactive:active {
-  transform: translate3d(0, 0, 0) scale(0.99);
+  transform: translate3d(0, 0, 0) scale(0.988);
+}
+
+.sanctuary-hero-glow {
+  position: relative;
+}
+
+.sanctuary-hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1.5rem -1rem auto -1rem;
+  height: 16rem;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 62% 55% at 50% 25%,
+    rgba(212, 175, 55, 0.16),
+    rgba(217, 119, 6, 0.06) 52%,
+    transparent 76%
+  );
+  z-index: 0;
 }
 
 /* ============================================================================
    7. SUNLIT IVORY & LIGHT-THEME WCAG AA+ SECONDARY TEXT CONTRAST GUARD
-   Darkens faint light-blue / pale slate secondary copy on light surfaces
-   while preserving intentional light text inside explicit dark surfaces.
+   Darkens faint light-blue / pale slate / stone secondary copy on light surfaces
+   while preserving crisp light text inside explicit dark surfaces.
 ============================================================================ */
 :root:not([data-theme]) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
 html[data-theme="ivory"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
@@ -1115,10 +1136,10 @@ html[data-theme="marble"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .
   color: #1E3A5F;
 }
 
-:root:not([data-theme]) :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
-html[data-theme="ivory"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
-html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
-  color: #3A352A;
+:root:not([data-theme]) :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
+html[data-theme="ivory"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
+html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
+  color: #44403C;
 }
 
 /* Restore crisp light text ONLY inside genuinely dark cards, modals, and studios */
@@ -1127,11 +1148,11 @@ html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-40
 }
 
 :where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-slate-300, .text-slate-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
-  color: #CBD5E1;
+  color: #E4E4E7;
 }
 
 :where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) .text-zinc-400 {
-  color: #A1A1AA;
+  color: #D4D4D8;
 }
 
 .tracklist-row {

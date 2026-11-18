@@ -1875,8 +1875,9 @@ export default function GranthsAndKirtanPage() {
                   id="granths-kirtan-search-placeholder"
                   pageKey="granths"
                   tag="span"
-                  defaultText="Search live broadcast or your loaded local .mp3 files..."
-                  className="block text-[10px] font-bold uppercase tracking-wider opacity-65"
+                  defaultText="Search live broadcast or your loaded local audio files..."
+                  style={{ color: "var(--theme-text-muted)" }}
+                  className="block text-[10px] font-bold uppercase tracking-wider"
                 />
                 <input
                   type="search"
@@ -2181,7 +2182,8 @@ export default function GranthsAndKirtanPage() {
                         pageKey="granths"
                         tag="span"
                         defaultText="Search Raag, Guru, or Ras..."
-                        className="block text-[10px] font-bold uppercase tracking-wider opacity-65 mb-1"
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="block text-[10px] font-bold uppercase tracking-wider mb-1"
                       />
                       <input
                         type="search"
@@ -2343,7 +2345,8 @@ export default function GranthsAndKirtanPage() {
                   pageKey="granths"
                   tag="span"
                   defaultText="Search Granth, author, or topic..."
-                  className="block text-[10px] font-bold uppercase tracking-wider opacity-65 mb-1"
+                  style={{ color: "var(--theme-text-muted)" }}
+                  className="block text-[10px] font-bold uppercase tracking-wider mb-1"
                 />
                 <input
                   type="search"

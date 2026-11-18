@@ -2218,7 +2218,7 @@ function SangatHubContent() {
               : undefined,
             color: heroInline?.textColor || undefined,
           }}
-          className={`relative ${
+          className={`sanctuary-hero-glow relative ${
             liveEditMode ? "overflow-visible" : "overflow-hidden"
           } rounded-3xl border p-6 sm:p-8 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-6 ${widthCls}`}
         >
@@ -3138,7 +3138,10 @@ function SangatHubContent() {
                   const list = vichaarMap[key] || [];
                   if (list.length === 0) {
                     return (
-                      <p className="text-xs opacity-65">
+                      <p
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-xs font-medium"
+                      >
                         No Vichaar comments yet. Start the discussion above.
                       </p>
                     );
@@ -3148,14 +3151,19 @@ function SangatHubContent() {
                       {list.map((c) => (
                         <div
                           key={c.id}
-                          className="rounded-xl border border-[#C59B27]/20 bg-black/5 dark:bg-white/5 px-3.5 py-2.5 flex items-start justify-between gap-3"
+                          className="rounded-xl border border-[#C59B27]/25 bg-black/5 dark:bg-white/5 px-3.5 py-2.5 flex items-start justify-between gap-3"
                         >
                           <div className="space-y-0.5 min-w-0">
                             <p className="text-xs font-bold">
                               {c.authorName}{" "}
-                              <span className="font-normal opacity-60">• {c.createdAt}</span>
+                              <span
+                                style={{ color: "var(--theme-text-muted)" }}
+                                className="font-medium"
+                              >
+                                • {c.createdAt}
+                              </span>
                             </p>
-                            <p className="text-xs sm:text-sm opacity-90">{c.body}</p>
+                            <p className="text-xs sm:text-sm leading-relaxed">{c.body}</p>
                           </div>
                           {isStealthAdmin && (
                             <button

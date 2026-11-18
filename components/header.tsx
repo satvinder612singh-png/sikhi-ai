@@ -373,11 +373,11 @@ export function Header({ solid = false }: { solid?: boolean }) {
               type="button"
               onClick={() =>
                 window.dispatchEvent(
-                  new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "map" } })
+                  new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "news" } })
                 )
               }
-              title="Open Topic Map & Hourly Sikhi News"
-              className={`whitespace-nowrap rounded-full border border-[#C59B27]/50 bg-[#C59B27]/10 px-2.5 py-1 text-[11px] font-bold text-[#9A7418] dark:text-[#E5C158] hover:border-[#C59B27] transition ${focusRing}`}
+              title="Open Sikh News Editorial Slides & Topic Explorer"
+              className={`sanctuary-interactive whitespace-nowrap rounded-full border border-[#C59B27]/65 bg-[#C59B27]/15 px-3 py-1 text-[11px] font-extrabold text-[#785106] dark:text-[#FDE68A] hover:border-[#C59B27] hover:bg-[#C59B27]/25 transition ${focusRing}`}
             >
               🧭 Explore &amp; News
             </button>
@@ -452,13 +452,13 @@ export function Header({ solid = false }: { solid?: boolean }) {
             type="button"
             onClick={() =>
               window.dispatchEvent(
-                new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "map" } })
+                new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "news" } })
               )
             }
-            aria-label="Open Topic Explorer and Hourly Sikhi News"
-            className={`whitespace-nowrap rounded-full border border-[#C59B27]/50 bg-[#C59B27]/10 px-2.5 py-1 text-[10px] font-bold text-[#9A7418] dark:text-[#E5C158] ${focusRing}`}
+            aria-label="Open Sikh News Briefing Slides and Topic Explorer"
+            className={`sanctuary-interactive whitespace-nowrap rounded-full border border-[#C59B27]/65 bg-[#C59B27]/15 px-2.5 py-1 text-[10px] font-extrabold text-[#785106] dark:text-[#FDE68A] ${focusRing}`}
           >
-            🧭 Explore
+            🧭 News
           </button>
           {isStealthAdmin && (
             <button

@@ -78,7 +78,7 @@ export function AmbientBackground() {
     <div
       aria-hidden="true"
       className="ambient-layer pointer-events-none fixed inset-0 z-0 overflow-hidden"
-      style={{ opacity: "var(--ambient-opacity, 0.14)" }}
+      style={{ opacity: "var(--ambient-opacity, 0.2)" }}
     >
       {/* Soft parallax light orbs */}
       {ORBS.map((o, i) => (
@@ -94,7 +94,7 @@ export function AmbientBackground() {
             marginLeft: -o.size / 2,
             marginTop: -o.size / 2,
             background: `radial-gradient(circle, ${o.color} 0%, transparent 68%)`,
-            opacity: 0.55,
+            opacity: 0.62,
           }}
         />
       ))}
@@ -125,7 +125,7 @@ export function AmbientBackground() {
         </div>
       ))}
 
-      {/* Darbar arch + Phulkari lattice watermarks */}
+      {/* Crisp Darbar arch, celestial meridian & Phulkari lattice watermarks */}
       <div ref={register(0.05)} className="ambient-gpu absolute inset-x-0 top-0">
         <svg
           viewBox="0 0 1200 800"
@@ -133,14 +133,20 @@ export function AmbientBackground() {
           className="w-full h-[140vh]"
           fill="none"
           stroke="var(--accent-primary)"
-          strokeWidth="1.4"
+          strokeWidth="1.75"
         >
-          <path d="M120 780V420a110 110 0 0 1 220 0v360M150 780V425a80 80 0 0 1 160 0v355" />
-          <path d="M860 780V380a140 140 0 0 1 280 0v400M892 780V385a108 108 0 0 1 216 0v395" />
-          <g opacity="0.7">
-            <path d="M520 120l40 40-40 40-40-40zM520 140l20 20-20 20-20-20z" />
-            <path d="M600 200l30 30-30 30-30-30zM440 220l30 30-30 30-30-30z" />
-            <circle cx="520" cy="160" r="6" />
+          <path d="M120 780V420a110 110 0 0 1 220 0v360M150 780V425a80 80 0 0 1 160 0v355" strokeOpacity="0.85" />
+          <path d="M860 780V380a140 140 0 0 1 280 0v400M892 780V385a108 108 0 0 1 216 0v395" strokeOpacity="0.85" />
+          {/* Subtle golden meridian compass ring */}
+          <g strokeOpacity="0.65">
+            <circle cx="600" cy="240" r="148" strokeDasharray="6 8" />
+            <ellipse cx="600" cy="240" rx="72" ry="148" />
+            <ellipse cx="600" cy="240" rx="148" ry="48" />
+          </g>
+          <g opacity="0.9">
+            <path d="M600 72l36 36-36 36-36-36zM600 90l18 18-18 18-18-18z" />
+            <path d="M680 180l28 28-28 28-28-28zM520 180l28 28-28 28-28-28z" />
+            <circle cx="600" cy="108" r="6" fill="var(--accent-primary)" fillOpacity="0.45" />
           </g>
         </svg>
       </div>
