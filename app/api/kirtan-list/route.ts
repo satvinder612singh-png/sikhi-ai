@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-export const revalidate = 60;
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 interface DriveFileItem {
   id?: string;
@@ -77,7 +78,12 @@ export async function GET() {
         message:
           "Set KIRTAN_DRIVE_FOLDER_ID and GOOGLE_DRIVE_API_KEY in environment variables to auto-sync your Google Drive Kirtan folder.",
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
     );
   }
 

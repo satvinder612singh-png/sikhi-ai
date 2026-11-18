@@ -97,7 +97,7 @@ export function KirtanPlayerProvider({
   children: React.ReactNode;
 }) {
   const [tracks, setTracks] = useState<DriveKirtanTrack[]>([]);
-  const [loadingTracks, setLoadingTracks] = useState(false);
+  const [loadingTracks, setLoadingTracks] = useState(true);
   const [configured, setConfigured] = useState(true);
   const [tracksError, setTracksError] = useState<string | null>(null);
 
@@ -125,7 +125,7 @@ export function KirtanPlayerProvider({
     setLoadingTracks(true);
     setTracksError(null);
     try {
-      const res = await fetch("/api/kirtan-list");
+      const res = await fetch("/api/kirtan-list", { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
         configured?: boolean;
@@ -134,10 +134,16 @@ export function KirtanPlayerProvider({
       } | null;
 
       if (!res.ok || !data) {
+        setConfigured(true);
         setTracksError(data?.error || "Unable to load Kirtan library.");
         return;
       }
-      setConfigured(data.configured !== false);
+      if (data.configured === false) {
+        setConfigured(false);
+        setTracks([]);
+        return;
+      }
+      setConfigured(true);
       if (Array.isArray(data.tracks)) {
         setTracks(
           data.tracks.map((t) => ({
@@ -147,6 +153,7 @@ export function KirtanPlayerProvider({
         );
       }
     } catch {
+      setConfigured(true);
       setTracksError("Network error while syncing Kirtan library.");
     } finally {
       setLoadingTracks(false);
@@ -494,7 +501,7 @@ function StickyDriveMiniPlayer() {
           seekTo(Math.max(0, currentTime - 10));
         }
       }}
-      className="dark-surface sanctuary-glass fixed bottom-0 inset-x-0 z-40 border-t border-[#D4AF37]/45 bg-gradient-to-r from-[#111914]/96 via-[#161f18]/96 to-[#0d131d]/96 text-[#FAF6EE] shadow-2xl"
+      className="dark-surface sanctuary-glass fixed bottom-0 inset-x-0 z-40 border-t border-amber-400/45 bg-gradient-to-r from-[#111914]/96 via-[#161f18]/96 to-[#0d131d]/96 text-amber-50 shadow-2xl"
     >
       {/* Subtle top progress shimmer bar */}
       <div className="h-[2px] w-full bg-white/10 overflow-hidden">
@@ -503,7 +510,7 @@ function StickyDriveMiniPlayer() {
             transform: `scaleX(${progressPct / 100})`,
             transformOrigin: "left center",
           }}
-          className="h-full w-full bg-gradient-to-r from-[#C59B27] via-[#F5C542] to-[#D97706] transition-transform duration-150"
+          className="h-full w-full bg-gradient-to-r from-amber-500 via-amber-300 to-amber-500 transition-transform duration-150"
         />
       </div>
 
@@ -515,7 +522,7 @@ function StickyDriveMiniPlayer() {
             onClick={togglePlayPause}
             aria-pressed={isPlaying}
             aria-label={isPlaying ? "Pause track" : "Play track"}
-            className="sanctuary-interactive h-11 w-11 rounded-full bg-gradient-to-br from-[#E5C158] to-[#C59B27] text-[#111914] font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md hover:brightness-105"
+            className="sanctuary-interactive h-11 w-11 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-zinc-950 font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md hover:brightness-105"
           >
             {isBuffering ? "•••" : isPlaying ? "⏸" : "▶"}
           </button>
@@ -523,11 +530,11 @@ function StickyDriveMiniPlayer() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <EqualizerBars active={isPlaying && !isBuffering} />
-              <p className="text-sm font-serif font-bold text-[#FAF6EE] truncate">
+              <p className="text-sm font-serif font-bold text-white truncate">
                 {cleanDisplayTitle(activeTrack.title)}
               </p>
             </div>
-            <p className="text-xs text-[#E5C158]/95 truncate mt-0.5">
+            <p className="text-xs text-amber-200/90 truncate mt-0.5">
               {playbackError ? (
                 <span role="alert" className="text-red-300 font-semibold">
                   {playbackError}
@@ -542,7 +549,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={closePlayer}
             aria-label="Close Kirtan mini-player"
-            className="md:hidden h-8 w-8 rounded-full border border-white/20 text-xs text-slate-200 hover:text-white flex items-center justify-center shrink-0"
+            className="md:hidden h-8 w-8 rounded-full border border-white/25 text-xs text-zinc-200 hover:text-white flex items-center justify-center shrink-0"
           >
             ✕
           </button>
@@ -554,12 +561,12 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={prevTrack}
             aria-label="Previous track"
-            className="sanctuary-interactive h-8 w-8 rounded-full border border-[#D4AF37]/35 bg-white/5 text-xs text-amber-200 hover:border-amber-400 flex items-center justify-center shrink-0"
+            className="sanctuary-interactive h-8 w-8 rounded-full border border-amber-300/40 bg-white/5 text-xs text-amber-200 hover:border-amber-300 flex items-center justify-center shrink-0"
           >
             ⏮
           </button>
 
-          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-10 text-right">
+          <span className="text-[11px] font-mono tabular-nums text-zinc-200 shrink-0 w-10 text-right">
             {formatPlayerTime(currentTime)}
           </span>
 
@@ -575,7 +582,7 @@ function StickyDriveMiniPlayer() {
             className="w-full accent-amber-400 cursor-pointer h-1.5"
           />
 
-          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-10">
+          <span className="text-[11px] font-mono tabular-nums text-zinc-200 shrink-0 w-10">
             {formatPlayerTime(duration)}
           </span>
 
@@ -583,7 +590,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={nextTrack}
             aria-label="Next track"
-            className="sanctuary-interactive h-8 w-8 rounded-full border border-[#D4AF37]/35 bg-white/5 text-xs text-amber-200 hover:border-amber-400 flex items-center justify-center shrink-0"
+            className="sanctuary-interactive h-8 w-8 rounded-full border border-amber-300/40 bg-white/5 text-xs text-amber-200 hover:border-amber-300 flex items-center justify-center shrink-0"
           >
             ⏭
           </button>
@@ -591,7 +598,7 @@ function StickyDriveMiniPlayer() {
 
         {/* Volume & Dismiss */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
-          <span aria-hidden="true" className="text-xs text-amber-300">
+          <span aria-hidden="true" className="text-xs text-amber-200">
             🔊
           </span>
           <input
@@ -609,7 +616,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={closePlayer}
             aria-label="Close Kirtan mini-player"
-            className="sanctuary-interactive h-8 w-8 rounded-full border border-white/20 bg-white/5 text-xs text-slate-200 hover:text-white hover:border-amber-400 flex items-center justify-center"
+            className="sanctuary-interactive h-8 w-8 rounded-full border border-white/25 bg-white/5 text-xs text-zinc-200 hover:text-white hover:border-amber-300 flex items-center justify-center"
           >
             ✕
           </button>
@@ -658,20 +665,20 @@ export function GoogleDriveKirtanTracklist() {
   return (
     <section
       aria-label="Gurbani Kirtan Streaming Player"
-      className="dark-surface sanctuary-glass rounded-[var(--radius-card)] border border-[#D4AF37]/35 bg-gradient-to-br from-[#17241c] via-[#111a15] to-[#0c121a] text-[#FAF6EE] shadow-2xl overflow-hidden"
+      className="dark-surface sanctuary-glass rounded-[var(--radius-card)] border border-amber-400/35 bg-gradient-to-br from-[#17241c] via-[#111a15] to-[#0c121a] text-amber-50 shadow-2xl overflow-hidden"
     >
       {/* Header + Search + Ragi Pills */}
-      <div className="p-5 sm:p-6 border-b border-[#D4AF37]/20 bg-gradient-to-r from-[#1d2d22]/85 via-[#18251d]/80 to-[#141c24]/85 space-y-4">
+      <div className="p-5 sm:p-6 border-b border-amber-400/20 bg-gradient-to-r from-[#1d2d22]/90 via-[#18251d]/85 to-[#141c24]/90 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#E5C158]">
+            <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-200/90">
               <EqualizerBars active={isPlaying} />
               <span>Gurbani Kirtan Radio</span>
             </span>
-            <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#FAF6EE]">
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-amber-50">
               Sacred Kirtan Stream
             </h2>
-            <p className="text-xs sm:text-sm text-[#D6DFD8]">
+            <p className="text-xs sm:text-sm text-zinc-300">
               {configured
                 ? `${tracks.length} Shabad${tracks.length === 1 ? "" : "s"} ready for uninterrupted listening`
                 : "Connect your Kirtan archive to stream Shabads seamlessly."}
@@ -683,7 +690,7 @@ export function GoogleDriveKirtanTracklist() {
             onClick={() => void refreshTracks()}
             disabled={loadingTracks}
             aria-label="Refresh Kirtan library"
-            className="sanctuary-interactive rounded-full border border-[#D4AF37]/45 bg-black/30 px-3.5 py-1.5 text-xs font-bold text-[#E5C158] hover:border-amber-300 disabled:opacity-50"
+            className="sanctuary-interactive rounded-full border border-amber-300/50 bg-black/40 px-3.5 py-1.5 text-xs font-bold text-amber-200/90 hover:text-amber-100 hover:border-amber-300 disabled:opacity-50"
           >
             {loadingTracks ? "Syncing…" : "↻ Sync Library"}
           </button>
@@ -697,14 +704,14 @@ export function GoogleDriveKirtanTracklist() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search Shabad title or Ragi…"
             aria-label="Search Kirtan tracks by Ragi or Shabad title"
-            className="dark-input flex-1 rounded-2xl border border-[#D4AF37]/30 bg-black/35 px-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:border-amber-400"
+            className="dark-input flex-1 rounded-2xl border border-amber-400/35 bg-black/45 px-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-zinc-400 focus:border-amber-300"
           />
           {ragiOptions.length > 6 && (
             <select
               value={selectedRagi}
               onChange={(e) => setSelectedRagi(e.target.value)}
               aria-label="Filter by Ragi"
-              className="dark-input rounded-2xl border border-[#D4AF37]/30 bg-black/35 px-3.5 py-2.5 text-xs font-semibold text-white focus:border-amber-400"
+              className="dark-input rounded-2xl border border-amber-400/35 bg-black/45 px-3.5 py-2.5 text-xs font-semibold text-white focus:border-amber-300"
             >
               {ragiOptions.map((r) => (
                 <option key={r} value={r}>
@@ -733,8 +740,8 @@ export function GoogleDriveKirtanTracklist() {
                   onClick={() => setSelectedRagi(ragi)}
                   className={`relative rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "text-[#111914]"
-                      : "text-[#D6DFD8] hover:text-white"
+                      ? "text-zinc-950"
+                      : "text-zinc-200 hover:text-white"
                   }`}
                 >
                   {active && (
@@ -745,7 +752,7 @@ export function GoogleDriveKirtanTracklist() {
                         stiffness: 420,
                         damping: 32,
                       }}
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-[#E5C158] to-[#C59B27]"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-300 to-amber-500"
                     />
                   )}
                   <span className="relative z-10">
@@ -759,7 +766,7 @@ export function GoogleDriveKirtanTracklist() {
       </div>
 
       {/* Streaming Tracklist Body (stable min-height prevents CLS) */}
-      <div className="divide-y divide-white/[0.07] min-h-[14rem] max-h-[32rem] overflow-y-auto">
+      <div className="divide-y divide-white/[0.08] min-h-[14rem] max-h-[32rem] overflow-y-auto">
         {loadingTracks && tracks.length === 0 ? (
           <div className="p-5 space-y-3" aria-busy="true">
             {[1, 2, 3, 4].map((row) => (
@@ -774,28 +781,28 @@ export function GoogleDriveKirtanTracklist() {
                     <div className="h-2.5 w-1/3 rounded bg-white/10" />
                   </div>
                 </div>
-                <span className="h-8 w-16 rounded-full bg-amber-400/15" />
+                <span className="h-8 w-16 rounded-full bg-amber-400/20" />
               </div>
             ))}
           </div>
         ) : tracksError ? (
           <div className="p-6 text-center space-y-2 text-xs text-amber-200">
-            <p className="font-bold">Could not load Kirtan stream</p>
-            <p className="text-slate-300">{tracksError}</p>
+            <p className="font-bold text-amber-100">Could not load Kirtan stream</p>
+            <p className="text-zinc-300">{tracksError}</p>
           </div>
         ) : !configured ? (
-          <div className="p-6 text-center space-y-2 text-xs text-slate-300">
-            <p className="font-serif text-sm font-bold text-amber-300">
+          <div className="p-6 text-center space-y-2 text-xs text-zinc-300">
+            <p className="font-serif text-sm font-bold text-amber-200">
               Kirtan Archive Ready to Connect
             </p>
-            <p className="max-w-md mx-auto leading-relaxed">
+            <p className="max-w-md mx-auto leading-relaxed text-zinc-300">
               Add <code className="text-amber-200">KIRTAN_DRIVE_FOLDER_ID</code>{" "}
               and <code className="text-amber-200">GOOGLE_DRIVE_API_KEY</code>{" "}
               in your environment settings to auto-sync your Kirtan collection.
             </p>
           </div>
         ) : filteredTracks.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-300">
+          <div className="p-6 text-center text-xs text-zinc-300">
             {tracks.length === 0
               ? "No Shabads are synced in this library yet. Click Sync Library after adding tracks."
               : "No Shabads match your search filter."}
@@ -811,8 +818,8 @@ export function GoogleDriveKirtanTracklist() {
                 key={track.id}
                 className={`tracklist-row group px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 transition-all duration-150 ${
                   isCurrent
-                    ? "bg-gradient-to-r from-[#C59B27]/18 via-[#1B2A20]/90 to-transparent border-l-4 border-l-[#E5C158]"
-                    : "hover:bg-white/[0.05] hover:-translate-y-[1px]"
+                    ? "bg-gradient-to-r from-amber-400/20 via-[#1d2e23]/90 to-transparent border-l-4 border-l-amber-300"
+                    : "hover:bg-white/[0.06] hover:-translate-y-[1px]"
                 }`}
               >
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -827,8 +834,8 @@ export function GoogleDriveKirtanTracklist() {
                     }
                     className={`sanctuary-interactive h-10 w-10 rounded-full border flex items-center justify-center shrink-0 text-xs font-extrabold transition ${
                       isActivePlaying
-                        ? "bg-gradient-to-br from-[#E5C158] to-[#C59B27] text-[#111914] border-amber-300 shadow-md"
-                        : "bg-black/35 border-[#D4AF37]/40 text-amber-300 group-hover:bg-amber-400 group-hover:text-[#111914] group-hover:border-amber-300"
+                        ? "bg-gradient-to-br from-amber-300 to-amber-500 text-zinc-950 border-amber-200 shadow-md"
+                        : "bg-black/40 border-amber-300/45 text-amber-200 group-hover:bg-amber-300 group-hover:text-zinc-950 group-hover:border-amber-200"
                     }`}
                   >
                     {isCurrent && isBuffering
@@ -843,7 +850,7 @@ export function GoogleDriveKirtanTracklist() {
                       {isCurrent ? (
                         <EqualizerBars active={isActivePlaying && !isBuffering} />
                       ) : (
-                        <span className="text-[11px] font-mono tabular-nums text-slate-400 shrink-0 w-4">
+                        <span className="text-[11px] font-mono tabular-nums text-zinc-400 shrink-0 w-4">
                           {String(idx + 1).padStart(2, "0")}
                         </span>
                       )}
@@ -851,13 +858,13 @@ export function GoogleDriveKirtanTracklist() {
                         type="button"
                         onClick={() => playTrack(track)}
                         className={`text-left font-serif text-sm sm:text-base font-bold truncate hover:underline ${
-                          isCurrent ? "text-[#F5D36C]" : "text-[#FAF6EE]"
+                          isCurrent ? "text-amber-200" : "text-white"
                         }`}
                       >
                         {displayTitle}
                       </button>
                     </div>
-                    <p className="text-xs text-[#CBD5E1] truncate mt-0.5 pl-6.5">
+                    <p className="text-xs text-zinc-300 truncate mt-0.5 pl-6">
                       {track.ragi}
                     </p>
                   </div>
@@ -869,8 +876,8 @@ export function GoogleDriveKirtanTracklist() {
                     onClick={() => playTrack(track)}
                     className={`sanctuary-interactive rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${
                       isActivePlaying
-                        ? "bg-gradient-to-r from-[#E5C158] to-[#C59B27] text-[#111914]"
-                        : "border border-[#D4AF37]/40 bg-black/30 text-[#E5C158] hover:border-amber-300 hover:bg-amber-400/15"
+                        ? "bg-gradient-to-r from-amber-300 to-amber-500 text-zinc-950"
+                        : "border border-amber-300/45 bg-black/35 text-amber-200/90 hover:text-amber-100 hover:border-amber-300 hover:bg-amber-400/15"
                     }`}
                   >
                     {isActivePlaying ? "Playing" : isCurrent ? "Resume" : "Play"}

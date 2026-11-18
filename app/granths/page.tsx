@@ -1528,23 +1528,37 @@ export default function GranthsAndKirtanPage() {
               {/* Raag Musicology & Tanti Saaj Metadata */}
               <div className="space-y-3 text-xs sm:text-sm">
                 <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#E5C158]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
                     Tanti Saaj &amp; Pehar (Time of Day)
                   </p>
-                  <p className="font-semibold mt-1 text-[#FAF6EE]">{currentTrack.tantiSaaj}</p>
-                  <p className="text-xs text-[#CBD5E1] mt-0.5">
+                  <p
+                    style={{ color: "var(--text-primary)" }}
+                    className="font-semibold mt-1"
+                  >
+                    {currentTrack.tantiSaaj}
+                  </p>
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-xs mt-0.5"
+                  >
                     Prescribed Pehar: {currentTrack.timeOfDay}
                   </p>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#E5C158]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
                     Raag Musicology &amp; Historical Lineage
                   </p>
-                  <p className="text-[#E2E8F0] leading-relaxed">
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="leading-relaxed font-medium"
+                  >
                     {currentTrack.raagNotes}
                   </p>
-                  <p className="text-[#CBD5E1] leading-relaxed pt-1 border-t border-[#C59B27]/20">
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="leading-relaxed pt-1 border-t border-[#C59B27]/20"
+                  >
                     {currentTrack.historicalContext}
                   </p>
                 </div>
@@ -1554,7 +1568,7 @@ export default function GranthsAndKirtanPage() {
                     href={currentTrack.directArchiveMp3Url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#E5C158] hover:underline"
+                    className="text-xs font-bold text-[#C59B27] hover:underline"
                   >
                     Listen Full Archive ↗
                   </a>
@@ -1562,7 +1576,8 @@ export default function GranthsAndKirtanPage() {
                     href={currentTrack.externalArchiveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#CBD5E1] hover:text-white hover:underline"
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-xs font-bold hover:underline"
                   >
                     View on Archive.org ↗
                   </a>
@@ -1834,7 +1849,7 @@ export default function GranthsAndKirtanPage() {
 
               {/* Track Search & Playable Tracks (Live Darbar Sahib + Local / Approved) */}
               <GodModeBox id="granths-kirtan-search-box" pageKey="granths" label="Kirtan Search Box">
-              <div className="dark-surface p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-3">
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "All", label: "All Playable Tracks" },
@@ -2280,7 +2295,7 @@ export default function GranthsAndKirtanPage() {
           >
             {/* Search & Category Filter Bar */}
             <GodModeBox id="granths-books-search-box" pageKey="granths" label="Granths Search & Filter Bar">
-            <div className="dark-surface p-6 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-6 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter Granths by category">
                 {[
                   "All",
