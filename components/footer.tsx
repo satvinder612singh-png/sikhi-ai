@@ -56,7 +56,7 @@ export function Footer() {
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border-subtle)",
-                color: "var(--accent-primary)",
+                color: "var(--accent-text, var(--accent-primary))",
               }}
               className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-bold"
             >
@@ -74,7 +74,7 @@ export function Footer() {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link
               href="/games"
-              className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#18181B] transition hover:brightness-105"
+              className="sanctuary-interactive whitespace-nowrap rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[#18181B] hover:brightness-105"
             >
               Explore Abhiyaas Games →
             </Link>
@@ -83,9 +83,9 @@ export function Footer() {
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border-subtle)",
-                color: "var(--accent-primary)",
+                color: "var(--accent-text, var(--accent-primary))",
               }}
-              className="whitespace-nowrap rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition hover:border-[#C59B27]"
+              className="sanctuary-interactive whitespace-nowrap rounded-xl border px-4 py-2.5 text-xs font-bold uppercase tracking-wider hover:border-[#C59B27]"
             >
               Read Gurbani
             </Link>
@@ -99,10 +99,10 @@ export function Footer() {
               <div>
                 <p className="font-serif text-3xl font-bold">
                   Learn{" "}
-                  <span style={{ color: "var(--accent-primary)" }}>Sikhi</span>
+                  <span style={{ color: "var(--accent-text, var(--accent-primary))" }}>Sikhi</span>
                 </p>
                 <p
-                  style={{ color: "var(--accent-primary)" }}
+                  style={{ color: "var(--accent-text, var(--accent-primary))" }}
                   className="text-xs font-semibold uppercase tracking-[0.2em]"
                 >
                   Learn. Understand. Practise. Connect.
@@ -122,7 +122,7 @@ export function Footer() {
           {GROUPS.map((g) => (
             <nav key={g.heading} aria-label={g.heading}>
               <h2
-                style={{ color: "var(--accent-primary)" }}
+                style={{ color: "var(--accent-text, var(--accent-primary))" }}
                 className="text-xs font-bold uppercase tracking-[0.2em]"
               >
                 {g.heading}
@@ -136,7 +136,7 @@ export function Footer() {
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: "var(--theme-text-muted)" }}
-                        className="text-sm font-medium transition hover:opacity-100 focus:outline-none focus-visible:underline"
+                        className="rounded px-1 -mx-1 text-sm font-medium transition hover:opacity-100 hover:underline focus-visible:underline"
                       >
                         {l.label}
                       </a>
@@ -144,7 +144,7 @@ export function Footer() {
                       <Link
                         href={l.href}
                         style={{ color: "var(--theme-text-muted)" }}
-                        className="text-sm font-medium transition hover:opacity-100 focus:outline-none focus-visible:underline"
+                        className="rounded px-1 -mx-1 text-sm font-medium transition hover:opacity-100 hover:underline focus-visible:underline"
                       >
                         {l.label}
                       </Link>

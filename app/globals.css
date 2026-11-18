@@ -1006,19 +1006,47 @@ a.from-\[\#C59B27\],
   font-weight: 700;
 }
 
-/* Inputs / selects: unmistakable borders and text on every theme */
-input:not([type="range"]):not([type="checkbox"]):not([type="file"]),
-select,
-textarea {
-  color: var(--text-primary) !important;
-  border-color: var(--border-subtle) !important;
+/* Inputs / selects: clear borders and contrast without breaking dark-surface inputs */
+input:not([type="range"]):not([type="checkbox"]):not([type="file"]):not(.dark-input),
+select:not(.dark-input),
+textarea:not(.dark-input) {
+  border-color: var(--border-subtle);
 }
+
+.dark-surface input:not([type="range"]):not([type="checkbox"]):not([type="file"]),
+.dark-surface select,
+.dark-surface textarea,
+.dark-input {
+  color: #f8fafc !important;
+  color-scheme: dark;
+}
+
+.dark-surface input::placeholder,
+.dark-surface textarea::placeholder,
+.dark-input::placeholder {
+  color: #94a3b8 !important;
+}
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
-a:focus-visible {
-  outline: 3px solid var(--vivid-blue, #2563EB);
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2.5px solid var(--vivid-blue, #2563EB);
+  outline-offset: 2px;
+}
+
+.dark-surface input:focus-visible,
+.dark-surface select:focus-visible,
+.dark-surface textarea:focus-visible,
+.dark-surface button:focus-visible,
+.dark-surface a:focus-visible,
+.admin-studio-ui button:focus-visible,
+.admin-studio-ui input:focus-visible,
+.admin-studio-ui select:focus-visible,
+.admin-studio-ui a:focus-visible {
+  outline: 2.5px solid #f59e0b;
   outline-offset: 2px;
 }
 
@@ -1034,9 +1062,52 @@ html[data-theme="obsidian"] .glass-card {
 }
 
 /* ============================================================================
-   6. NATIVE-REFRESH-RATE MOTION SYSTEM (compositor-only: transform + opacity)
+   6. NATIVE-REFRESH-RATE MOTION SYSTEM & DESIGN TOKENS (compositor-only)
 ============================================================================ */
-:root { --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1); }
+:root {
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-card: 1.5rem;
+  --radius-control: 0.75rem;
+  --elevation-glass: 0 20px 48px -18px rgba(0, 0, 0, 0.35);
+}
+
+html {
+  scroll-padding-top: 5.5rem;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+.sanctuary-glass {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--elevation-glass);
+}
+
+.sanctuary-interactive {
+  transition: transform 200ms var(--ease-out-expo),
+    box-shadow 200ms var(--ease-out-expo),
+    border-color 180ms ease,
+    background-color 180ms ease;
+  will-change: transform;
+}
+
+.sanctuary-interactive:hover {
+  transform: translate3d(0, -1.5px, 0);
+}
+
+.sanctuary-interactive:active {
+  transform: translate3d(0, 0, 0) scale(0.99);
+}
+
+.tracklist-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 68px;
+}
 
 .ambient-layer { contain: layout paint style; }
 .ambient-gpu { will-change: transform; transform: translate3d(0, 0, 0); backface-visibility: hidden; }
@@ -1051,15 +1122,15 @@ html[data-theme="obsidian"] .glass-card {
 .modal-anim-root {
   position: fixed; inset: 0; z-index: 50;
   opacity: 0;
-  transition: opacity 260ms var(--ease-out-expo);
+  transition: opacity 220ms var(--ease-out-expo);
   will-change: opacity;
 }
 .modal-anim-root[data-state="open"] { opacity: 1; }
 .modal-anim-root[data-state="closed"] { pointer-events: none; }
 .modal-anim-root [role="dialog"] > div:first-child {
-  transform: translate3d(0, 22px, 0) scale(0.975);
+  transform: translate3d(0, 16px, 0) scale(0.98);
   opacity: 0;
-  transition: transform 300ms var(--ease-out-expo), opacity 260ms var(--ease-out-expo);
+  transition: transform 260ms var(--ease-out-expo), opacity 220ms var(--ease-out-expo);
   will-change: transform, opacity;
 }
 .modal-anim-root[data-state="open"] [role="dialog"] > div:first-child {
@@ -1069,15 +1140,19 @@ html[data-theme="obsidian"] .glass-card {
 
 /* Route enter (opacity only, so fixed/sticky children never re-anchor) */
 @keyframes pageEnter { from { opacity: 0; } to { opacity: 1; } }
-.page-enter { animation: pageEnter 320ms var(--ease-out-expo) both; }
+.page-enter { animation: pageEnter 260ms var(--ease-out-expo) both; }
 
 /* Slide-deck directional slides */
-@keyframes slideFromRight { from { opacity: 0; transform: translate3d(48px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-@keyframes slideFromLeft { from { opacity: 0; transform: translate3d(-48px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-.slide-from-right { animation: slideFromRight 420ms var(--ease-out-expo) both; }
-.slide-from-left { animation: slideFromLeft 420ms var(--ease-out-expo) both; }
+@keyframes slideFromRight { from { opacity: 0; transform: translate3d(40px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes slideFromLeft { from { opacity: 0; transform: translate3d(-40px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.slide-from-right { animation: slideFromRight 360ms var(--ease-out-expo) both; }
+.slide-from-left { animation: slideFromLeft 360ms var(--ease-out-expo) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-float, .page-enter, .slide-from-right, .slide-from-left { animation: none !important; }
-  .modal-anim-root, .modal-anim-root [role="dialog"] > div:first-child { transition-duration: 1ms !important; }
+  html { scroll-behavior: auto !important; }
+  .ambient-float, .page-enter, .slide-from-right, .slide-from-left, .kirtan-eq-bar { animation: none !important; }
+  .modal-anim-root, .modal-anim-root [role="dialog"] > div:first-child, .sanctuary-interactive {
+    transition-duration: 1ms !important;
+    transform: none !important;
+  }
 }

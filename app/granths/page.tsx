@@ -1799,7 +1799,7 @@ export default function GranthsAndKirtanPage() {
 
               {/* Track Search & Playable Tracks (Live Darbar Sahib + Local / Approved) */}
               <GodModeBox id="granths-kirtan-search-box" pageKey="granths" label="Kirtan Search Box">
-              <div className="p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-3">
+              <div className="dark-surface p-4 rounded-2xl bg-[#1B2A20] text-[#FAF6EE] border border-[#d4af37]/30 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-3">
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "All", label: "All Playable Tracks" },
@@ -2136,7 +2136,7 @@ export default function GranthsAndKirtanPage() {
                         onChange={(e) => setRaagSearch(e.target.value)}
                         placeholder={raagSearchPlaceholder}
                         aria-label="Search 31 classical Ragas"
-                        className="w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-3.5 py-2 text-xs text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#C59B27]"
+                        className="dark-input w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-3.5 py-2 text-xs text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:border-[#C59B27]"
                       />
                     </div>
                   </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { useKirtanAudio, PURATAN_KIRTAN_TRACKS } from "@/components/kirtan-audio-context";
 import { useKirtanPlayerOptional } from "@/components/kirtan-player";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -803,116 +804,135 @@ export function SevaConcierge() {
         bottom: anyMiniPlayerVisible ? "92px" : "24px",
         zIndex: 55,
       }}
-      className="transition-all duration-300"
+      className="dark-surface transition-[bottom] duration-300 ease-out"
     >
-      {open ? (
-        <div
-          role="dialog"
-          aria-label="Khoj AI Assistant"
-          style={panelColor ? { backgroundColor: panelColor } : undefined}
-          className="w-[90vw] max-w-sm rounded-2xl border border-amber-400/50 bg-[#090d16]/95 text-[#f8fafc] shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden flex flex-col animate-fade-in-up"
-        >
-          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                lang="pa"
-                className="h-6 w-6 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#090d16] font-gurmukhi text-xs font-extrabold flex items-center justify-center shrink-0"
-              >
-                ੴ
-              </span>
-              <span className="font-serif font-bold text-sm tracking-wide truncate">
-                {headerTitle}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Minimize Khoj AI"
-              className="h-7 w-7 rounded-full border border-white/20 text-xs font-bold hover:border-amber-400 flex items-center justify-center"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="max-h-72 overflow-y-auto p-3.5 space-y-2.5 text-xs">
-            <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-2 leading-relaxed">
-              {greeting}
-            </div>
-
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`rounded-xl px-3 py-2 leading-relaxed space-y-1.5 ${
-                  m.role === "user"
-                    ? "ml-6 bg-amber-500/20 border border-amber-400/40 text-white"
-                    : "mr-4 bg-slate-900/90 border border-white/10 text-slate-200"
-                }`}
-              >
-                {m.citation && (
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                    {m.citation}
-                  </p>
-                )}
-                <p>{m.text}</p>
-                {m.href && m.ctaLabel && (
-                  <Link
-                    href={m.href}
-                    className="inline-block text-[11px] font-bold text-amber-300 hover:underline"
-                  >
-                    {m.ctaLabel}
-                  </Link>
-                )}
-              </div>
-            ))}
-
-            {asking && (
-              <div className="rounded-xl bg-black/30 px-3 py-2 text-[11px] text-amber-300 animate-pulse">
-                Khoj AI is consulting Sanctuary sources...
-              </div>
-            )}
-          </div>
-
-          <form
-            onSubmit={handleKhojSubmit}
-            className="p-2.5 border-t border-white/10 flex items-center gap-2 bg-black/35"
+      <AnimatePresence mode="wait">
+        {open ? (
+          <motion.div
+            key="khoj-open"
+            id="khoj-ai-dialog"
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 14, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            role="dialog"
+            aria-label="Khoj AI Assistant"
+            style={panelColor ? { backgroundColor: panelColor } : undefined}
+            className="sanctuary-glass w-[90vw] max-w-sm rounded-2xl border border-amber-400/50 bg-[#090d16]/95 text-[#f8fafc] shadow-2xl overflow-hidden flex flex-col"
           >
-            <input
-              type="text"
-              value={promptInput}
-              onChange={(e) => setPromptInput(e.target.value)}
-              placeholder={inputPlaceholder}
-              aria-label={inputPlaceholder}
-              className="flex-1 min-w-0 rounded-xl border border-white/20 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-400"
-            />
-            <button
-              type="submit"
-              disabled={asking || !promptInput.trim()}
-              className="shrink-0 h-8 px-3 rounded-xl bg-amber-400 text-[#090d16] text-xs font-extrabold disabled:opacity-45 hover:bg-amber-300 transition"
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  lang="pa"
+                  className="h-6 w-6 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#090d16] font-gurmukhi text-xs font-extrabold flex items-center justify-center shrink-0"
+                >
+                  ੴ
+                </span>
+                <span className="font-serif font-bold text-sm tracking-wide truncate">
+                  {headerTitle}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Minimize Khoj AI"
+                className="h-7 w-7 rounded-full border border-white/20 text-xs font-bold hover:border-amber-400 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto p-3.5 space-y-2.5 text-xs">
+              <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-2 leading-relaxed">
+                {greeting}
+              </div>
+
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`rounded-xl px-3 py-2 leading-relaxed space-y-1.5 ${
+                    m.role === "user"
+                      ? "ml-6 bg-amber-500/20 border border-amber-400/40 text-white"
+                      : "mr-4 bg-slate-900/90 border border-white/10 text-slate-200"
+                  }`}
+                >
+                  {m.citation && (
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                      {m.citation}
+                    </p>
+                  )}
+                  <p>{m.text}</p>
+                  {m.href && m.ctaLabel && (
+                    <Link
+                      href={m.href}
+                      className="inline-block text-[11px] font-bold text-amber-300 hover:underline"
+                    >
+                      {m.ctaLabel}
+                    </Link>
+                  )}
+                </div>
+              ))}
+
+              {asking && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="rounded-xl bg-black/30 px-3 py-2 text-[11px] text-amber-300 animate-pulse"
+                >
+                  Khoj AI is consulting Sanctuary sources...
+                </div>
+              )}
+            </div>
+
+            <form
+              onSubmit={handleKhojSubmit}
+              className="p-2.5 border-t border-white/10 flex items-center gap-2 bg-black/35"
             >
-              Ask
-            </button>
-          </form>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open Khoj AI"
-          title="Open Khoj AI Assistant"
-          style={panelColor ? { backgroundColor: panelColor } : undefined}
-          className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-[#090d16]/85 pl-1.5 pr-3.5 py-1.5 text-white backdrop-blur-xl shadow-2xl shadow-black/45 hover:scale-105 hover:border-amber-300 transition-all duration-300"
-        >
-          <span
-            lang="pa"
-            className="h-8 w-8 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#090d16] font-gurmukhi text-sm font-black flex items-center justify-center shadow"
+              <input
+                type="text"
+                value={promptInput}
+                onChange={(e) => setPromptInput(e.target.value)}
+                placeholder={inputPlaceholder}
+                aria-label={inputPlaceholder}
+                className="dark-input flex-1 min-w-0 rounded-xl border border-white/20 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-400 focus:border-amber-400"
+              />
+              <button
+                type="submit"
+                disabled={asking || !promptInput.trim()}
+                className="sanctuary-interactive shrink-0 h-8 px-3 rounded-xl bg-amber-400 text-[#090d16] text-xs font-extrabold disabled:opacity-45 hover:bg-amber-300"
+              >
+                Ask
+              </button>
+            </form>
+          </motion.div>
+        ) : (
+          <motion.button
+            key="khoj-pill"
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-expanded={open}
+            aria-controls="khoj-ai-dialog"
+            aria-label="Open Khoj AI"
+            title="Open Khoj AI Assistant"
+            style={panelColor ? { backgroundColor: panelColor } : undefined}
+            className="sanctuary-glass sanctuary-interactive inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-[#090d16]/90 pl-1.5 pr-3.5 py-1.5 text-white hover:border-amber-300"
           >
-            ੴ
-          </span>
-          <span className="text-xs font-serif font-bold tracking-wide text-amber-100">
-            {headerTitle}
-          </span>
-        </button>
-      )}
+            <span
+              lang="pa"
+              className="h-8 w-8 rounded-full bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#090d16] font-gurmukhi text-sm font-black flex items-center justify-center shadow"
+            >
+              ੴ
+            </span>
+            <span className="text-xs font-serif font-bold tracking-wide text-amber-100">
+              {headerTitle}
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

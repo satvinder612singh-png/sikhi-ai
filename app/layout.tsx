@@ -57,12 +57,20 @@ export default async function RootLayout({
       className={`${serif.variable} ${sans.variable} ${gurmukhi.variable}`}
     >
       <body className="bg-[#FAF7F0] text-[#18181B] antialiased selection:bg-[#C59B27]/20 selection:text-[#18181B]">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100000] focus:rounded-xl focus:bg-[#090d16] focus:px-4 focus:py-2.5 focus:text-xs focus:font-extrabold focus:text-amber-300 focus:border focus:border-amber-400 focus:shadow-2xl"
+        >
+          Skip to main content
+        </a>
         <AuthProvider initialUser={initialUser} configured={isSupabaseConfigured}>
           <AmbientBackground />
           <SikhiIconDefs />
           <KirtanAudioProvider>
             <KirtanPlayerProvider>
-              {children}
+              <div id="main-content" tabIndex={-1} className="outline-none">
+                {children}
+              </div>
               <SevaConcierge />
             </KirtanPlayerProvider>
           </KirtanAudioProvider>

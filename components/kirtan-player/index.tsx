@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 export interface DriveKirtanTrack {
   id: string;
@@ -391,10 +392,19 @@ export function KirtanPlayerProvider({
   );
 
   return (
-    <KirtanPlayerContext.Provider value={value}>
-      {children}
-      {activeTrack && <StickyDriveMiniPlayer />}
-    </KirtanPlayerContext.Provider>
+    <MotionConfig reducedMotion="user">
+      <KirtanPlayerContext.Provider value={value}>
+        {children}
+        <span className="sr-only" aria-live="polite">
+          {activeTrack
+            ? `${isPlaying ? "Playing" : "Paused"}: ${activeTrack.title} by ${activeTrack.ragi}`
+            : ""}
+        </span>
+        <AnimatePresence>
+          {activeTrack && <StickyDriveMiniPlayer key="drive-mini-player" />}
+        </AnimatePresence>
+      </KirtanPlayerContext.Provider>
+    </MotionConfig>
   );
 }
 
@@ -430,9 +440,28 @@ function StickyDriveMiniPlayer() {
   if (!activeTrack) return null;
 
   return (
-    <aside
+    <motion.aside
+      initial={{ y: 76, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 76, opacity: 0 }}
+      transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+      style={{ willChange: "transform, opacity" }}
       aria-label="Google Drive Kirtan Mini-Player"
-      className="fixed bottom-0 inset-x-0 z-40 border-t border-amber-400/50 bg-[#090d16]/95 text-[#f8fafc] shadow-2xl backdrop-blur-xl"
+      onKeyDown={(e) => {
+        const tag = (e.target as HTMLElement | null)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          togglePlayPause();
+        } else if (e.code === "ArrowRight") {
+          e.preventDefault();
+          seekTo(currentTime + 10);
+        } else if (e.code === "ArrowLeft") {
+          e.preventDefault();
+          seekTo(Math.max(0, currentTime - 10));
+        }
+      }}
+      className="dark-surface sanctuary-glass fixed bottom-0 inset-x-0 z-40 border-t border-amber-400/50 bg-[#090d16]/95 text-[#f8fafc] shadow-2xl"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Track Info & Play/Pause */}
@@ -440,8 +469,9 @@ function StickyDriveMiniPlayer() {
           <button
             type="button"
             onClick={togglePlayPause}
+            aria-pressed={isPlaying}
             aria-label={isPlaying ? "Pause track" : "Play track"}
-            className="h-10 w-10 rounded-xl bg-amber-400 text-[#090d16] font-extrabold text-sm flex items-center justify-center shrink-0 shadow hover:bg-amber-300 transition"
+            className="sanctuary-interactive h-10 w-10 rounded-xl bg-amber-400 text-[#090d16] font-extrabold text-sm flex items-center justify-center shrink-0 shadow hover:bg-amber-300"
           >
             {isBuffering ? "•••" : isPlaying ? "⏸" : "▶"}
           </button>
@@ -450,9 +480,9 @@ function StickyDriveMiniPlayer() {
             <p className="text-xs sm:text-sm font-serif font-bold text-white truncate">
               {activeTrack.title}
             </p>
-            <p className="text-[11px] text-amber-300/90 truncate">
+            <p className="text-[11px] text-amber-300/95 truncate">
               {playbackError ? (
-                <span className="text-red-300 font-semibold">{playbackError}</span>
+                <span role="alert" className="text-red-300 font-semibold">{playbackError}</span>
               ) : (
                 `🎙️ ${activeTrack.ragi} • Google Drive Kirtan`
               )}
@@ -463,7 +493,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={closePlayer}
             aria-label="Close Kirtan mini-player"
-            className="md:hidden px-2 py-1 rounded-lg border border-white/20 text-xs text-slate-300 hover:text-white"
+            className="md:hidden px-2.5 py-1 rounded-lg border border-white/25 text-xs text-slate-200 hover:text-white"
           >
             ✕
           </button>
@@ -475,12 +505,12 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={prevTrack}
             aria-label="Previous track"
-            className="px-2 py-1 rounded-lg border border-amber-400/35 text-xs text-amber-200 hover:border-amber-400 transition"
+            className="sanctuary-interactive px-2.5 py-1.5 rounded-lg border border-amber-400/40 text-xs text-amber-200 hover:border-amber-400"
           >
             ⏮
           </button>
 
-          <span className="text-[11px] font-mono tabular-nums text-slate-300 shrink-0 w-10 text-right">
+          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-11 text-right">
             {formatPlayerTime(currentTime)}
           </span>
 
@@ -492,10 +522,11 @@ function StickyDriveMiniPlayer() {
             value={duration > 0 ? Math.min(currentTime, duration) : 0}
             onChange={(e) => seekTo(Number(e.target.value))}
             aria-label="Seek track position"
+            aria-valuetext={`${formatPlayerTime(currentTime)} of ${formatPlayerTime(duration)}`}
             className="w-full accent-amber-400 cursor-pointer h-1.5"
           />
 
-          <span className="text-[11px] font-mono tabular-nums text-slate-300 shrink-0 w-10">
+          <span className="text-[11px] font-mono tabular-nums text-slate-200 shrink-0 w-11">
             {formatPlayerTime(duration)}
           </span>
 
@@ -503,7 +534,7 @@ function StickyDriveMiniPlayer() {
             type="button"
             onClick={nextTrack}
             aria-label="Next track"
-            className="px-2 py-1 rounded-lg border border-amber-400/35 text-xs text-amber-200 hover:border-amber-400 transition"
+            className="sanctuary-interactive px-2.5 py-1.5 rounded-lg border border-amber-400/40 text-xs text-amber-200 hover:border-amber-400"
           >
             ⏭
           </button>
@@ -522,19 +553,20 @@ function StickyDriveMiniPlayer() {
             value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
             aria-label="Playback volume"
+            aria-valuetext={`${Math.round(volume * 100)} percent`}
             className="w-20 accent-amber-400 cursor-pointer h-1.5"
           />
           <button
             type="button"
             onClick={closePlayer}
             aria-label="Close Kirtan mini-player"
-            className="px-2.5 py-1 rounded-lg border border-white/20 text-xs text-slate-300 hover:text-white hover:border-amber-400 transition"
+            className="sanctuary-interactive px-2.5 py-1 rounded-lg border border-white/25 text-xs text-slate-200 hover:text-white hover:border-amber-400"
           >
             ✕
           </button>
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 }
 
@@ -575,7 +607,7 @@ export function GoogleDriveKirtanTracklist() {
   return (
     <section
       aria-label="Google Drive Kirtan Auto-Sync Playlist"
-      className="rounded-3xl border border-[#C59B27]/45 bg-[#121C15] text-[#FAF6EE] shadow-2xl overflow-hidden"
+      className="dark-surface rounded-3xl border border-[#C59B27]/45 bg-[#121C15] text-[#FAF6EE] shadow-2xl overflow-hidden"
     >
       {/* Header + Filter Controls */}
       <div className="p-5 sm:p-6 border-b border-[#C59B27]/25 bg-[#1B2A20]/80 space-y-4">
@@ -599,7 +631,8 @@ export function GoogleDriveKirtanTracklist() {
             type="button"
             onClick={() => void refreshTracks()}
             disabled={loadingTracks}
-            className="px-3 py-1.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-amber-400 transition disabled:opacity-50"
+            aria-label="Refresh Google Drive Kirtan folder"
+            className="sanctuary-interactive px-3 py-1.5 rounded-xl border border-[#C59B27]/50 bg-[#121C15] text-xs font-bold text-[#E5C158] hover:border-amber-400 disabled:opacity-50"
           >
             {loadingTracks ? "Syncing..." : "↻ Refresh Folder"}
           </button>
@@ -613,14 +646,14 @@ export function GoogleDriveKirtanTracklist() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter by Ragi or Shabad title..."
             aria-label="Filter Google Drive Kirtan tracks by Ragi or title"
-            className="flex-1 rounded-xl border border-[#C59B27]/40 bg-[#090d16]/85 px-3.5 py-2 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-amber-400"
+            className="dark-input flex-1 rounded-xl border border-[#C59B27]/40 bg-[#090d16]/90 px-3.5 py-2 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:border-amber-400"
           />
           {ragiOptions.length > 2 && (
             <select
               value={selectedRagi}
               onChange={(e) => setSelectedRagi(e.target.value)}
               aria-label="Filter by Ragi"
-              className="rounded-xl border border-[#C59B27]/40 bg-[#090d16]/85 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-amber-400"
+              className="dark-input rounded-xl border border-[#C59B27]/40 bg-[#090d16]/90 px-3 py-2 text-xs font-semibold text-white focus:border-amber-400"
             >
               {ragiOptions.map((r) => (
                 <option key={r} value={r}>
@@ -632,8 +665,8 @@ export function GoogleDriveKirtanTracklist() {
         </div>
       </div>
 
-      {/* Tracklist Body */}
-      <div className="divide-y divide-white/10 max-h-[32rem] overflow-y-auto">
+      {/* Tracklist Body (min-height prevents CLS during search/filter updates) */}
+      <div className="divide-y divide-white/10 min-h-[14rem] max-h-[32rem] overflow-y-auto">
         {loadingTracks && tracks.length === 0 ? (
           <div className="p-5 space-y-3" aria-busy="true">
             {[1, 2, 3, 4].map((row) => (
@@ -687,7 +720,7 @@ export function GoogleDriveKirtanTracklist() {
             return (
               <div
                 key={track.id}
-                className={`group px-4 sm:px-5 py-3 flex items-center justify-between gap-3 transition ${
+                className={`tracklist-row group px-4 sm:px-5 py-3 flex items-center justify-between gap-3 transition-colors duration-150 ${
                   isCurrent
                     ? "bg-[#1B2A20] border-l-4 border-l-amber-400"
                     : "hover:bg-white/[0.04]"
@@ -697,12 +730,13 @@ export function GoogleDriveKirtanTracklist() {
                   <button
                     type="button"
                     onClick={() => playTrack(track)}
+                    aria-pressed={isActivePlaying}
                     aria-label={
                       isActivePlaying
                         ? `Pause ${track.title} by ${track.ragi}`
                         : `Play ${track.title} by ${track.ragi}`
                     }
-                    className={`h-9 w-9 rounded-xl border flex items-center justify-center shrink-0 text-xs font-extrabold transition ${
+                    className={`sanctuary-interactive h-9 w-9 rounded-xl border flex items-center justify-center shrink-0 text-xs font-extrabold ${
                       isActivePlaying
                         ? "bg-amber-400 text-[#090d16] border-amber-300"
                         : "bg-black/40 border-[#C59B27]/45 text-amber-300 hover:bg-amber-400 hover:text-[#090d16]"
