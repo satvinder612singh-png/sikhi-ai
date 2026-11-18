@@ -43,6 +43,7 @@ import {
   parseLocalAudioFilename,
   type KirtanTrack,
 } from "@/components/kirtan-audio-context";
+import { GoogleDriveKirtanTracklist } from "@/components/kirtan-player";
 
 type NativeChapter = {
   title: string;
@@ -1792,6 +1793,9 @@ export default function GranthsAndKirtanPage() {
                   </form>
                 )}
               </div>
+
+              {/* Auto-Synced Google Drive Kirtan Tracklist (/api/kirtan-list + /api/kirtan-stream) */}
+              <GoogleDriveKirtanTracklist />
 
               {/* Track Search & Playable Tracks (Live Darbar Sahib + Local / Approved) */}
               <GodModeBox id="granths-kirtan-search-box" pageKey="granths" label="Kirtan Search Box">

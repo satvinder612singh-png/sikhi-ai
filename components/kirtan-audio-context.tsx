@@ -466,6 +466,15 @@ export function KirtanAudioProvider({
       );
     };
 
+    const onAudioFocus = (e: Event) => {
+      const owner = (e as CustomEvent<{ owner?: string }>).detail?.owner;
+      if (owner && owner !== "sanctuary-kirtan") {
+        audio.pause();
+        setIsPlaying(false);
+        setHasActivatedPlayer(false);
+      }
+    };
+
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("waiting", onWaiting);
@@ -473,6 +482,7 @@ export function KirtanAudioProvider({
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
+    window.addEventListener("learnsikhi-audio-focus", onAudioFocus);
 
     return () => {
       audio.pause();
@@ -483,6 +493,7 @@ export function KirtanAudioProvider({
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
+      window.removeEventListener("learnsikhi-audio-focus", onAudioFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -490,6 +501,14 @@ export function KirtanAudioProvider({
   const loadAndPlayTrack = useCallback((track: KirtanTrack) => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("learnsikhi-audio-focus", {
+          detail: { owner: "sanctuary-kirtan" },
+        })
+      );
+    }
 
     setAudioError(null);
     setIsLoadingAudio(true);

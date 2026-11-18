@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useKirtanAudio, PURATAN_KIRTAN_TRACKS } from "@/components/kirtan-audio-context";
+import { useKirtanPlayerOptional } from "@/components/kirtan-player";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useCmsSiteState } from "@/components/editable-heritage-image";
 
@@ -703,6 +704,8 @@ export function SevaConcierge() {
   const [asking, setAsking] = useState(false);
   const [messages, setMessages] = useState<KhojMessage[]>([]);
   const { isMiniPlayerVisible } = useKirtanAudio();
+  const drivePlayer = useKirtanPlayerOptional();
+  const anyMiniPlayerVisible = isMiniPlayerVisible || Boolean(drivePlayer?.activeTrack);
 
   useEffect(() => {
     if (!hasAppliedDefaultOpen && typeof supportCfg.defaultOpen === "boolean") {
@@ -797,7 +800,7 @@ export function SevaConcierge() {
       style={{
         position: "fixed",
         right: "24px",
-        bottom: isMiniPlayerVisible ? "92px" : "24px",
+        bottom: anyMiniPlayerVisible ? "92px" : "24px",
         zIndex: 55,
       }}
       className="transition-all duration-300"

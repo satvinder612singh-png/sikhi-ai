@@ -4,6 +4,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { AmbientBackground } from "@/components/ambient-background";
 import { SikhiIconDefs } from "@/components/sikhi-icons";
 import { KirtanAudioProvider } from "@/components/kirtan-audio-context";
+import { KirtanPlayerProvider } from "@/components/kirtan-player";
 import { SevaConcierge } from "@/components/seva-concierge";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -60,8 +61,10 @@ export default async function RootLayout({
           <AmbientBackground />
           <SikhiIconDefs />
           <KirtanAudioProvider>
-            {children}
-            <SevaConcierge />
+            <KirtanPlayerProvider>
+              {children}
+              <SevaConcierge />
+            </KirtanPlayerProvider>
           </KirtanAudioProvider>
         </AuthProvider>
       </body>
