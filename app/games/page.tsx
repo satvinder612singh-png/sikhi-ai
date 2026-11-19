@@ -11,6 +11,8 @@ import { SikhHistoryQuiz } from "@/components/games/sikh-history-quiz";
 import { SikhiConceptsMatch } from "@/components/games/sikhi-concepts-match";
 import { GurmatScenarioSimulator } from "@/components/games/gurmat-scenario-simulator";
 import { AdaptiveMatchGame } from "@/components/games/adaptive-match-game";
+import { getTodayDateSeed } from "@/components/games/daily-session";
+import { CalendarDays } from "lucide-react";
 import {
   AGE_GROUP_OPTIONS,
   GAMES_CATALOG,
@@ -530,6 +532,48 @@ function GamesHubContent() {
                         : "Start warmly with foundational Gurmukhi, Sakhis, and core values—plus interactive real-life Gurmat scenarios tailored to your pace."}
                   </p>
                 </header>
+
+                {/* Today's Daily Challenge Card */}
+                <section
+                  aria-label="Today's Daily Challenge"
+                  style={{
+                    backgroundColor: "var(--bg-surface)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="rounded-2xl border p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div
+                      style={{ color: "var(--accent-text)" }}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em]"
+                    >
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      Today&apos;s Daily Challenge · {getTodayDateSeed()}
+                    </div>
+                    <h2 className="font-serif text-xl sm:text-2xl font-bold">
+                      Fresh Daily Chardi Kala Sprint
+                    </h2>
+                    <p
+                      style={{ color: "var(--theme-text-muted)" }}
+                      className="text-xs sm:text-sm leading-relaxed max-w-2xl"
+                    >
+                      A new non-repeating set every day across Gurbani concepts,
+                      Sikh history, 31 Raags, unsung Sikh women, and real-life
+                      Gurmat reflections.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenGame("chardi-kala-sprint")}
+                    style={{
+                      backgroundColor: "var(--accent-primary)",
+                      color: "var(--cta-text)",
+                    }}
+                    className="shrink-0 rounded-lg px-4 py-2.5 text-xs sm:text-sm font-semibold transition-opacity duration-150 hover:opacity-95"
+                  >
+                    Play Today&apos;s Challenge →
+                  </button>
+                </section>
 
                 {/* Advanced-Exclusive Challenges shown first for Intermediate/Advanced adults */}
                 <GameCardGrid

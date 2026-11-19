@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
 import {
   deleteArticleBySlugOrId,
   getArticleBySlug,
@@ -7,9 +8,49 @@ import {
   verifyFounderAdminHeader,
   type ArticleStatus,
 } from "@/lib/articles-store";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function isAdminEmail(email?: string | null): boolean {
+  const clean = (email || "").trim().toLowerCase();
+  if (!clean) return false;
+  const configured = (
+    process.env.FOUNDER_ADMIN_EMAIL ||
+    process.env.NEXT_PUBLIC_FOUNDER_ADMIN_EMAIL ||
+    "satvinder612singh@gmail.com"
+  )
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return configured.includes(clean);
+}
+
+async function tryDeleteStorageImage(imageUrl?: string | null) {
+  if (!imageUrl || typeof imageUrl !== "string") return;
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "";
+  if (!url || !key) return;
+
+  // Match Supabase public storage URL: /storage/v1/object/public/<bucket>/<path>
+  const match = imageUrl.match(
+    /\/storage\/v1\/object\/public\/([^/]+)\/(.+?)(?:\?|$)/
+  );
+  if (!match) return;
+  const bucket = decodeURIComponent(match[1]);
+  const objectPath = decodeURIComponent(match[2]);
+  try {
+    const supabase = createClient(url, key, { auth: { persistSession: false } });
+    await supabase.storage.from(bucket).remove([objectPath]);
+  } catch {
+    // Non-fatal if storage object was already removed
+  }
+}
 
 export async function GET(
   req: Request,
@@ -116,9 +157,9 @@ export async function PATCH(
   }
 
   try {
-    revalidatePath("/articles");
-    revalidatePath(`/articles/${result.article.slug}`);
+    revalidatePath("/");
     revalidatePath("/sangat");
+    revalidatePath(`/articles/${result.article.slug}`);
     revalidatePath("/admin");
   } catch {
     // ignore
@@ -134,14 +175,27 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ slug: string }> }
 ) {
-  if (!verifyFounderAdminHeader(req)) {
+  const { slug } = await context.params;
+  const existing = await getArticleBySlug(slug, true);
+  const currentUser = await getCurrentUser().catch(() => null);
+
+  const isHeaderAdmin = verifyFounderAdminHeader(req);
+  const isSessionAdmin = isAdminEmail(currentUser?.email);
+  const isAuthor =
+    Boolean(currentUser?.id) &&
+    Boolean(existing?.author_id) &&
+    currentUser?.id === existing?.author_id;
+
+  if (!isHeaderAdmin && !isSessionAdmin && !isAuthor) {
     return NextResponse.json(
-      { ok: false, error: "Admin authentication required to delete articles." },
+      {
+        ok: false,
+        error: "Admin or post author authentication required to delete.",
+      },
       { status: 401 }
     );
   }
 
-  const { slug } = await context.params;
   const result = await deleteArticleBySlugOrId(slug);
   if (!result.ok) {
     return NextResponse.json(
@@ -150,17 +204,23 @@ export async function DELETE(
     );
   }
 
+  if (existing?.cover_image_url) {
+    await tryDeleteStorageImage(existing.cover_image_url);
+  }
+
   try {
-    revalidatePath("/articles");
-    revalidatePath(`/articles/${slug}`);
+    revalidatePath("/");
     revalidatePath("/sangat");
     revalidatePath("/admin");
+    if (existing?.slug) {
+      revalidatePath(`/articles/${existing.slug}`);
+    }
   } catch {
     // ignore
   }
 
   return NextResponse.json(
-    { ok: true },
+    { ok: true, deleted: slug },
     { headers: { "Cache-Control": "no-store, max-age=0" } }
   );
 }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
@@ -150,9 +150,8 @@ function SmartHeritageFrame({
 
 const FEED_TABS: { id: FeedTabId; label: string }[] = [
   { id: "all", label: "All Dispatches" },
-  { id: "essays", label: "SikhStack Essays & Research" },
+  { id: "essays", label: "SikhStacks Essays & Research" },
   { id: "visuals", label: "SikhInterest Visuals" },
-  { id: "news", label: "Bunga Azadi & Panthic News" },
 ];
 
 type CuratedLink = {
@@ -355,150 +354,9 @@ const UPLIFTING_SHABADS_LIBRARY = [
 
 const INITIAL_BLOGS: SangatBlogArticle[] = [];
 
-const INITIAL_PINS: SangatVisualPin[] = [
-  {
-    id: "pin-1",
-    authorName: "Bibi Amrit Kaur",
-    authorHandle: "amrit_kalam",
-    authorRole: "Visual Artist",
-    authorBio: "Gurmukhi calligrapher and manuscript illuminator working with natural indigo, walnut ink, and 24k gold leaf.",
-    authorInterests: ["Gurmukhi Calligraphy", "Puratan Kirtan"],
-    authorAvatarPreset: "lotus-amritsar",
-    title: "Puratan Larivaar Mul Mantar Folio in Gold & Indigo",
-    description:
-      "Hand-lettered study inspired by 17th-century Damdami Bir manuscripts, featuring geometric floral Phulkari borders and unbroken Gurmukhi script.",
-    category: "Gurmukhi Calligraphy",
-    gurmukhiCalligraphy: "à©´ à¨¸à¨¤à¨¿ à¨¨à¨¾à¨®à© à¨•à¨°à¨¤à¨¾ à¨ªà©à¨°à¨–à© à¨¨à¨¿à¨°à¨­à¨‰ à¨¨à¨¿à¨°à¨µà©ˆà¨°à©",
-    visualPalette: "darbar-gold",
-    availableToCoordinate: true,
-    artistContactNote:
-      "Original hand-illuminated cotton rag folio (12Ã—16 in). Reach out via @amrit_kalam or email amrit.kalam.art@sangat.org to coordinate framing or Gurdwara gifting.",
-    savesCount: 92,
-    createdAt: "2 days ago",
-  },
-  {
-    id: "pin-2",
-    authorName: "Sardar Zorawar Singh",
-    authorHandle: "zorawar_lens",
-    authorRole: "Itihaas Archivist",
-    authorBio: "Architectural photographer documenting historical Gurdwaras, Bungas, and Baradaris across Punjab.",
-    authorInterests: ["Sikh Architecture", "Sikh History"],
-    authorAvatarPreset: "darbar-lantern",
-    title: "Amrit Vela Reflection at Sachkhand Sri Harmandir Sahib",
-    description:
-      "At 3:40 AM IST during Asa Di Vaar, the golden dome of Sri Darbar Sahib shimmers across the still waters of the Amrit Sarovarâ€”a living architectural metaphor for the lotus untouched by the world.",
-    category: "Gurdwara Architecture",
-    gurmukhiCalligraphy: "à¨¡à¨¿à¨ à©‡ à¨¸à¨­à©‡ à¨¥à¨¾à¨µ à¨¨à¨¹à©€ à¨¤à©à¨§à© à¨œà©‡à¨¹à¨¿à¨† à¥¥ (à¨…à©°à¨— à©§à©©à©¬à©¨)",
-    visualPalette: "amrit-indigo",
-    availableToCoordinate: false,
-    artistContactNote: "",
-    savesCount: 134,
-    createdAt: "4 days ago",
-  },
-  {
-    id: "pin-3",
-    authorName: "Simranjit Kaur",
-    authorHandle: "simran_miniature",
-    authorRole: "Visual Artist",
-    authorBio: "Contemporary Pahari-Sikh miniature painter honoring the women and warriors of the Panth.",
-    authorInterests: ["Matriarchs of the Panth", "Sikh Art & Miniature"],
-    authorAvatarPreset: "nihang-shield",
-    title: "Mata Bhag Kaur (Mai Bhago Ji) at the Dhab of Khidrana (1705)",
-    description:
-      "Gouache and mineral pigment study depicting Mai Bhago Ji leading the Chali Mukte in defense of Guru Gobind Singh Ji at Sri Muktsar Sahib.",
-    category: "Sikh Art & Miniature",
-    gurmukhiCalligraphy: "à¨¸à©‚à¨°à¨¾ à¨¸à©‹ à¨ªà¨¹à¨¿à¨šà¨¾à¨¨à©€à¨ à¨œà© à¨²à¨°à©ˆ à¨¦à©€à¨¨ à¨•à©‡ à¨¹à©‡à¨¤ à¥¥",
-    visualPalette: "saffron-dawn",
-    availableToCoordinate: true,
-    artistContactNote:
-      "Archival giclÃ©e prints and original mineral-pigment study available for Sikh heritage collections. Coordinate via @simran_miniature.",
-    savesCount: 118,
-    createdAt: "5 days ago",
-  },
-  {
-    id: "pin-4",
-    authorName: "Dr. Gurpreet Kaur Sandhu",
-    authorHandle: "gurpreet_viyakaran",
-    authorRole: "Independent Sikh Researcher",
-    authorBio: "Researcher of Gurbani Viyakaran and classical Sikh manuscripts.",
-    authorInterests: ["Gurbani Research", "Suraj Prakash & Panth Prakash"],
-    authorAvatarPreset: "parchment-quill",
-    title: "Bhai Gurdas Ji Vaar 1: The Tree That Bears Fruit When Struck by Stones",
-    description:
-      "Calligraphic study of Vaar 6, Pauri 19: 'à¨µà¨¿à¨°à¨²à©‡ à¨•à©‡à¨ˆ à¨—à©à¨°à¨®à©à¨–à¨¿ à¨œà¨¾à¨£à¨¨à¨¿ à¥¤ à¨µà©±à¨Ÿà©‡ à¨®à¨¾à¨°à¨¨à¨¿ à¨«à¨²à© à¨¦à©‡à¨¨à¨¿, à¨ªà¨°à¨‰à¨ªà¨•à¨¾à¨°à©€ à¨¸à¨¤à¨¿à¨—à©à¨°à© à¨­à¨¾à¨µà¨¨à¨¿ à¥¥'",
-    category: "Manuscript & Book Quotes",
-    gurmukhiCalligraphy: "à¨µà©±à¨Ÿà©‡ à¨®à¨¾à¨°à¨¨à¨¿ à¨«à¨²à© à¨¦à©‡à¨¨à¨¿ à¨ªà¨°à¨‰à¨ªà¨•à¨¾à¨°à©€ à¨¸à¨¤à¨¿à¨—à©à¨°à© à¨­à¨¾à¨µà¨¨à¨¿ à¥¥",
-    visualPalette: "emerald-manuscript",
-    availableToCoordinate: false,
-    artistContactNote: "",
-    savesCount: 77,
-    createdAt: "1 week ago",
-  },
-];
+const INITIAL_PINS: SangatVisualPin[] = [];
 
-const INITIAL_DIL_POSTS: DilDiBaatPost[] = [
-  {
-    id: "dil-1",
-    authorName: "Jasleen Kaur",
-    authorHandle: "jasleen_sangat",
-    authorRole: "Sangat Member",
-    authorBio: "University student learning Nitnem and finding anchor in Sadh Sangat.",
-    authorInterests: ["Gurbani Research", "Seva & Ecology"],
-    authorAvatarPreset: "darbar-lantern",
-    moodTag: "ðŸŒ± Seeking Strength / In Pain",
-    title: "Walking through the grief of losing my grandfather who taught me Japji Sahib",
-    body: "My Baba Ji was the one who sat with me every morning at 6 AM and taught me the pronunciation of every Pauri of Japji Sahib. Since his passing last month, opening my Gutka Sahib brings tears to my eyes, yet I also feel closest to him when I recite. Please keep our family in your Ardas.",
-    shabadGurmukhi: "à¨œà©‹à¨¤à¨¿ à¨®à¨¿à¨²à©€ à¨¸à©°à¨—à¨¿ à¨œà©‹à¨¤à¨¿ à¨°à¨¹à¨¿à¨† à¨˜à¨¾à¨²à¨¿à¨† à¥¥ à¨¸à©‚à¨°à¨œ à¨•à¨¿à¨°à¨£à¨¿ à¨®à¨¿à¨²à©‡ à¨œà¨² à¨•à¨¾ à¨œà¨²à© à¨¹à©‚à¨† à¨°à¨¾à¨® à¥¥",
-    shabadEnglish:
-      "One's light merges into the Supreme Light, and all struggles come to restâ€”like the ray of sunlight merging back into the sun, and the droplet merging into the ocean.",
-    shabadAng: "Sri Guru Granth Sahib Ji â€¢ Ang 846 (Raag Bilawal M:5)",
-    ardasCount: 54,
-    createdAt: "5 hours ago",
-    replies: [
-      {
-        id: "dr-1",
-        authorName: "Bhai Harjinder Singh",
-        authorHandle: "harjinder_santhiya",
-        authorRole: "Gurbani Learner",
-        authorAvatarPreset: "ik-onkar-medallion",
-        body: "Bhenji, every time you recite those Pauris of Japji Sahib, your Baba Ji's Seva and love are alive in your voice. Our whole Sangat stands in Ardas for his Gurmukh soul and your family's Chardi Kala.",
-        shabadGurmukhi: "à¨¤à¨¾à¨¤à©€ à¨µà¨¾à¨‰ à¨¨ à¨²à¨—à¨ˆ à¨ªà¨¾à¨°à¨¬à©à¨°à¨¹à¨® à¨¸à¨°à¨£à¨¾à¨ˆ à¥¥",
-        shabadEnglish: "Not even a hot wind touches one who abides in the Sanctuary of the Supreme Lord.",
-        shabadAng: "Ang 628",
-        createdAt: "3 hours ago",
-      },
-    ],
-  },
-  {
-    id: "dil-2",
-    authorName: "Prabhjot Singh",
-    authorHandle: "prabhjot_raag",
-    authorRole: "Gurbani Learner",
-    authorBio: "Software engineer & father teaching Painti Akhar to my kids.",
-    authorInterests: ["Gurmukhi Calligraphy", "Puratan Kirtan"],
-    authorAvatarPreset: "sovereign-baaj",
-    moodTag: "âœ¨ Sharing Happiness / Gratitude",
-    title: "My 7-year-old daughter read her first complete Hukamnama in Gurmukhi today!",
-    body: "After six months of practicing the 35 Painti Akhar and Larivaar word-splitting games together for 15 minutes every evening, she stood up after our family Rehras Sahib today and read the Pangtis cleanly on her own. Shukar Waheguru Ji!",
-    shabadGurmukhi: "à¨ªà©€à¨Š à¨¦à¨¾à¨¦à©‡ à¨•à¨¾ à¨–à©‹à¨²à¨¿ à¨¡à¨¿à¨ à¨¾ à¨–à¨œà¨¾à¨¨à¨¾ à¥¥ à¨¤à¨¾ à¨®à©‡à¨°à©ˆ à¨®à¨¨à¨¿ à¨­à¨‡à¨† à¨¨à¨¿à¨§à¨¾à¨¨à¨¾ à¥¥à©§à¥¥",
-    shabadEnglish:
-      "When I opened and beheld the treasury of my Father and Grandfather, my mind was filled with the priceless spiritual treasure.",
-    shabadAng: "Sri Guru Granth Sahib Ji â€¢ Ang 186 (Raag Gauri M:5)",
-    ardasCount: 89,
-    createdAt: "1 day ago",
-    replies: [
-      {
-        id: "dr-2",
-        authorName: "Dr. Gurpreet Kaur Sandhu",
-        authorHandle: "gurpreet_viyakaran",
-        authorRole: "Independent Sikh Researcher",
-        authorAvatarPreset: "parchment-quill",
-        body: "Lakh Lakh Vadhaiyan Veer Ji! Opening the 'Peeo Daade Ka Khajana' (the treasury of our ancestors) for the next generation is the greatest gift we can give.",
-        createdAt: "20 hours ago",
-      },
-    ],
-  },
-];
+const INITIAL_DIL_POSTS: DilDiBaatPost[] = [];
 
 const STORAGE_KEYS = {
   PROFILE: "learnsikhi_sangat_profile_v1",
@@ -641,6 +499,8 @@ function SangatHubContent() {
 
   // Share Article / Link modal
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [confirmOriginalArt, setConfirmOriginalArt] = useState(false);
+  const [confirmPinOriginalArt, setConfirmPinOriginalArt] = useState(false);
   const [shareTab, setShareTab] = useState<"curate" | "write">("curate");
   const [shareError, setShareError] = useState<string | null>(null);
   const [curateUrl, setCurateUrl] = useState("");
@@ -737,47 +597,17 @@ function SangatHubContent() {
     }
   }, [searchParams]);
 
-  // Load persisted state from localStorage
+  // Load user preferences locally, and fetch all posts/deletions globally from Supabase
   useEffect(() => {
     try {
       const savedProf = window.localStorage.getItem(STORAGE_KEYS.PROFILE);
       if (savedProf) setProfile(JSON.parse(savedProf));
 
-      const savedBlogs = window.localStorage.getItem(STORAGE_KEYS.BLOGS);
-      if (savedBlogs) {
-        const parsed = JSON.parse(savedBlogs);
-        if (Array.isArray(parsed) && parsed.length > 0) setBlogs(parsed);
-      }
-
-      const savedPins = window.localStorage.getItem(STORAGE_KEYS.PINS);
-      if (savedPins) {
-        const parsed = JSON.parse(savedPins);
-        if (Array.isArray(parsed) && parsed.length > 0) setPins(parsed);
-      }
-
       const savedIds = window.localStorage.getItem(STORAGE_KEYS.SAVED_PIN_IDS);
       if (savedIds) setSavedPinIds(JSON.parse(savedIds));
 
-      const savedDil = window.localStorage.getItem(STORAGE_KEYS.DIL_POSTS);
-      if (savedDil) {
-        const parsed = JSON.parse(savedDil);
-        if (Array.isArray(parsed) && parsed.length > 0) setDilPosts(parsed);
-      }
-
-      const savedLinks = window.localStorage.getItem(STORAGE_KEYS.CURATED_LINKS);
-      if (savedLinks) {
-        const parsed = JSON.parse(savedLinks);
-        if (Array.isArray(parsed)) setCuratedLinks([...parsed, ...CURATED_LINK_SEED]);
-      }
-
-      const savedBanner = window.localStorage.getItem(STORAGE_KEYS.HERO_BANNER);
-      if (savedBanner) setHeroBannerUrl(savedBanner);
-
       const savedVichaar = window.localStorage.getItem(STORAGE_KEYS.VICHAAR_COMMENTS);
       if (savedVichaar) setVichaarMap(JSON.parse(savedVichaar));
-
-      const savedDeleted = window.localStorage.getItem(STORAGE_KEYS.DELETED_IDS);
-      if (savedDeleted) setDeletedIds(JSON.parse(savedDeleted));
 
       const savedOverrides = window.localStorage.getItem(STORAGE_KEYS.IMAGE_OVERRIDES);
       if (savedOverrides) setImageOverrides(JSON.parse(savedOverrides));
@@ -785,78 +615,32 @@ function SangatHubContent() {
       // Ignore storage read errors
     }
 
-    // Fetch shared global banners, custom posts, and deleted IDs from /api/site-frames
+    // Fetch shared global posts and deleted IDs directly from Supabase (/api/site-frames)
     void fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data || typeof data !== "object") return;
         if (typeof data.heroBannerUrl === "string" && data.heroBannerUrl.trim()) {
           setHeroBannerUrl(data.heroBannerUrl);
-          try {
-            window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, data.heroBannerUrl);
-          } catch {
-            // ignore quota errors
-          }
         }
-        if (Array.isArray(data.deletedIds) && data.deletedIds.length > 0) {
-          setDeletedIds((prev) => {
-            const merged = Array.from(new Set([...prev, ...data.deletedIds]));
-            try {
-              window.localStorage.setItem(STORAGE_KEYS.DELETED_IDS, JSON.stringify(merged));
-            } catch {
-              // ignore
-            }
-            return merged;
-          });
-        }
+        const serverDeleted: string[] = Array.isArray(data.deletedIds)
+          ? data.deletedIds
+          : [];
+        setDeletedIds(serverDeleted);
+
         if (data.customPosts && typeof data.customPosts === "object") {
           const cp = data.customPosts as {
             links?: CuratedLink[];
             blogs?: SangatBlogArticle[];
             pins?: SangatVisualPin[];
           };
-          if (Array.isArray(cp.links) && cp.links.length > 0) {
-            setCuratedLinks((prev) => {
-              const seen = new Set(prev.map((l) => l.id));
-              const fresh = cp.links!.filter((l) => l && !seen.has(l.id));
-              const merged = [...fresh, ...prev];
-              try {
-                window.localStorage.setItem(
-                  STORAGE_KEYS.CURATED_LINKS,
-                  JSON.stringify(merged.filter((l) => l.isUserCreated))
-                );
-              } catch {
-                // ignore
-              }
-              return merged;
-            });
-          }
-          if (Array.isArray(cp.blogs) && cp.blogs.length > 0) {
-            setBlogs((prev) => {
-              const seen = new Set(prev.map((b) => b.id));
-              const fresh = cp.blogs!.filter((b) => b && !seen.has(b.id));
-              const merged = [...fresh, ...prev];
-              try {
-                window.localStorage.setItem(STORAGE_KEYS.BLOGS, JSON.stringify(merged));
-              } catch {
-                // ignore
-              }
-              return merged;
-            });
-          }
-          if (Array.isArray(cp.pins) && cp.pins.length > 0) {
-            setPins((prev) => {
-              const seen = new Set(prev.map((p) => p.id));
-              const fresh = cp.pins!.filter((p) => p && !seen.has(p.id));
-              const merged = [...fresh, ...prev];
-              try {
-                window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(merged));
-              } catch {
-                // ignore
-              }
-              return merged;
-            });
-          }
+          setCuratedLinks(Array.isArray(cp.links) ? cp.links : []);
+          setBlogs(Array.isArray(cp.blogs) ? cp.blogs : []);
+          setPins(Array.isArray(cp.pins) ? cp.pins : []);
+        } else {
+          setCuratedLinks([]);
+          setBlogs([]);
+          setPins([]);
         }
       })
       .catch(() => {
@@ -1579,19 +1363,49 @@ function SangatHubContent() {
     });
   };
 
-  const handleAdminDeletePost = (item: FeedItem) => {
+  const handleAdminDeletePost = async (item: FeedItem) => {
     const key = getItemKey(item);
-    const nextDeleted = deletedIds.includes(key) ? deletedIds : [...deletedIds, key];
-    setDeletedIds(nextDeleted);
+    const headers: Record<string, string> = {};
     try {
-      window.localStorage.setItem(STORAGE_KEYS.DELETED_IDS, JSON.stringify(nextDeleted));
+      const token =
+        window.localStorage.getItem("learnsikhi_admin_token_v1") ||
+        (window.localStorage.getItem("learnsikhi_founder_admin_v1") === "true"
+          ? "verified_founder_1313"
+          : "");
+      if (token) headers["x-admin-token"] = token;
     } catch {
-      // ignore quota errors
+      // ignore storage errors
     }
-    pushSiteSync({ deletedIds: nextDeleted });
+
+    try {
+      const res = await fetch(`/api/posts/${encodeURIComponent(key)}`, {
+        method: "DELETE",
+        headers,
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setShareToast(data?.error || "Could not delete post from server.");
+        window.setTimeout(() => setShareToast(null), 3500);
+        return;
+      }
+    } catch {
+      setShareToast("Network error while deleting post.");
+      window.setTimeout(() => setShareToast(null), 3500);
+      return;
+    }
+
+    // Remove immediately from active client lists
+    setCuratedLinks((prev) => prev.filter((l) => l.id !== item.id));
+    setBlogs((prev) => prev.filter((b) => b.id !== item.id));
+    setPins((prev) => prev.filter((p) => p.id !== item.id));
+    setDeletedIds((prev) => (prev.includes(key) ? prev : [...prev, key]));
+
     if (readingItem && getItemKey(readingItem) === key) {
       setReadingItem(null);
     }
+    setShareToast("Post permanently deleted for all users.");
+    window.setTimeout(() => setShareToast(null), 3000);
   };
 
   const handleAddVichaar = (item: FeedItem, e: React.FormEvent) => {
@@ -3143,9 +2957,8 @@ function SangatHubContent() {
                         onChange={(e) => setCurateCategory(e.target.value as CuratedCategory)}
                         className="w-full rounded-xl border border-[#C59B27]/35 bg-[#FAF7F0] dark:bg-[#111318] px-3 py-2 text-sm focus:outline-none focus:border-[#C59B27]"
                       >
-                        <option value="essays">SikhStack Essays &amp; Research</option>
+                        <option value="essays">SikhStacks Essays &amp; Research</option>
                         <option value="visuals">SikhInterest Visuals</option>
-                        <option value="news">Bunga Azadi &amp; Panthic News</option>
                       </select>
                     </div>
                   </div>
@@ -3511,11 +3324,32 @@ function SangatHubContent() {
                 })()}
               </div>
 
+              <label
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="flex items-start gap-2.5 rounded-xl border p-3 text-xs leading-relaxed cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  required
+                  checked={confirmOriginalArt}
+                  onChange={(e) => setConfirmOriginalArt(e.target.checked)}
+                  className="mt-0.5 accent-[#C59B27]"
+                />
+                <span>
+                  I confirm this is my original artwork or I have permission from
+                  the creator to share it.
+                </span>
+              </label>
+
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     resetShareForm();
+                    setConfirmOriginalArt(false);
                     setIsShareOpen(false);
                   }}
                   className="px-4 py-2 rounded-xl border border-[#C59B27]/30 text-xs font-bold"
@@ -3524,9 +3358,10 @@ function SangatHubContent() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold shadow-sm"
+                  disabled={!confirmOriginalArt}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-extrabold shadow-sm disabled:opacity-50"
                 >
-                  Publish Dispatch
+                  Publish Art / Dispatch
                 </button>
               </div>
             </form>
@@ -3945,11 +3780,32 @@ function SangatHubContent() {
                 )}
               </div>
 
+              <label
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="flex items-start gap-2.5 rounded-xl border p-3 text-xs leading-relaxed cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  required
+                  checked={confirmPinOriginalArt}
+                  onChange={(e) => setConfirmPinOriginalArt(e.target.checked)}
+                  className="mt-0.5 accent-[#C59B27]"
+                />
+                <span>
+                  I confirm this is my original artwork or I have permission from
+                  the creator to share it.
+                </span>
+              </label>
+
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider"
+                disabled={!confirmPinOriginalArt}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider disabled:opacity-50"
               >
-                Publish SikhInterest Pin â†’
+                Publish Art →
               </button>
             </form>
           </div>

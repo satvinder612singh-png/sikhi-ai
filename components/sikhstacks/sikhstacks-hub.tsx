@@ -10,9 +10,11 @@ import {
   MessageSquare,
   PenLine,
   Send,
+  Trash2,
   X,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { isStealthAdminEmail } from "@/components/editable-heritage-image";
 import { ArticleMarkdownRenderer } from "@/components/articles/markdown-renderer";
 import { ThreadedComments } from "@/components/sikhstacks/threaded-comments";
 import type { ArticleRecord } from "@/lib/articles-store";
@@ -25,126 +27,6 @@ export const SIKHSTACKS_POST_TYPES = [
 ] as const;
 
 export type SikhStacksPostType = (typeof SIKHSTACKS_POST_TYPES)[number];
-
-/**
- * Curated foundational SikhStacks entries so the editorial feed always
- * showcases clean examples across all 4 categories (and opens in-page
- * with full threaded comments).
- */
-const DEFAULT_SIKHSTACKS_POSTS: ArticleRecord[] = [
-  {
-    id: "sikhstacks-viyakaran-mool-mantar",
-    slug: "gurbani-viyakaran-mool-mantar",
-    title: "How One Sihari & Aunkar Transforms the Meaning of Mool Mantar",
-    summary_short:
-      "A clear walkthrough of Professor Sahib Singh's Gurbani Viyakaran showing how morphological case endings in Gurmukhi preserve exact philosophical meaning.",
-    content_markdown: `## Why Gurbani Grammar Matters
-
-In classical Gurmukhi, vowel markers such as the final *Aunkar* (\`ੁ\`) and *Sihari* (\`ਿ\`) are not decorative—they encode grammatical case, number, and syntactic relationship.
-
-> **ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥**
-
-### Key Grammatical Observations
-
-1. **ਸਤਿ ਨਾਮੁ (Sati Nāmu):** The *Sihari* on \`ਸਤਿ\` derives from the Sanskrit *Satya* (Ever-Stable Reality), while the *Aunkar* on \`ਨਾਮੁ\` marks a singular masculine noun in the nominative case.
-2. **ਗੁਰ ਪ੍ਰਸਾਦਿ (Gur Prasādi):** The final *Sihari* on \`ਪ੍ਰਸਾਦਿ\` is an instrumental/locative marker meaning *"by the grace of the Guru"* rather than a noun in isolation.
-
-Studying Gurbani through its internal grammar removes arbitrary speculation and anchors interpretation directly in the Guru's words.`,
-    cover_image_url: null,
-    author_id: null,
-    author_name: "Gurbani Viyakaran Study Circle",
-    source_name: "Gurbani Viyakaran (Prof. Sahib Singh)",
-    source_url: null,
-    category: "Research & Essay",
-    tags: ["Research & Essay"],
-    status: "published",
-    created_at: "2026-02-10T10:00:00.000Z",
-    updated_at: "2026-02-10T10:00:00.000Z",
-  },
-  {
-    id: "sikhstacks-miri-piri-sovereignty",
-    slug: "miri-piri-temporal-spiritual-sovereignty",
-    title: "Hukam, Haumai, and the Architecture of Miri-Piri",
-    summary_short:
-      "Why Sikh philosophy refuses to separate inward contemplative discipline (Naam) from outward ethical responsibility and sovereignty in the world.",
-    content_markdown: `## Beyond Monastic Withdrawal
-
-From Guru Nanak Dev Ji's *Siddh Gosht* to Guru Hargobind Sahib Ji donning the twin swords of **Miri** and **Piri**, Gurmat establishes that spiritual realization must stand upright within society.
-
-> **ਹੁਕਮਿ ਰਜਾਈ ਚਲਣਾ ਨਾਨਕ ਲਿਖਿਆ ਨਾਲਿ ॥**
-> *To walk in harmony with Divine Command, O Nanak, is inscribed within our very being.* (Ang 1)
-
-### The Twin Pillars
-
-- **Piri (Spiritual Anchor):** Dissolving ego (*Haumai*) through *Simran*, *Kirtan*, and *Sangat*.
-- **Miri (Temporal Responsibility):** Standing firm for justice (*Dharam*), feeding the hungry through *Langar*, and defending human dignity without malice (*Nirvair*).`,
-    cover_image_url: null,
-    author_id: null,
-    author_name: "Sangat Philosophy Collective",
-    source_name: "Sri Guru Granth Sahib Ji • Ang 1",
-    source_url: null,
-    category: "Philosophy & Vichaar",
-    tags: ["Philosophy & Vichaar"],
-    status: "published",
-    created_at: "2026-02-08T10:00:00.000Z",
-    updated_at: "2026-02-08T10:00:00.000Z",
-  },
-  {
-    id: "sikhstacks-book-panth-prakash",
-    slug: "book-showcase-sri-gur-panth-prakash",
-    title: "Book Notes: Sri Gur Panth Prakash (1841) by Bhai Rattan Singh Bhangu",
-    summary_short:
-      "How an 18th-century Sikh historian recorded oral testimonies of the Khalsa's rise to answer colonial questions about Sikh sovereignty.",
-    content_markdown: `## About the Work
-
-Completed in **1841 CE**, *Sri Gur Panth Prakash* by Shaheed Bhai Rattan Singh Bhangu (grandson of Shaheed Bhai Mehtab Singh Mirankotia) is one of the most vital primary sources on 18th-century Khalsa history.
-
-### Why Bhangu Wrote This Granth
-
-When British East India Company officials asked how the Sikhs had legitimately acquired sovereignty over Punjab, Bhai Rattan Singh Bhangu compiled firsthand family and Panthic oral accounts to show that the Khalsa's sovereignty was bestowed directly by Guru Nanak Dev Ji and Guru Gobind Singh Ji—and sealed through decades of sacrifice.
-
-### Recommended Editions
-
-- **Gurmukhi Critical Text:** Edited by Bhai Vir Singh Ji and Dr. Balwant Singh Dhillon.
-- **English Translation:** *Sri Gur Panth Prakash* (2 Volumes, translated by Prof. Kulwant Singh, Institute of Sikh Studies).`,
-    cover_image_url: null,
-    author_id: null,
-    author_name: "Panthic Library Showcase",
-    source_name: "Sri Gur Panth Prakash (1841)",
-    source_url: null,
-    category: "Book Showcase",
-    tags: ["Book Showcase"],
-    status: "published",
-    created_at: "2026-02-05T10:00:00.000Z",
-    updated_at: "2026-02-05T10:00:00.000Z",
-  },
-  {
-    id: "sikhstacks-community-pothi-bindery",
-    slug: "sikh-business-puratan-pothi-tanti-saaj-workshops",
-    title: "Sikh Makers & Community Initiatives: Handcrafted Tanti Saaj & Pothi Conservation",
-    summary_short:
-      "Highlighting independent Sikh artisans, manuscript conservation labs, and community book clubs preserving Gurmat Sangeet and heritage publishing.",
-    content_markdown: `## Supporting Independent Sikh Artisans & Initiatives
-
-Across Punjab and the global diaspora, independent Sikh craftspeople and educators are reviving classical disciplines:
-
-- **Tanti Saaj Luthiers:** Luthier workshops hand-carving seasoned *Tun* and *Mulberry* wood into authentic *Rababs*, *Sarandas*, *Taus*, and *Dilrubas* for Gurmat Sangeet students.
-- **Manuscript & Pothi Conservation:** Archival initiatives digitizing and stabilizing historical Gurmukhi manuscripts while training youth in calligraphic preservation.
-- **Independent Sikh Publishers & Bookstores:** Community-run presses printing high-contrast, acid-free editions of classical Sikh literature.
-
-Have a Sikh business, book project, or community initiative to share? Click **Start Writing** above and tag your post under **Sikh Business / Community**.`,
-    cover_image_url: null,
-    author_id: null,
-    author_name: "Sikh Commons Directory",
-    source_name: "SikhStacks Community Showcase",
-    source_url: null,
-    category: "Sikh Business / Community",
-    tags: ["Sikh Business / Community"],
-    status: "published",
-    created_at: "2026-02-02T10:00:00.000Z",
-    updated_at: "2026-02-02T10:00:00.000Z",
-  },
-];
 
 function estimateReadMinutes(markdown: string): number {
   const words = markdown.trim().split(/\s+/).filter(Boolean).length;
@@ -213,11 +95,64 @@ export function SikhStacksHub() {
     void loadPostsAndCounts();
   }, [loadPostsAndCounts]);
 
-  const allPosts = useMemo(() => {
-    const seenIds = new Set(dbPosts.map((p) => p.id));
-    const defaults = DEFAULT_SIKHSTACKS_POSTS.filter((d) => !seenIds.has(d.id));
-    return [...dbPosts, ...defaults];
-  }, [dbPosts]);
+  const allPosts = useMemo(() => dbPosts, [dbPosts]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const canDeletePost = useCallback(
+    (post: ArticleRecord) => {
+      if (isStealthAdminEmail(user?.email)) return true;
+      if (typeof window !== "undefined") {
+        const hasAdminToken = Boolean(
+          window.localStorage.getItem("learnsikhi_admin_token_v1") ||
+            window.localStorage.getItem("learnsikhi_founder_admin_v1") === "true"
+        );
+        if (hasAdminToken) return true;
+      }
+      return Boolean(user?.id && post.author_id && user.id === post.author_id);
+    },
+    [user]
+  );
+
+  const handleDeletePost = async (post: ArticleRecord, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!window.confirm(`Permanently delete "${post.title}" for all visitors?`)) {
+      return;
+    }
+    setDeletingId(post.id);
+    try {
+      const headers: Record<string, string> = {};
+      if (typeof window !== "undefined") {
+        const token =
+          window.localStorage.getItem("learnsikhi_admin_token_v1") ||
+          (window.localStorage.getItem("learnsikhi_founder_admin_v1") === "true"
+            ? "verified_founder_1313"
+            : "");
+        if (token) headers["x-admin-token"] = token;
+      }
+      const res = await fetch(
+        `/api/articles/${encodeURIComponent(post.id)}`,
+        {
+          method: "DELETE",
+          headers,
+          cache: "no-store",
+        }
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Could not delete post.");
+      }
+      setDbPosts((prev) => prev.filter((p) => p.id !== post.id));
+      if (selectedPost?.id === post.id) {
+        setSelectedPost(null);
+      }
+    } catch (err) {
+      setStatusMessage(
+        err instanceof Error ? err.message : "Could not delete post."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filteredPosts = useMemo(() => {
     if (activeType === "All") return allPosts;
@@ -354,16 +289,29 @@ export function SikhStacksHub() {
             Back to SikhStacks
           </button>
 
-          <span
-            style={{
-              backgroundColor: "var(--bg-tertiary)",
-              borderColor: "var(--border-subtle)",
-              color: "var(--accent-text)",
-            }}
-            className="rounded-md border px-2.5 py-1 text-xs font-semibold"
-          >
-            {selectedPost.category}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              style={{
+                backgroundColor: "var(--bg-tertiary)",
+                borderColor: "var(--border-subtle)",
+                color: "var(--accent-text)",
+              }}
+              className="rounded-md border px-2.5 py-1 text-xs font-semibold"
+            >
+              {selectedPost.category}
+            </span>
+            {canDeletePost(selectedPost) && (
+              <button
+                type="button"
+                disabled={deletingId === selectedPost.id}
+                onClick={(e) => void handleDeletePost(selectedPost, e)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deletingId === selectedPost.id ? "Deleting…" : "Delete Post"}
+              </button>
+            )}
+          </div>
         </div>
 
         <article
@@ -876,21 +824,61 @@ export function SikhStacksHub() {
             </div>
           ))}
         </div>
+      ) : filteredPosts.length === 0 ? (
+        <div
+          style={{
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
+          }}
+          className="rounded-2xl border p-8 sm:p-10 text-center space-y-3"
+        >
+          <p className="font-serif text-xl font-bold">
+            No posts yet — click Start Writing to create the first one
+          </p>
+          <p
+            style={{ color: "var(--theme-text-muted)" }}
+            className="text-sm max-w-md mx-auto"
+          >
+            Share an essay, Gurmat vichaar, book showcase, or Sikh community
+            initiative directly with the Sangat.
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setIsComposerOpen(true)}
+              style={{
+                backgroundColor: "var(--accent-primary)",
+                color: "var(--cta-text)",
+              }}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold"
+            >
+              <PenLine className="w-4 h-4" />
+              Start Writing
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredPosts.map((post) => {
             const count = commentCounts[post.id] || 0;
             const readMins = estimateReadMinutes(post.content_markdown);
             return (
-              <button
+              <div
                 key={post.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedPost(post)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedPost(post);
+                  }
+                }}
                 style={{
                   backgroundColor: "var(--bg-surface)",
                   borderColor: "var(--border-subtle)",
                 }}
-                className="group text-left rounded-xl border overflow-hidden hover:border-[var(--accent-primary)] transition-colors duration-150 flex flex-col justify-between"
+                className="group cursor-pointer text-left rounded-xl border overflow-hidden hover:border-[var(--accent-primary)] transition-colors duration-150 flex flex-col justify-between"
               >
                 {post.cover_image_url && (
                   <div
@@ -960,15 +948,28 @@ export function SikhStacksHub() {
                         {count} {count === 1 ? "comment" : "comments"}
                       </span>
                     </div>
-                    <span
-                      style={{ color: "var(--text-primary)" }}
-                      className="font-semibold group-hover:underline"
-                    >
-                      Read →
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {canDeletePost(post) && (
+                        <button
+                          type="button"
+                          disabled={deletingId === post.id}
+                          onClick={(e) => void handleDeletePost(post, e)}
+                          className="inline-flex items-center gap-1 text-red-500 hover:underline font-medium disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </button>
+                      )}
+                      <span
+                        style={{ color: "var(--text-primary)" }}
+                        className="font-semibold group-hover:underline"
+                      >
+                        Read →
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

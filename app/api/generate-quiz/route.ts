@@ -22,6 +22,9 @@ interface GenerateQuizRequest {
   gameType?: GameType;
   mode?: GameType;
   seed?: number;
+  dateSeed?: string;
+  roundNumber?: number;
+  excludeTopics?: string[];
 }
 
 const VALID_AGES: LearnerAgeGroup[] = [
@@ -58,9 +61,12 @@ const LEVEL_DISPLAY: Record<LearnerKnowledgeLevel, string> = {
 };
 
 const MANDATORY_SYSTEM_INSTRUCTIONS = `Generate game content strictly tailored to the user's profile (ageGroup and knowledgeLevel). Dynamically adjust complexity, vocabulary, real-world framing, and subject matter to match their specific tier.
-- For Advanced / Adults & Seniors profiles: Completely bypass elementary alphabet recognition, basic textbook definitions, or surface-level trivia. Generate high-level analytical challenges, nuanced Gurbani conceptual synthesis, Raag/Pehar musicology, and realistic ethical or leadership dilemmas.
-- For Young Adults / Students & Professionals: Frame scenarios around university life, career integrity, stress/burnout management, teamwork, and personal discipline grounded in Gurmat.
-- For Beginner / Kids profiles: Use warm, encouraging, accessible language, foundational Gurmukhi/Sakhi facts, and clear everyday examples.
+- Strictly respect ageGroup and knowledgeLevel:
+  * For Advanced / Adults & Seniors profiles: Completely bypass elementary alphabet recognition, basic textbook definitions, or surface-level trivia. Generate high-level analytical challenges, nuanced Gurbani conceptual synthesis, Raag/Pehar musicology, and realistic ethical or leadership dilemmas.
+  * For Young Adults / Students & Professionals: Frame scenarios around university life, career integrity, stress/burnout management, teamwork, and personal discipline grounded in Gurmat.
+  * For Beginner / Kids profiles: Use warm, encouraging, accessible language, foundational Gurmukhi/Sakhi facts, and clear everyday examples.
+- ANTI-REPETITION RULE: Never repeat any concept, historical event, Raag, or Pankti listed in excludeTopics. Every item must be fresh and distinct from all previously seen topics.
+- MULTI-DOMAIN ROTATION: Rotate across diverse domains of Sikhi (Gurbani concepts, Gurmat Sangeet & 31 Raags, Sikh history & ethics, unsung Sikh women, and modern life dilemmas). On higher roundNumber counts (Round 2+), subtly increase depth and analytical nuance while staying aligned to the learner's profile.
 - Return strictly valid JSON matching the requested gameType schema (pairs for matching games, scenarios with options + panktiReflection for Dilemma/Crossroads games, or questions for Quizzes/Sprints).`;
 
 function normalizeKnowledgeLevel(raw: unknown): LearnerKnowledgeLevel {
@@ -75,13 +81,24 @@ function buildGameTypePrompt(
   gameType: GameType,
   ageGroup: LearnerAgeGroup,
   knowledgeLevel: LearnerKnowledgeLevel,
-  seed: number
+  seed: number,
+  dateSeed: string,
+  roundNumber: number,
+  excludeTopics: string[]
 ): string {
-  const profileBlock = `Learner Profile:
+  const exclusionLine =
+    excludeTopics.length > 0
+      ? `- excludeTopics (DO NOT REPEAT ANY OF THESE): ${excludeTopics.slice(-40).join(" | ")}`
+      : "- excludeTopics: none yet (start fresh for today's Daily Challenge)";
+
+  const profileBlock = `Learner Profile & Session Context:
 - ageGroup: ${AGE_DISPLAY[ageGroup]}
 - knowledgeLevel: ${LEVEL_DISPLAY[knowledgeLevel]}
 - gameType: ${gameType}
-- variationSeed: ${seed}`;
+- dateSeed: ${dateSeed}
+- roundNumber: ${roundNumber}
+- variationSeed: ${seed}
+${exclusionLine}`;
 
   if (gameType === "gurmukhi") {
     return `${MANDATORY_SYSTEM_INSTRUCTIONS}
@@ -494,6 +511,20 @@ export async function POST(req: Request) {
   const seed = Number.isFinite(Number(body.seed))
     ? Number(body.seed)
     : Date.now();
+  const dateSeed =
+    typeof body.dateSeed === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateSeed.trim())
+      ? body.dateSeed.trim()
+      : new Date().toISOString().slice(0, 10);
+  const roundNumber = Math.max(
+    1,
+    Number.isFinite(Number(body.roundNumber)) ? Math.floor(Number(body.roundNumber)) : 1
+  );
+  const excludeTopics = Array.isArray(body.excludeTopics)
+    ? body.excludeTopics
+        .map((t) => String(t || "").replace(/\s+/g, " ").trim().slice(0, 90))
+        .filter(Boolean)
+        .slice(-40)
+    : [];
 
   const headers = {
     "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -508,7 +539,9 @@ export async function POST(req: Request) {
         ageGroup,
         knowledgeLevel,
         gameType,
-        ...buildFallbackPayload(gameType, ageGroup, knowledgeLevel, seed),
+        dateSeed,
+        roundNumber,
+        ...buildFallbackPayload(gameType, ageGroup, knowledgeLevel, seed + roundNumber * 97),
       },
       { headers }
     );
@@ -516,7 +549,15 @@ export async function POST(req: Request) {
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = buildGameTypePrompt(gameType, ageGroup, knowledgeLevel, seed);
+    const prompt = buildGameTypePrompt(
+      gameType,
+      ageGroup,
+      knowledgeLevel,
+      seed,
+      dateSeed,
+      roundNumber,
+      excludeTopics
+    );
 
     const response = await Promise.race([
       ai.models.generateContent({
@@ -524,7 +565,7 @@ export async function POST(req: Request) {
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          temperature: 0.65,
+          temperature: Math.min(0.9, 0.65 + (roundNumber - 1) * 0.05),
         },
       }),
       new Promise<never>((_, reject) =>
@@ -550,6 +591,8 @@ export async function POST(req: Request) {
           ageGroup,
           knowledgeLevel,
           gameType,
+          dateSeed,
+          roundNumber,
           ...shaped,
         },
         { headers }
@@ -566,7 +609,9 @@ export async function POST(req: Request) {
       ageGroup,
       knowledgeLevel,
       gameType,
-      ...buildFallbackPayload(gameType, ageGroup, knowledgeLevel, seed),
+      dateSeed,
+      roundNumber,
+      ...buildFallbackPayload(gameType, ageGroup, knowledgeLevel, seed + roundNumber * 97),
     },
     { headers }
   );

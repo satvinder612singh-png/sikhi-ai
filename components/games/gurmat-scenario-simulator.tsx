@@ -2,11 +2,17 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { RefreshCw } from "lucide-react";
 import {
   type GameType,
   type LearnerProfile,
   formatLearnerProfileBadge,
 } from "./learner-profile";
+import {
+  appendSeenTopics,
+  getTodayDateSeed,
+  readSeenTopics,
+} from "./daily-session";
 import { CelebrationBurst } from "./celebration-burst";
 import {
   buildFallbackPayload,
@@ -46,6 +52,8 @@ export function GurmatScenarioSimulator({
       setFinished(false);
 
       try {
+        const dateSeed = getTodayDateSeed();
+        const excludeTopics = readSeenTopics(gameType, dateSeed);
         const res = await fetch("/api/generate-quiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -55,6 +63,9 @@ export function GurmatScenarioSimulator({
             ageGroup: learnerProfile.ageGroup,
             knowledgeLevel: learnerProfile.knowledgeLevel,
             seed: seedValue,
+            dateSeed,
+            roundNumber: seedValue,
+            excludeTopics,
           }),
           signal,
         });
@@ -66,6 +77,11 @@ export function GurmatScenarioSimulator({
         if (Array.isArray(data.scenarios) && data.scenarios.length >= 2) {
           setScenarios(data.scenarios);
           setRoundSource(data.source === "gemini" ? "gemini" : "fallback");
+          appendSeenTopics(
+            gameType,
+            data.scenarios.map((s) => `${s.contextTag}: ${s.title}`),
+            dateSeed
+          );
         } else {
           const fb = buildFallbackPayload(
             gameType,
@@ -201,7 +217,7 @@ export function GurmatScenarioSimulator({
             onClick={() => setRoundSeed((s) => s + 1)}
             className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-3 text-base font-extrabold text-[#18181B] shadow-md hover:brightness-105"
           >
-            ✨ Generate Fresh Scenarios
+            Continue to Next Round →
           </button>
           <button
             type="button"
@@ -262,9 +278,10 @@ export function GurmatScenarioSimulator({
               backgroundColor: "var(--theme-card-darker)",
               borderColor: "var(--border-subtle)",
             }}
-            className="sanctuary-interactive rounded-[var(--radius-control)] border px-3.5 py-2 text-xs sm:text-sm font-semibold hover:border-[#C59B27]"
+            className="sanctuary-interactive inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border px-3.5 py-2 text-xs sm:text-sm font-semibold hover:border-[#C59B27]"
           >
-            ✨ Generate Fresh Round
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh Set
           </button>
         </div>
 

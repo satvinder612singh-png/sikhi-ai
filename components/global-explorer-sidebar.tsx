@@ -44,69 +44,7 @@ interface DirectoryPageGroup {
   topics: DirectoryTopicItem[];
 }
 
-const STATIC_SANGAT_TOPICS: DirectoryTopicItem[] = [
-  {
-    id: "blog-viyakaran-sahib-singh",
-    anchorId: "topic-blog-viyakaran-sahib-singh",
-    title: "How One Sihari & Aunkar Transforms the Meaning of Mool Mantar",
-    subtitle: "Gurbani Viyakaran Essay",
-  },
-  {
-    id: "blog-panth-prakash-sovereignty",
-    anchorId: "topic-blog-panth-prakash-sovereignty",
-    title:
-      "Why Shaheed Bhai Rattan Singh Bhangu Wrote Sri Gur Panth Prakash in 1841",
-    subtitle: "Itihaas Research Essay",
-  },
-  {
-    id: "blog-tanti-saaj-rabab-dilruba",
-    anchorId: "topic-blog-tanti-saaj-rabab-dilruba",
-    title: "The Spiritual Physics of Tanti Saaj: Rabab, Saranda & Taus",
-    subtitle: "Gurmat Sangeet Essay",
-  },
-  {
-    id: "pin-1",
-    anchorId: "topic-pin-1",
-    title: "Puratan Larivaar Mul Mantar Folio in Gold & Indigo",
-    subtitle: "Chitrakari Pin",
-  },
-  {
-    id: "pin-2",
-    anchorId: "topic-pin-2",
-    title: "Amrit Vela Reflection at Sachkhand Sri Harmandir Sahib",
-    subtitle: "Sanctuary Visual",
-  },
-  {
-    id: "seed-bunga-azadi-yt",
-    anchorId: "topic-seed-bunga-azadi-yt",
-    title: "Bunga Azadi — Discussions on Sikh Sovereignty & Philosophy",
-    subtitle: "Curated Resource",
-  },
-  {
-    id: "seed-ensaaf",
-    anchorId: "topic-seed-ensaaf",
-    title: "Ensaaf — Human-Rights Documentation of 1984 and After",
-    subtitle: "Curated Archive",
-  },
-  {
-    id: "seed-1984-tribute",
-    anchorId: "topic-seed-1984-tribute",
-    title: "1984 Tribute — Remembering June & November 1984",
-    subtitle: "Oral Testimony Archive",
-  },
-  {
-    id: "seed-manglacharan",
-    anchorId: "topic-seed-manglacharan",
-    title: "Manglacharan — Translations of Classical Sikh Granths",
-    subtitle: "Classical Translations",
-  },
-  {
-    id: "seed-gurmatveechar",
-    anchorId: "topic-seed-gurmatveechar",
-    title: "Gurmat Veechar — Puratan Kirtan, Katha & Pothi Archive",
-    subtitle: "Digital Vault",
-  },
-];
+const STATIC_SANGAT_TOPICS: DirectoryTopicItem[] = [];
 
 const STATIC_BANI_TOPICS: DirectoryTopicItem[] = [
   {

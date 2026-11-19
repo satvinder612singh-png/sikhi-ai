@@ -2,10 +2,16 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { RefreshCw } from "lucide-react";
 import {
   type LearnerProfile,
   formatLearnerProfileBadge,
 } from "./learner-profile";
+import {
+  appendSeenTopics,
+  getTodayDateSeed,
+  readSeenTopics,
+} from "./daily-session";
 import { CelebrationBurst } from "./celebration-burst";
 
 interface ConceptPair {
@@ -120,6 +126,8 @@ export function SikhiConceptsMatch({
       });
 
       try {
+        const dateSeed = getTodayDateSeed();
+        const excludeTopics = readSeenTopics("concepts", dateSeed);
         const res = await fetch("/api/generate-quiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -129,6 +137,9 @@ export function SikhiConceptsMatch({
             ageGroup: learnerProfile.ageGroup,
             knowledgeLevel: learnerProfile.knowledgeLevel,
             seed: seedValue,
+            dateSeed,
+            roundNumber: seedValue,
+            excludeTopics,
           }),
           signal,
         });
@@ -140,6 +151,11 @@ export function SikhiConceptsMatch({
         if (Array.isArray(data.pairs) && data.pairs.length >= 5) {
           setConcepts(data.pairs);
           setRoundSource(data.source === "gemini" ? "gemini" : "fallback");
+          appendSeenTopics(
+            "concepts",
+            data.pairs.map((p) => p.term),
+            dateSeed
+          );
         } else {
           setConcepts(LOCAL_FALLBACK_CONCEPTS);
           setRoundSource("fallback");
@@ -329,9 +345,14 @@ export function SikhiConceptsMatch({
             <button
               type="button"
               onClick={() => setRoundSeed((s) => s + 1)}
-              className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-4 py-2 text-xs sm:text-sm font-extrabold text-[#18181B]"
+              style={{
+                backgroundColor: "var(--theme-card-darker)",
+                borderColor: "var(--border-subtle)",
+              }}
+              className="sanctuary-interactive inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border px-3.5 py-2 text-xs sm:text-sm font-semibold hover:border-[#C59B27]"
             >
-              ✨ Generate Fresh Round
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh Set
             </button>
           </div>
         </div>
@@ -402,7 +423,7 @@ export function SikhiConceptsMatch({
             style={{ color: "var(--theme-text-muted)" }}
             className="text-sm sm:text-base"
           >
-            Beautiful focus. Generate a fresh round to explore new Gurmat
+            Beautiful focus. Continue to explore a fresh set of Gurmat
             vocabulary.
           </p>
           <button
@@ -410,7 +431,7 @@ export function SikhiConceptsMatch({
             onClick={() => setRoundSeed((s) => s + 1)}
             className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-2.5 text-sm sm:text-base font-extrabold text-[#18181B]"
           >
-            ✨ Generate Fresh Round
+            Continue to Next Round →
           </button>
         </motion.div>
       )}
