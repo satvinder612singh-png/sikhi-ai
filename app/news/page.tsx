@@ -17,12 +17,12 @@ export default function SikhNewsPage() {
     try {
       const res = await fetch(
         forceRefresh ? "/api/sikhi-news?refresh=true" : "/api/sikhi-news",
-        { cache: forceRefresh ? "no-store" : "default" }
+        { cache: "no-store" }
       );
       const data = await res.json();
       if (data?.ok && Array.isArray(data.items)) {
         setItems(data.items);
-        setUpdatedAt(data.updatedAt || null);
+        setUpdatedAt(data.updatedAt || new Date().toISOString());
       }
     } catch {
       // keep existing items on transient failure

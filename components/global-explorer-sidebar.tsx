@@ -439,12 +439,12 @@ export function GlobalExplorerSidebar({
     try {
       const res = await fetch(
         forceRefresh ? "/api/sikhi-news?refresh=true" : "/api/sikhi-news",
-        { cache: forceRefresh ? "no-store" : "default" }
+        { cache: "no-store" }
       );
       const data = await res.json();
       if (data?.ok && Array.isArray(data.items)) {
         setNewsItems(data.items);
-        setNewsUpdatedAt(data.updatedAt || null);
+        setNewsUpdatedAt(data.updatedAt || new Date().toISOString());
       }
     } catch {
       // Keep current items if network fails
@@ -959,14 +959,14 @@ export function GlobalExplorerSidebar({
                           className="dark-input rounded-xl border border-white/20 bg-black/60 px-3 py-2 text-xs text-white"
                         >
                           <option value="Global Sangat">Global Sangat</option>
-                          <option value="Heritage & History">
-                            Heritage &amp; History
+                          <option value="Punjab & Heritage">
+                            Punjab &amp; Heritage
                           </option>
                           <option value="Seva & Community">
                             Seva &amp; Community
                           </option>
-                          <option value="Education & Youth">
-                            Education &amp; Youth
+                          <option value="Youth & Education">
+                            Youth &amp; Education
                           </option>
                           <option value="Kirtan & Culture">
                             Kirtan &amp; Culture

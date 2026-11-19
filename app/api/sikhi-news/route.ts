@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 
 export type SikhiNewsCategory =
   | "Global Sangat"
-  | "Heritage & History"
+  | "Punjab & Heritage"
   | "Seva & Community"
-  | "Education & Youth"
+  | "Youth & Education"
   | "Kirtan & Culture";
 
 export interface SikhiNewsItem {
@@ -22,6 +22,7 @@ export interface SikhiNewsItem {
   sourceName: string;
   source: string;
   publishedAt: string;
+  publishedAtIso?: string;
   summary: string;
   keyPoints: string[];
   whyItMatters: string;
@@ -36,35 +37,57 @@ export interface SikhiNewsItem {
 
 const VALID_CATEGORIES: SikhiNewsCategory[] = [
   "Global Sangat",
-  "Heritage & History",
+  "Punjab & Heritage",
   "Seva & Community",
-  "Education & Youth",
+  "Youth & Education",
   "Kirtan & Culture",
 ];
 
 const STATE_KEY = "learnsikhi_global_site_frames_v1";
 const FALLBACK_FILE = path.join(os.tmpdir(), "learnsikhi-site-frames.json");
 
-const RSS_FEEDS: { url: string; defaultSource: string }[] = [
+// 15-minute in-memory server cache for live internet news
+const LIVE_NEWS_CACHE_TTL_MS = 15 * 60 * 1000;
+interface LiveNewsMemoryCache {
+  items: SikhiNewsItem[];
+  updatedAt: string;
+  liveFeedSuccessCount: number;
+  expiresAt: number;
+}
+let liveNewsCache: LiveNewsMemoryCache | null = null;
+
+const RSS_FEEDS: { url: string; defaultSource: string; isGoogleNews?: boolean }[] = [
   {
-    url: `https://news.google.com/rss/search?q=${encodeURIComponent(
-      "Sikh community seva OR Gurdwara heritage OR Langar OR Sikh education"
-    )}&hl=en-US&gl=US&ceid=US:en`,
-    defaultSource: "Global Press · Sikhi",
+    url: 'https://news.google.com/rss/search?q=(Sikh+OR+Sikhism+OR+Gurdwara+OR+"Harmandir+Sahib"+OR+"Sikh+community")+when:7d&hl=en-GB&gl=GB&ceid=GB:en',
+    defaultSource: "Google News · Global Sangat",
+    isGoogleNews: true,
   },
   {
-    url: `https://news.google.com/rss/search?q=${encodeURIComponent(
-      "Sikh heritage museum OR Harmandir Sahib OR Sikh scholarship OR Gurmat"
-    )}&hl=en-US&gl=US&ceid=US:en`,
-    defaultSource: "Global Press · Heritage",
+    url: "https://news.google.com/rss/search?q=(Punjabi+media+OR+Sikh+heritage+OR+Khalsa+Aid+OR+SGPC)+when:7d&hl=en-GB&gl=GB&ceid=GB:en",
+    defaultSource: "Google News · Punjab & Heritage",
+    isGoogleNews: true,
+  },
+  {
+    url: 'https://news.google.com/rss/search?q=("Golden+Temple"+OR+Amritsar+heritage+OR+"Khalsa+Aid"+OR+SGPC+OR+Gurbani)+when:7d&hl=en-GB&gl=GB&ceid=GB:en',
+    defaultSource: "Google News · Amritsar & Seva",
+    isGoogleNews: true,
+  },
+  {
+    url: "https://news.google.com/rss/search?q=(site:sikhnet.com+OR+site:tribuneindia.com+Sikh+OR+Gurdwara+OR+Punjab)+when:14d&hl=en-GB&gl=GB&ceid=GB:en",
+    defaultSource: "SikhNet & The Tribune",
+    isGoogleNews: true,
+  },
+  {
+    url: "https://www.baaznews.org/feed",
+    defaultSource: "Baaz News",
   },
   {
     url: "https://www.sikhnet.com/news/rss.xml",
     defaultSource: "SikhNet News",
   },
   {
-    url: "https://www.baaznews.org/feed",
-    defaultSource: "Baaz News",
+    url: "https://www.tribuneindia.com/rss/feed?catId=120",
+    defaultSource: "The Tribune · Punjab",
   },
 ];
 
@@ -76,14 +99,14 @@ const CURATED_FALLBACK_NEWS: SikhiNewsItem[] = [
     category: "Seva & Community",
     sourceName: "SGPC Heritage Desk",
     source: "SGPC Heritage Desk",
-    publishedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+    publishedAt: "2 hours ago",
+    publishedAtIso: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     summary:
       "Volunteers from every walk of life gather around the clock at Sachkhand Sri Harmandir Sahib in Amritsar to prepare and serve freshly cooked vegetarian meals free of charge. The uninterrupted community kitchen embodies Guru Nanak Dev Ji's living commitment to radical equality and Vand Chakna.",
     keyPoints: [
       "Serves more than 100,000 visitors daily—and up to 200,000 on Gurpurabs—entirely through voluntary Seva.",
       "Every guest sits side by side in Pangat regardless of faith, nationality, wealth, or social standing.",
       "Supported solely by Daswandh (charitable sharing) and hands-on community volunteer shifts.",
-      "Inspires thousands of local Gurdwaras worldwide to operate open-door kitchens and disaster relief.",
     ],
     whyItMatters:
       "Guru Ka Langar demonstrates that spiritual devotion in Sikhi is inseparable from practical compassion, dignity, and shared nourishment for all humanity.",
@@ -95,10 +118,11 @@ const CURATED_FALLBACK_NEWS: SikhiNewsItem[] = [
     id: "curated-puratan-manuscript-preservation",
     title:
       "Archival Scholars Expand High-Resolution Digitization of Puratan Gurmukhi Manuscripts",
-    category: "Heritage & History",
+    category: "Punjab & Heritage",
     sourceName: "Gurmat Archival Network",
     source: "Gurmat Archival Network",
-    publishedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+    publishedAt: "5 hours ago",
+    publishedAtIso: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
     summary:
       "Digital heritage teams across Punjab, the UK, and North America are cataloging centuries-old Larivaar Birs, Janamsakhis, and classical Teekas for open public study. High-resolution scans protect fragile historical folios while connecting modern readers with authentic Puratan scribal traditions.",
     keyPoints: [
@@ -113,34 +137,14 @@ const CURATED_FALLBACK_NEWS: SikhiNewsItem[] = [
     imageUrl: null,
   },
   {
-    id: "curated-tanti-saaj-revival",
-    title:
-      "New Generation of Kirtanias Revives Classical Tanti Saaj & 31-Raag Gurmat Sangeet",
-    category: "Kirtan & Culture",
-    sourceName: "SikhNet Cultural Desk",
-    source: "SikhNet Cultural Desk",
-    publishedAt: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-    summary:
-      "Gurmat Sangeet academies across diaspora Gurdwaras are training youth in traditional string instruments including the Rabab, Dilruba, Saranda, and Taus. Students are studying time-of-day Pehar Raags and Puratan Shabad compositions directly from Sri Guru Granth Sahib Ji.",
-    keyPoints: [
-      "Revives instruments pioneered and cherished during the era of the Ten Gurus.",
-      "Reconnects Kirtan gatherings with the 31 classical Raags and Partaal rhythms inscribed in Gurbani.",
-      "Builds intergenerational mentorship between senior Hazoori Ragis and young Sangat musicians.",
-    ],
-    whyItMatters:
-      "In Sikhi, Raag is not mere decoration—it tunes the listener's heart to the exact spiritual mood (Ras) of the Shabad.",
-    sourceUrl: "https://www.sikhnet.com/",
-    url: "https://www.sikhnet.com/",
-    imageUrl: null,
-  },
-  {
     id: "curated-youth-gurmukhi-academies",
     title:
       "Sikh Education Initiatives Launch Open Gurmukhi & Gurmat Curricula for Global Youth",
-    category: "Education & Youth",
+    category: "Youth & Education",
     sourceName: "SikhRI Education Briefing",
     source: "SikhRI Education Briefing",
-    publishedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+    publishedAt: "8 hours ago",
+    publishedAtIso: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
     summary:
       "Educators and Sikh research institutes are rolling out accessible Gurmukhi literacy programs, interactive history toolkits, and bilingual study guides for families and students. The resources help young learners read Gurbani directly while exploring Sikh ethics in modern civic life.",
     keyPoints: [
@@ -154,64 +158,34 @@ const CURATED_FALLBACK_NEWS: SikhiNewsItem[] = [
     url: "https://www.sikhri.org/",
     imageUrl: null,
   },
-  {
-    id: "curated-global-sangat-relief",
-    title:
-      "Sikh Humanitarian Volunteers Mobilize Rapid Food, Water & Shelter Aid Worldwide",
-    category: "Global Sangat",
-    sourceName: "Global Seva Watch",
-    source: "Global Seva Watch",
-    publishedAt: new Date(Date.now() - 16 * 3600 * 1000).toISOString(),
-    summary:
-      "Guided by Sarbat Da Bhala—welfare for all—Sikh volunteer networks continue partnering with local civic agencies to deliver hot meals and emergency supplies during climate and humanitarian crises. Grassroots Gurdwara teams coordinate logistics within hours of regional emergencies.",
-    keyPoints: [
-      "Applies the principle of Langar beyond Gurdwara walls through mobile kitchens and clean-water relief.",
-      "Mobilizes youth and senior volunteers together across North America, Europe, Asia, and Oceania.",
-      "Maintains transparent, grassroots-funded aid focused on immediate dignity and long-term recovery.",
-    ],
-    whyItMatters:
-      "Selfless global relief shows the living relevance of Guru Gobind Singh Ji's teaching: recognize the entire human race as one.",
-    sourceUrl: "https://www.khalsaaid.org/",
-    url: "https://www.khalsaaid.org/",
-    imageUrl: null,
-  },
-  {
-    id: "curated-sikh-heritage-months",
-    title:
-      "Libraries, Museums & Civic Halls Celebrate Sikh Heritage Exhibits Across North America & UK",
-    category: "Heritage & History",
-    sourceName: "Diaspora Heritage Journal",
-    source: "Diaspora Heritage Journal",
-    publishedAt: new Date(Date.now() - 20 * 3600 * 1000).toISOString(),
-    summary:
-      "Public libraries, city halls, and regional museums are hosting curated Sikh Heritage Month exhibitions showcasing historical artifacts, fine art, and diaspora pioneer archives. Free community workshops introduce neighbors of all faiths to Sikh philosophy, turban heritage, and Kirtan.",
-    keyPoints: [
-      "Features curated photography, historical textiles, and stories of early Sikh settlers and civic leaders.",
-      "Brings school classes and local communities together through interactive storytelling and Langar tastings.",
-      "Expands public understanding of Sikhi's core pillars: Naam Japna, Kirat Karni, and Vand Chakna.",
-    ],
-    whyItMatters:
-      "Public cultural storytelling replaces unfamiliarity with neighborly warmth, mutual respect, and shared civic pride.",
-    sourceUrl: "https://www.sikhcoalition.org/",
-    url: "https://www.sikhcoalition.org/",
-    imageUrl: null,
-  },
 ];
 
 const BLOCKED_NEGATIVE_TERMS = [
   "murder",
-  "killed",
-  "shooting",
   "homicide",
-  "assault",
-  "arrested",
-  "indicted",
-  "terror",
-  "gang",
   "stabbing",
   "drug bust",
-  "scandal",
+  "gang war",
+  "sexual assault",
 ];
+
+function formatRelativePublishedAt(isoString: string): string {
+  const ts = Date.parse(isoString);
+  if (!Number.isFinite(ts)) return "Recent";
+  const diffMs = Math.max(0, Date.now() - ts);
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 5) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs} hour${diffHrs === 1 ? "" : "s"} ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays <= 7) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+  return new Date(ts).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 function decodeXmlEntities(input: string): string {
   return input
@@ -297,7 +271,6 @@ function extractImageUrl(block: string): string | null {
   for (const raw of candidates) {
     const valid = validateExternalUrl(decodeXmlEntities(raw));
     if (!valid) continue;
-    // Skip tiny Google News icons / tracking pixels
     if (/googleusercontent\.com\/|gstatic\.com|pixel|1x1|favicon/i.test(valid)) {
       continue;
     }
@@ -312,94 +285,161 @@ function normalizeCategory(raw: string): SikhiNewsCategory {
     return clean as SikhiNewsCategory;
   }
   const lower = clean.toLowerCase();
-  if (/\b(langar|seva|charity|food bank|volunteer|humanitarian|aid|community)\b/.test(lower)) {
+  if (
+    /\b(langar|seva|khalsa aid|charity|food|relief|volunteer|humanitarian|aid|community service)\b/.test(
+      lower
+    )
+  ) {
     return "Seva & Community";
   }
-  if (/\b(gurdwara|harmandir|darbar sahib|manuscript|heritage|museum|historical|history|monument)\b/.test(lower)) {
-    return "Heritage & History";
+  if (
+    /\b(punjab|amritsar|anandpur|harmandir|darbar sahib|golden temple|sgpc|takht|manuscript|heritage|museum|historical|history|monument|gurpurab)\b/.test(
+      lower
+    )
+  ) {
+    return "Punjab & Heritage";
   }
-  if (/\b(education|school|university|scholarship|gurmukhi|research|youth|student|book|library|study)\b/.test(lower)) {
-    return "Education & Youth";
+  if (
+    /\b(education|school|university|scholarship|gurmukhi|research|youth|student|children|academy|book|library|study)\b/.test(
+      lower
+    )
+  ) {
+    return "Youth & Education";
   }
-  if (/\b(kirtan|raag|gatka|nagar kirtan|vaisakhi|art|music|festival|exhibition|culture)\b/.test(lower)) {
+  if (
+    /\b(kirtan|raag|gatka|nagar kirtan|vaisakhi|art|music|festival|exhibition|culture)\b/.test(
+      lower
+    )
+  ) {
     return "Kirtan & Culture";
   }
   return "Global Sangat";
 }
 
-function isUpliftingOrRelevant(title: string, summary: string): boolean {
+function isRelevantSikhOrPunjabiStory(title: string, summary: string): boolean {
   const combined = `${title} ${summary}`.toLowerCase();
   if (BLOCKED_NEGATIVE_TERMS.some((term) => combined.includes(term))) {
     return false;
   }
-  return /\b(sikh|sikhi|gurdwara|langar|seva|kirtan|gurbani|khalsa|harmandir|guru nanak|guru gobind|punjab|nagar kirtan|gatka|gurmukhi|vaisakhi|karah)\b/i.test(
+  return /\b(sikh|sikhs|sikhi|sikhism|gurdwara|gurudwara|langar|seva|kirtan|gurbani|khalsa|harmandir|golden temple|darbar sahib|guru nanak|guru gobind|guru tegh bahadur|guru arjan|punjab|punjabi|amritsar|anandpur|sgpc|akal takht|turban|dastar|gatka|gurmukhi|vaisakhi|gurpurab)\b/i.test(
     combined
   );
+}
+
+function headlineSimilarityTokens(title: string): string[] {
+  const stopWords = new Set([
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "that",
+    "this",
+    "over",
+    "into",
+    "after",
+    "amid",
+    "says",
+    "news",
+  ]);
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w));
+}
+
+function areHeadlinesSimilar(a: string, b: string): boolean {
+  const normA = a.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const normB = b.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (normA === normB) return true;
+  const tokensA = headlineSimilarityTokens(a);
+  const tokensB = headlineSimilarityTokens(b);
+  if (tokensA.length === 0 || tokensB.length === 0) return false;
+  const setB = new Set(tokensB);
+  let overlap = 0;
+  for (const t of tokensA) {
+    if (setB.has(t)) overlap += 1;
+  }
+  const ratio = overlap / Math.min(tokensA.length, tokensB.length);
+  return ratio >= 0.72;
 }
 
 function buildDeterministicBriefing(
   title: string,
   cleanSummary: string,
   sourceName: string,
-  category: SikhiNewsCategory
+  category: SikhiNewsCategory,
+  publishedLabel: string
 ): {
   summary: string;
   keyPoints: string[];
   whyItMatters: string;
 } {
-  const sentences = cleanSummary
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 24 && s.toLowerCase() !== title.toLowerCase());
+  // Strip redundant trailing source name from Google News snippet
+  const strippedSnippet = cleanSummary
+    .replace(new RegExp(`\\s*[-–—]?\\s*${sourceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "")
+    .trim();
 
-  const summary =
-    sentences.length >= 2
-      ? `${sentences[0]} ${sentences[1]}`.slice(0, 320)
-      : sentences.length === 1
-        ? `${sentences[0]} Reported by ${sourceName} as part of ongoing ${category.toLowerCase()} coverage.`
-        : `${title}. Published by ${sourceName}, highlighting developments in ${category.toLowerCase()} across the Sikh community.`;
+  const hasDistinctSnippet =
+    strippedSnippet.length > 35 &&
+    !areHeadlinesSimilar(strippedSnippet, title);
+
+  const summary = hasDistinctSnippet
+    ? strippedSnippet.length > 290
+      ? `${strippedSnippet.slice(0, 287).trim()}…`
+      : strippedSnippet
+    : `${title}. Published by ${sourceName} (${publishedLabel}), covering live developments in ${category.toLowerCase()} for the global Sikh and Punjabi community.`;
+
+  const sentences = hasDistinctSnippet
+    ? strippedSnippet
+        .split(/(?<=[.!?])\s+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 20)
+    : [];
 
   const keyPoints: string[] = [];
-  for (const sentence of sentences.slice(0, 3)) {
-    const trimmed =
-      sentence.length > 145 ? `${sentence.slice(0, 142).trim()}…` : sentence;
-    keyPoints.push(trimmed);
-  }
-  if (keyPoints.length < 3) {
-    keyPoints.push(`Reported by ${sourceName} under ${category}.`);
-  }
-  if (keyPoints.length < 3) {
+  keyPoints.push(
+    sentences[0] && !areHeadlinesSimilar(sentences[0], title)
+      ? sentences[0]
+      : `Headline report: ${title}.`
+  );
+  if (sentences[1]) {
+    keyPoints.push(sentences[1]);
+  } else {
     keyPoints.push(
-      `Explores how Sikh heritage, Seva, and community leadership continue shaping public life today.`
+      `Published by ${sourceName} (${publishedLabel}) under ${category}.`
     );
   }
-  if (keyPoints.length < 3) {
-    keyPoints.push(
-      `Full original reporting and direct primary context are available via the publisher link below.`
-    );
-  }
+  keyPoints.push(
+    `Click "Read Full Article" below to read the complete original dispatch on ${sourceName}.`
+  );
 
   const whyByCategory: Record<SikhiNewsCategory, string> = {
     "Global Sangat":
-      "Connects the worldwide Sikh Sangat by spotlighting community milestones, civic engagement, and shared resilience.",
-    "Heritage & History":
-      "Preserves living Sikh historical memory and deepens appreciation for Gurdwara architecture, archives, and lineage.",
+      "Keeps the worldwide Sikh Sangat connected to real-time community milestones, civic leadership, and diaspora developments.",
+    "Punjab & Heritage":
+      "Highlights living developments across Punjab, historic Gurdwaras, and Panthic heritage institutions.",
     "Seva & Community":
-      "Demonstrates Guru Nanak Dev Ji's enduring ethic of Vand Chakna and selfless service in action.",
-    "Education & Youth":
-      "Supports lifelong Gurbani learning, Gurmukhi literacy, and confident leadership for the next generation.",
+      "Reflects Guru Nanak Dev Ji's enduring ethic of Langar, Vand Chakna, and humanitarian Seva in action today.",
+    "Youth & Education":
+      "Spotlights educational programs, youth leadership, and Gurmukhi/Gurmat initiatives shaping the next generation.",
     "Kirtan & Culture":
-      "Celebrates the spiritual richness of Gurmat Sangeet, classical Raags, and Sikh artistic traditions.",
+      "Celebrates Gurmat Sangeet, Nagar Kirtan gatherings, and vibrant Sikh cultural heritage worldwide.",
   };
 
   return {
     summary,
-    keyPoints: keyPoints.slice(0, 4),
+    keyPoints: keyPoints.slice(0, 3),
     whyItMatters: whyByCategory[category],
   };
 }
 
-function parseRssOrAtomFeed(xml: string, defaultSource: string): SikhiNewsItem[] {
+function parseRssOrAtomFeed(
+  xml: string,
+  defaultSource: string,
+  isGoogleNews = false
+): SikhiNewsItem[] {
   const items: SikhiNewsItem[] = [];
   const blocks = [
     ...(xml.match(/<item\b[\s\S]*?<\/item>/gi) || []),
@@ -411,11 +451,19 @@ function parseRssOrAtomFeed(xml: string, defaultSource: string): SikhiNewsItem[]
     if (!rawTitle) continue;
 
     let title = rawTitle;
-    let sourceName = stripTagsAndClean(extractTag(block, "source")) || defaultSource;
+    let sourceName =
+      stripTagsAndClean(extractTag(block, "source")) || defaultSource;
+
     const gNewsSplit = rawTitle.lastIndexOf(" - ");
-    if (gNewsSplit > 18 && defaultSource.startsWith("Global Press")) {
-      title = rawTitle.slice(0, gNewsSplit).trim();
-      sourceName = rawTitle.slice(gNewsSplit + 3).trim() || defaultSource;
+    if (gNewsSplit > 15 && (isGoogleNews || sourceName === defaultSource)) {
+      const candidateTitle = rawTitle.slice(0, gNewsSplit).trim();
+      const candidateSource = rawTitle.slice(gNewsSplit + 3).trim();
+      if (candidateTitle.length > 12 && candidateSource.length <= 48) {
+        title = candidateTitle;
+        if (!stripTagsAndClean(extractTag(block, "source"))) {
+          sourceName = candidateSource;
+        }
+      }
     }
 
     const sourceUrl = extractLink(block);
@@ -424,26 +472,29 @@ function parseRssOrAtomFeed(xml: string, defaultSource: string): SikhiNewsItem[]
     const rawDesc =
       extractTag(block, "description") ||
       extractTag(block, "summary") ||
+      extractTag(block, "content:encoded") ||
       extractTag(block, "content");
     const cleanSummary = stripTagsAndClean(rawDesc);
 
-    if (!isUpliftingOrRelevant(title, cleanSummary)) continue;
+    if (!isRelevantSikhOrPunjabiStory(title, cleanSummary)) continue;
 
     const rawDate =
       stripTagsAndClean(extractTag(block, "pubDate")) ||
       stripTagsAndClean(extractTag(block, "published")) ||
       stripTagsAndClean(extractTag(block, "updated"));
     const parsedTime = rawDate ? Date.parse(rawDate) : Number.NaN;
-    const publishedAt = Number.isFinite(parsedTime)
+    const publishedAtIso = Number.isFinite(parsedTime)
       ? new Date(parsedTime).toISOString()
       : new Date().toISOString();
+    const publishedAt = formatRelativePublishedAt(publishedAtIso);
 
-    const category = normalizeCategory(`${title} ${cleanSummary}`);
+    const category = normalizeCategory(`${title} ${cleanSummary} ${sourceName}`);
     const briefing = buildDeterministicBriefing(
       title,
       cleanSummary,
       sourceName,
-      category
+      category,
+      publishedAt
     );
     const imageUrl = extractImageUrl(block);
 
@@ -460,6 +511,7 @@ function parseRssOrAtomFeed(xml: string, defaultSource: string): SikhiNewsItem[]
       sourceName,
       source: sourceName,
       publishedAt,
+      publishedAtIso,
       summary: briefing.summary,
       keyPoints: briefing.keyPoints,
       whyItMatters: briefing.whyItMatters,
@@ -468,48 +520,58 @@ function parseRssOrAtomFeed(xml: string, defaultSource: string): SikhiNewsItem[]
       imageUrl,
     });
 
-    if (items.length >= 6) break;
+    if (items.length >= 15) break;
   }
 
   return items;
 }
 
-async function enrichStoriesWithGemini(
-  stories: SikhiNewsItem[]
+async function curateTopArticlesWithGemini(
+  articles: SikhiNewsItem[]
 ): Promise<SikhiNewsItem[]> {
   const apiKey = (process.env.GEMINI_API_KEY || "").trim();
-  if (!apiKey || stories.length === 0) {
-    return stories;
+  if (!apiKey || articles.length === 0) {
+    return articles;
   }
 
-  const batch = stories.slice(0, 8);
-  const inputPayload = batch.map((s) => ({
+  const topBatch = articles.slice(0, 10);
+  const inputPayload = topBatch.map((s) => ({
     id: s.id,
     title: s.title,
     sourceName: s.sourceName,
-    category: s.category,
-    rawSummary: s.summary,
+    publishedAt: s.publishedAt,
+    snippet: s.summary,
+    sourceUrl: s.sourceUrl,
   }));
 
-  const prompt = `You are the Senior Editorial Curator for Learn Sikhi's Sikh News Briefing.
-Transform each input news item into a crisp, uplifting, factually faithful structured editorial briefing.
-NEVER invent statistics, dates, or quotes that are not supported by the input.
+  const prompt = `You are the Senior News Editor for Learn Sikhi's live Sikh & Punjabi News Briefing.
+You are given ${inputPayload.length} real-time news articles fetched live from the internet.
+For each article, return a polished, accurate editorial slide object.
+STRICT RULES:
+1. Keep every fact faithful to the headline, publisher, and snippet—never fabricate events or links.
+2. Preserve "id" and "sourceUrl" EXACTLY as provided.
+3. Choose "category" from ONLY: "Global Sangat", "Punjab & Heritage", "Seva & Community", "Youth & Education".
+4. Write a concise 2-sentence "summary" and exactly 3 concise, scannable "keyPoints" bullets.
+5. Write a 1-sentence "whyItMatters" takeaway explaining the story's significance.
 
-Return STRICT JSON matching this exact schema:
+Return STRICT JSON matching this exact structure:
 {
-  "briefings": [
+  "slides": [
     {
-      "id": "same id as input",
-      "title": "clear compelling headline (max 110 chars)",
-      "category": "Global Sangat | Heritage & History | Seva & Community | Education & Youth | Kirtan & Culture",
-      "summary": "concise 2-sentence editorial overview (clear, engaging plain English)",
-      "keyPoints": ["3 to 4 punchy, scannable factual bullet points"],
-      "whyItMatters": "1 impactful sentence explaining why this matters for the global Sangat or seekers"
+      "id": "exact id from input",
+      "title": "clear compelling headline",
+      "category": "Global Sangat | Punjab & Heritage | Seva & Community | Youth & Education",
+      "sourceName": "publisher name",
+      "publishedAt": "relative time or date from input",
+      "summary": "2-sentence overview",
+      "keyPoints": ["bullet 1", "bullet 2", "bullet 3"],
+      "whyItMatters": "1-sentence takeaway",
+      "sourceUrl": "exact untouched sourceUrl from input"
     }
   ]
 }
 
-Input stories:
+Live articles:
 ${JSON.stringify(inputPayload)}`;
 
   try {
@@ -520,11 +582,11 @@ ${JSON.stringify(inputPayload)}`;
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          temperature: 0.4,
+          temperature: 0.3,
         },
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Gemini news briefing timeout")), 7500)
+        setTimeout(() => reject(new Error("Gemini live news timeout")), 8000)
       ),
     ]);
 
@@ -536,54 +598,78 @@ ${JSON.stringify(inputPayload)}`;
       .trim();
 
     const parsed = JSON.parse(cleaned) as {
-      briefings?: Array<{
+      slides?: Array<{
         id?: string;
         title?: string;
         category?: string;
+        sourceName?: string;
+        publishedAt?: string;
         summary?: string;
         keyPoints?: unknown[];
         whyItMatters?: string;
       }>;
     };
 
-    if (!Array.isArray(parsed.briefings)) {
-      return stories;
-    }
+    const slidesList = Array.isArray(parsed.slides)
+      ? parsed.slides
+      : Array.isArray(parsed)
+        ? (parsed as Array<{
+            id?: string;
+            title?: string;
+            category?: string;
+            sourceName?: string;
+            publishedAt?: string;
+            summary?: string;
+            keyPoints?: unknown[];
+            whyItMatters?: string;
+          }>)
+        : null;
+
+    if (!slidesList) return articles;
 
     const byId = new Map(
-      parsed.briefings
-        .filter((b) => b && typeof b.id === "string")
-        .map((b) => [b.id as string, b])
+      slidesList
+        .filter((s) => s && typeof s.id === "string")
+        .map((s) => [s.id as string, s])
     );
 
-    return stories.map((story) => {
-      const enriched = byId.get(story.id);
-      if (!enriched) return story;
+    return articles.map((original) => {
+      const slide = byId.get(original.id);
+      if (!slide) return original;
 
-      const cleanTitle = String(enriched.title || "").trim();
-      const cleanSummary = String(enriched.summary || "").trim();
-      const cleanWhy = String(enriched.whyItMatters || "").trim();
-      const cleanPoints = Array.isArray(enriched.keyPoints)
-        ? enriched.keyPoints
+      const cleanTitle = String(slide.title || "").trim();
+      const cleanSummary = String(slide.summary || "").trim();
+      const cleanWhy = String(slide.whyItMatters || "").trim();
+      const cleanPoints = Array.isArray(slide.keyPoints)
+        ? slide.keyPoints
             .map((p) => String(p || "").trim())
-            .filter((p) => p.length > 8)
-            .slice(0, 4)
+            .filter((p) => p.length > 6)
+            .slice(0, 3)
         : [];
 
+      // Always keep original.sourceUrl untouched so every redirect link works 100%
       return {
-        ...story,
-        title: cleanTitle || story.title,
-        category: enriched.category
-          ? normalizeCategory(enriched.category)
-          : story.category,
-        summary: cleanSummary || story.summary,
-        keyPoints: cleanPoints.length >= 2 ? cleanPoints : story.keyPoints,
-        whyItMatters: cleanWhy || story.whyItMatters,
+        ...original,
+        title: cleanTitle || original.title,
+        category: slide.category
+          ? normalizeCategory(slide.category)
+          : original.category,
+        sourceName: String(slide.sourceName || "").trim() || original.sourceName,
+        source: String(slide.sourceName || "").trim() || original.source,
+        publishedAt:
+          String(slide.publishedAt || "").trim() || original.publishedAt,
+        summary: cleanSummary || original.summary,
+        keyPoints:
+          cleanPoints.length >= 2 ? cleanPoints : original.keyPoints,
+        whyItMatters: cleanWhy || original.whyItMatters,
+        sourceUrl: original.sourceUrl,
+        url: original.sourceUrl,
         aiEnriched: true,
       };
     });
-  } catch {
-    return stories;
+  } catch (err) {
+    console.warn("[/api/sikhi-news] Gemini curation fallback to raw live RSS:", err);
+    return articles;
   }
 }
 
@@ -657,14 +743,17 @@ async function readAdminCustomNews(): Promise<SikhiNewsItem[]> {
       obj.sourceName || obj.source || "Learn Sikhi Editorial"
     ).trim();
     const category = normalizeCategory(String(obj.category || "Global Sangat"));
+    const publishedAtIso = obj.publishedAtIso || obj.publishedAt || new Date().toISOString();
+    const publishedAt = formatRelativePublishedAt(publishedAtIso);
     const summaryText =
       String(obj.summary || "").trim() ||
-      "Admin-featured positive Sikhi community briefing.";
+      "Admin-featured positive Sikh community briefing.";
     const fallbackBriefing = buildDeterministicBriefing(
       title,
       summaryText,
       sourceName,
-      category
+      category,
+      publishedAt
     );
 
     const existingPoints = Array.isArray(obj.keyPoints)
@@ -677,7 +766,8 @@ async function readAdminCustomNews(): Promise<SikhiNewsItem[]> {
       category,
       sourceName,
       source: sourceName,
-      publishedAt: obj.publishedAt || new Date().toISOString(),
+      publishedAt,
+      publishedAtIso,
       summary: summaryText,
       keyPoints:
         existingPoints.length >= 2 ? existingPoints : fallbackBriefing.keyPoints,
@@ -700,24 +790,55 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const forceRefresh = searchParams.get("refresh") === "true";
 
+  // Return fast 15-minute in-memory cached live news unless ?refresh=true
+  if (
+    !forceRefresh &&
+    liveNewsCache &&
+    Date.now() < liveNewsCache.expiresAt &&
+    liveNewsCache.items.length > 0
+  ) {
+    const customNews = await readAdminCustomNews();
+    const merged = [
+      ...customNews,
+      ...liveNewsCache.items.filter(
+        (it) => !customNews.some((c) => areHeadlinesSimilar(c.title, it.title))
+      ),
+    ].slice(0, 14);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        cached: true,
+        refreshed: false,
+        liveFeedSuccessCount: liveNewsCache.liveFeedSuccessCount,
+        updatedAt: liveNewsCache.updatedAt,
+        items: merged,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
+    );
+  }
+
   const [customNews, feedResults] = await Promise.all([
     readAdminCustomNews(),
     Promise.allSettled(
       RSS_FEEDS.map(async (feed) => {
         const res = await fetch(feed.url, {
-          signal: AbortSignal.timeout(4500),
+          signal: AbortSignal.timeout(5500),
           headers: {
-            "User-Agent": "LearnSikhiNewsBot/2.0 (+https://learnsikhi.com)",
+            "User-Agent":
+              "Mozilla/5.0 (compatible; LearnSikhiNewsBot/3.0; +https://learnsikhi.com)",
             Accept:
-              "application/rss+xml, application/atom+xml, application/xml, text/xml",
+              "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
           },
-          ...(forceRefresh
-            ? { cache: "no-store" as const }
-            : { next: { revalidate: 3600 } }),
+          cache: "no-store",
         });
         if (!res.ok) return [] as SikhiNewsItem[];
         const xml = await res.text();
-        return parseRssOrAtomFeed(xml, feed.defaultSource);
+        return parseRssOrAtomFeed(xml, feed.defaultSource, feed.isGoogleNews);
       })
     ),
   ]);
@@ -732,68 +853,63 @@ export async function GET(req: Request) {
     }
   }
 
-  const seenTitles = new Set<string>();
-  const dedupedLive: SikhiNewsItem[] = [];
-  for (const item of aggregated) {
-    const key = item.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-    if (!key || seenTitles.has(key)) continue;
-    seenTitles.add(key);
-    dedupedLive.push(item);
-  }
-
-  dedupedLive.sort(
-    (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
-  );
-
-  // Enrich live RSS items with Gemini 2.5 Flash structured briefings
-  const enrichedLive =
-    dedupedLive.length > 0
-      ? await enrichStoriesWithGemini(dedupedLive.slice(0, 10))
-      : [];
-
-  // Ensure at least 6 rich stories by blending curated fallback items
-  const liveOrFallback = [...enrichedLive];
-  if (liveOrFallback.length < 6) {
-    for (const fb of CURATED_FALLBACK_NEWS) {
-      const key = fb.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim();
-      if (!seenTitles.has(key)) {
-        seenTitles.add(key);
-        liveOrFallback.push(fb);
-      }
-    }
-  }
-
-  const dedupedCustom = customNews.filter((c) => {
-    const key = c.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-    if (!key || seenTitles.has(key)) return false;
-    seenTitles.add(key);
-    return true;
+  // Sort all fetched live items by newest pubDate first
+  aggregated.sort((a, b) => {
+    const tA = Date.parse(a.publishedAtIso || a.publishedAt) || 0;
+    const tB = Date.parse(b.publishedAtIso || b.publishedAt) || 0;
+    return tB - tA;
   });
 
-  const finalItems = [...dedupedCustom, ...liveOrFallback].slice(0, 16);
+  // Deduplicate similar headlines
+  const dedupedLive: SikhiNewsItem[] = [];
+  for (const item of aggregated) {
+    if (
+      dedupedLive.some((existing) =>
+        areHeadlinesSimilar(existing.title, item.title)
+      )
+    ) {
+      continue;
+    }
+    dedupedLive.push(item);
+    if (dedupedLive.length >= 12) break;
+  }
+
+  // Send top 10 newest live articles to Gemini 2.5 Flash for structured slide curation
+  const curatedLive =
+    dedupedLive.length > 0
+      ? await curateTopArticlesWithGemini(dedupedLive.slice(0, 10))
+      : CURATED_FALLBACK_NEWS;
+
+  const updatedAt = new Date().toISOString();
+
+  // Save in 15-minute in-memory cache when we have live stories
+  if (dedupedLive.length > 0) {
+    liveNewsCache = {
+      items: curatedLive,
+      updatedAt,
+      liveFeedSuccessCount,
+      expiresAt: Date.now() + LIVE_NEWS_CACHE_TTL_MS,
+    };
+  }
+
+  const dedupedCustom = customNews.filter(
+    (c) => !curatedLive.some((it) => areHeadlinesSimilar(c.title, it.title))
+  );
+
+  const finalItems = [...dedupedCustom, ...curatedLive].slice(0, 12);
 
   return NextResponse.json(
     {
       ok: true,
+      cached: false,
       refreshed: forceRefresh,
       liveFeedSuccessCount,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
       items: finalItems,
     },
     {
       headers: {
-        "Cache-Control": forceRefresh
-          ? "no-store, no-cache, must-revalidate"
-          : "public, s-maxage=3600, stale-while-revalidate=600",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     }
   );

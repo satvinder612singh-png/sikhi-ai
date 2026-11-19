@@ -17,9 +17,9 @@ const AUTOPLAY_INTERVAL_MS = 8500;
 const CATEGORIES: Array<"All" | SikhiNewsCategory> = [
   "All",
   "Global Sangat",
-  "Heritage & History",
+  "Punjab & Heritage",
   "Seva & Community",
-  "Education & Youth",
+  "Youth & Education",
   "Kirtan & Culture",
 ];
 
@@ -40,11 +40,11 @@ const HERITAGE_VISUAL_THEMES: Record<
     labelPa: "ਵਿਸ਼ਵ ਸੰਗਤ",
     accentHex: "#F5C542",
   },
-  "Heritage & History": {
+  "Punjab & Heritage": {
     gradient: "from-[#3B1E12] via-[#5A2D18] to-[#1F120C]",
     ring: "border-amber-400/50",
     glyph: "☬",
-    labelPa: "ਸਿੱਖ ਇਤਿਹਾਸ",
+    labelPa: "ਪੰਜਾਬ ਅਤੇ ਵਿਰਸਾ",
     accentHex: "#FBBF24",
   },
   "Seva & Community": {
@@ -54,7 +54,7 @@ const HERITAGE_VISUAL_THEMES: Record<
     labelPa: "ਸੇਵਾ ਅਤੇ ਲੰਗਰ",
     accentHex: "#F5C542",
   },
-  "Education & Youth": {
+  "Youth & Education": {
     gradient: "from-[#2B1F42] via-[#3E2C5E] to-[#161024]",
     ring: "border-amber-300/45",
     glyph: "ਵਿਦਿਆ",
@@ -70,12 +70,18 @@ const HERITAGE_VISUAL_THEMES: Record<
   },
 };
 
-function formatReadableDate(iso: string): string {
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return "Recent Dispatch";
-  const diffMin = Math.max(0, Math.round((Date.now() - ts) / 60000));
-  if (diffMin < 60) return `${diffMin || 1}m ago`;
-  const diffHrs = Math.round(diffMin / 60);
+function formatReadableDate(raw: string): string {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return "just now";
+  if (/ago|just now|yesterday/i.test(trimmed)) {
+    return trimmed;
+  }
+  const ts = Date.parse(trimmed);
+  if (!Number.isFinite(ts)) return trimmed;
+  const diffMin = Math.max(0, Math.floor((Date.now() - ts) / 60000));
+  if (diffMin <= 2) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHrs = Math.floor(diffMin / 60);
   if (diffHrs < 24) return `${diffHrs}h ago`;
   return new Date(ts).toLocaleDateString(undefined, {
     month: "short",
@@ -426,15 +432,11 @@ export function SikhNewsBriefingDeck({
                 }`}
               >
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Hourly AI Editorial Briefing</span>
-              </span>
-              {updatedAt && (
-                <span
-                  className={isDark ? "text-zinc-300" : "text-stone-600"}
-                >
-                  Updated {formatReadableDate(updatedAt)}
+                <span>
+                  Live • Updated{" "}
+                  {updatedAt ? formatReadableDate(updatedAt) : "just now"}
                 </span>
-              )}
+              </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -457,13 +459,13 @@ export function SikhNewsBriefingDeck({
                   type="button"
                   disabled={loading}
                   onClick={onRefresh}
-                  className={`sanctuary-interactive rounded-full border px-3.5 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
+                  className={`sanctuary-interactive rounded-full border px-3.5 py-1.5 text-xs font-extrabold transition disabled:opacity-50 ${
                     isDark
-                      ? "border-amber-300/45 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20"
-                      : "border-amber-700/35 bg-amber-50 text-amber-950 hover:bg-amber-100"
+                      ? "border-amber-300/50 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25"
+                      : "border-amber-700/40 bg-amber-100 text-amber-950 hover:bg-amber-200"
                   }`}
                 >
-                  {loading ? "Refreshing…" : "↻ Refresh Briefing"}
+                  {loading ? "Refreshing Live News…" : "↻ Refresh News"}
                 </button>
               )}
               {headerActions}
