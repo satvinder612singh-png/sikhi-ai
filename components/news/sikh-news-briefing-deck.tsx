@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   AnimatePresence,
   MotionConfig,
@@ -721,15 +722,30 @@ export function SikhNewsBriefingDeck({
                       isDark ? "border-white/12" : "border-stone-200"
                     }`}
                   >
-                    <a
-                      href={activeStory.sourceUrl || activeStory.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="sanctuary-interactive inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-2.5 text-sm font-extrabold text-stone-950 shadow-md hover:brightness-105"
-                    >
-                      <span>Read Full Article</span>
-                      <span aria-hidden="true">→</span>
-                    </a>
+                    {activeStory.internalSlug ||
+                    (activeStory.sourceUrl || "").startsWith("/articles/") ? (
+                      <Link
+                        href={
+                          activeStory.internalSlug
+                            ? `/articles/${encodeURIComponent(activeStory.internalSlug)}`
+                            : activeStory.sourceUrl
+                        }
+                        className="sanctuary-interactive inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-2.5 text-sm font-extrabold text-stone-950 shadow-md hover:brightness-105"
+                      >
+                        <span>Read Full Article In-Page</span>
+                        <span aria-hidden="true">→</span>
+                      </Link>
+                    ) : (
+                      <a
+                        href={activeStory.sourceUrl || activeStory.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="sanctuary-interactive inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 px-5 py-2.5 text-sm font-extrabold text-stone-950 shadow-md hover:brightness-105"
+                      >
+                        <span>Read at {activeStory.sourceName}</span>
+                        <span aria-hidden="true">↗</span>
+                      </a>
+                    )}
 
                     {isAdmin && (
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -970,16 +986,32 @@ export function SikhNewsBriefingDeck({
                         {isCurrent ? "● Viewing Slide" : `Open Slide #${idx + 1}`}
                       </button>
 
-                      <a
-                        href={story.sourceUrl || story.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`font-extrabold hover:underline ${
-                          isDark ? "text-white" : "text-stone-900"
-                        }`}
-                      >
-                        Read Full Article →
-                      </a>
+                      {story.internalSlug ||
+                      (story.sourceUrl || "").startsWith("/articles/") ? (
+                        <Link
+                          href={
+                            story.internalSlug
+                              ? `/articles/${encodeURIComponent(story.internalSlug)}`
+                              : story.sourceUrl
+                          }
+                          className={`font-extrabold hover:underline ${
+                            isDark ? "text-white" : "text-stone-900"
+                          }`}
+                        >
+                          Read In-Page →
+                        </Link>
+                      ) : (
+                        <a
+                          href={story.sourceUrl || story.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`font-extrabold hover:underline ${
+                            isDark ? "text-white" : "text-stone-900"
+                          }`}
+                        >
+                          Read Source ↗
+                        </a>
+                      )}
                     </div>
                   </motion.article>
                 );

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
@@ -468,7 +469,10 @@ async function readGlobalState(): Promise<{
   return { state: await readLocalFallback(), source: "local" };
 }
 
-async function writeGlobalState(state: SiteFramesPayload): Promise<"supabase" | "local"> {
+async function writeGlobalState(state: SiteFramesPayload): Promise<{
+  source: "supabase" | "local";
+  supabaseError?: string;
+}> {
   await writeLocalFallback(state);
   const supabase = getSupabaseAdminOrAnon();
   if (supabase) {
@@ -481,12 +485,29 @@ async function writeGlobalState(state: SiteFramesPayload): Promise<"supabase" | 
         },
         { onConflict: "key" }
       );
-      if (!error) return "supabase";
-    } catch {
-      // Fall back silently if site_state table is absent
+      if (!error) {
+        try {
+          revalidatePath("/", "layout");
+          revalidatePath("/sangat");
+          revalidatePath("/foundations");
+          revalidatePath("/granths");
+          revalidatePath("/matriarchs");
+          revalidatePath("/articles");
+          revalidatePath("/admin");
+        } catch {
+          // ignore outside Next.js request context
+        }
+        return { source: "supabase" };
+      }
+      console.error("[/api/site-frames] Supabase site_state upsert error:", error.message);
+      return { source: "local", supabaseError: error.message };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown Supabase error";
+      console.error("[/api/site-frames] Supabase write exception:", msg);
+      return { source: "local", supabaseError: msg };
     }
   }
-  return "local";
+  return { source: "local", supabaseError: "Supabase not configured" };
 }
 
 export async function GET() {
@@ -604,11 +625,12 @@ export async function POST(req: Request) {
             kirtanTracks: [track, ...current.kirtanTracks],
             updatedAt: now,
           };
-          const source = await writeGlobalState(nextState);
+          const { source, supabaseError } = await writeGlobalState(nextState);
           return NextResponse.json({
             ok: true,
             publishedDirectly: true,
             source,
+            supabaseError,
             storageMode: source === "supabase" ? "supabase" : "fallback",
             ...nextState,
           });
@@ -634,11 +656,12 @@ export async function POST(req: Request) {
           },
           updatedAt: now,
         };
-        const source = await writeGlobalState(nextState);
+        const { source, supabaseError } = await writeGlobalState(nextState);
         return NextResponse.json({
           ok: true,
           publishedDirectly: true,
           source,
+          supabaseError,
           storageMode: source === "supabase" ? "supabase" : "fallback",
           ...nextState,
         });
@@ -660,11 +683,12 @@ export async function POST(req: Request) {
         pendingSubmissions: [entry, ...current.pendingSubmissions],
         updatedAt: now,
       };
-      const source = await writeGlobalState(nextState);
+      const { source, supabaseError } = await writeGlobalState(nextState);
       return NextResponse.json({
         ok: true,
         publishedDirectly: false,
         source,
+        supabaseError,
         storageMode: source === "supabase" ? "supabase" : "fallback",
         submission: entry,
       });
@@ -850,10 +874,11 @@ export async function POST(req: Request) {
       updatedAt: now,
     };
 
-    const source = await writeGlobalState(nextState);
+    const { source, supabaseError } = await writeGlobalState(nextState);
     const storageMode = source === "supabase" ? "supabase" : "fallback";
     console.log("[site-frames]", req.method, {
       storageMode,
+      supabaseError: supabaseError || null,
       frameKeys: Object.keys(
         (body?.frames && typeof body.frames === "object"
           ? body.frames
@@ -864,7 +889,10 @@ export async function POST(req: Request) {
         nextState.customPosts.blogs.length +
         nextState.customPosts.pins.length,
     });
-    return NextResponse.json({ ok: true, source, storageMode, ...nextState });
+    return NextResponse.json(
+      { ok: true, source, storageMode, supabaseError, ...nextState },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+    );
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "Invalid payload" },

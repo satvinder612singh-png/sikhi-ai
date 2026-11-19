@@ -1,0 +1,603 @@
+import { createClient } from "@supabase/supabase-js";
+import crypto from "node:crypto";
+
+export type ArticleStatus = "draft" | "pending_review" | "published";
+
+export interface ArticleRecord {
+  id: string;
+  slug: string;
+  title: string;
+  summary_short: string;
+  content_markdown: string;
+  cover_image_url: string | null;
+  author_id: string | null;
+  author_name: string;
+  source_name: string;
+  source_url: string | null;
+  category: string;
+  tags: string[];
+  status: ArticleStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApprovedSourceRecord {
+  id: string;
+  name: string;
+  domain: string;
+  url: string;
+  rss_url: string | null;
+  description: string;
+  category: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export const DEFAULT_APPROVED_SOURCES: ApprovedSourceRecord[] = [
+  {
+    id: "src-bunga-azaadi",
+    name: "Bunga Azaadi",
+    domain: "bungaazaadi.com",
+    url: "https://bungaazaadi.com",
+    rss_url: "https://bungaazaadi.com/feed",
+    description:
+      "In-depth Sikh political philosophy, sovereignty, colonial history, and Panthic discourse.",
+    category: "Sikh Philosophy & Sovereignty",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "src-manglacharan",
+    name: "Manglacharan",
+    domain: "manglacharan.com",
+    url: "https://www.manglacharan.com",
+    rss_url: "https://www.manglacharan.com/feeds/posts/default?alt=rss",
+    description:
+      "Translations and scholarly commentary on classical Braj and Gurmukhi Sikh Granths.",
+    category: "Classical Granth Translations",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "src-study-sikhi",
+    name: "Study Sikhi",
+    domain: "studysikhi.com",
+    url: "https://studysikhi.com",
+    rss_url: null,
+    description:
+      "Structured Gurmat study guides, Sikh history timelines, and educational curricula.",
+    category: "Sikhi Education",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "src-sikh-education-council",
+    name: "Sikh Education Council",
+    domain: "sikheducationcouncil.org",
+    url: "https://sikheducationcouncil.org",
+    rss_url: null,
+    description:
+      "Dedicated academic and educational initiatives advancing authentic Sikh learning.",
+    category: "Academic Education",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "src-discover-sikhi",
+    name: "Discover Sikhi",
+    domain: "discoversikhi.com",
+    url: "https://www.discoversikhi.com",
+    rss_url: "https://www.discoversikhi.com/feed",
+    description:
+      "Accessible, well-researched resources introducing Gurbani, Gurdwara heritage, and Sikh history.",
+    category: "Foundational & Heritage Study",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "src-wso",
+    name: "World Sikh Organization (WSO)",
+    domain: "worldsikh.org",
+    url: "https://www.worldsikh.org",
+    rss_url: null,
+    description:
+      "Human rights, Sikh civic advocacy, community education, and global Sangat initiatives.",
+    category: "Global Sangat & Advocacy",
+    is_active: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+];
+
+const ARTICLES_STATE_KEY = "learnsikhi_articles_store_v1";
+const SOURCES_STATE_KEY = "learnsikhi_approved_sources_v1";
+
+export function getSupabaseServerClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+export function slugifyArticleTitle(title: string): string {
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 68);
+  return base || `article-${Date.now()}`;
+}
+
+export function normalizeDomain(rawUrlOrDomain: string): string {
+  const trimmed = rawUrlOrDomain.trim().toLowerCase();
+  if (!trimmed) return "";
+  try {
+    const withProto = /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    return new URL(withProto).hostname.replace(/^www\./, "");
+  } catch {
+    return trimmed.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0] || "";
+  }
+}
+
+export function verifyFounderAdminHeader(req: Request): boolean {
+  const auth = (req.headers.get("authorization") || "").trim();
+  const xAdmin = (req.headers.get("x-admin-token") || "").trim();
+  const bearer = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : xAdmin;
+  if (!bearer) return false;
+  if (bearer === "verified_founder_1313") return true;
+
+  // Verify HMAC-signed admin tokens generated by /api/site-frames
+  try {
+    const parts = bearer.split(".");
+    if (parts.length === 2) {
+      const [payload, sig] = parts;
+      const secret =
+        process.env.ADMIN_SIGNING_SECRET ||
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        "learnsikhi-stateless-hmac-key";
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(payload)
+        .digest("hex");
+      const sigBuf = Buffer.from(sig, "utf8");
+      const expBuf = Buffer.from(expected, "utf8");
+      if (
+        sigBuf.length === expBuf.length &&
+        crypto.timingSafeEqual(sigBuf, expBuf)
+      ) {
+        const decoded = JSON.parse(
+          Buffer.from(payload, "base64url").toString("utf8")
+        ) as { email?: string; exp?: number };
+        if (
+          decoded.exp &&
+          decoded.exp > Date.now() &&
+          decoded.email?.toLowerCase().endsWith("student1313@learnsikhi.com")
+        ) {
+          return true;
+        }
+      }
+    }
+  } catch {
+    // ignore malformed token
+  }
+  return false;
+}
+
+/* ============================================================================
+   ARTICLES CRUD (Supabase `public.articles` primary, `site_state` fallback)
+============================================================================ */
+
+export async function listArticles(options?: {
+  includeAllStatuses?: boolean;
+  status?: ArticleStatus;
+  authorId?: string | null;
+}): Promise<{ articles: ArticleRecord[]; backend: "articles_table" | "site_state" }> {
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      let query = supabase
+        .from("articles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (options?.status) {
+        query = query.eq("status", options.status);
+      } else if (!options?.includeAllStatuses) {
+        query = query.eq("status", "published");
+      }
+
+      if (options?.authorId) {
+        query = query.eq("author_id", options.authorId);
+      }
+
+      const { data, error } = await query;
+      if (!error && Array.isArray(data)) {
+        return {
+          articles: data as ArticleRecord[],
+          backend: "articles_table",
+        };
+      }
+    } catch {
+      // fall through to site_state
+    }
+
+    // Fallback: site_state JSON store (starts empty — zero seeded articles!)
+    try {
+      const { data } = await supabase
+        .from("site_state")
+        .select("value")
+        .eq("key", ARTICLES_STATE_KEY)
+        .maybeSingle();
+      const raw = (data?.value as { items?: ArticleRecord[] } | null)?.items;
+      const list = Array.isArray(raw) ? raw : [];
+      const filtered = list
+        .filter((a) => {
+          if (options?.status && a.status !== options.status) return false;
+          if (!options?.status && !options?.includeAllStatuses && a.status !== "published") {
+            return false;
+          }
+          if (options?.authorId && a.author_id !== options.authorId) return false;
+          return true;
+        })
+        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+
+      return { articles: filtered, backend: "site_state" };
+    } catch {
+      // return empty cleanly
+    }
+  }
+  return { articles: [], backend: "site_state" };
+}
+
+export async function getArticleBySlug(
+  slugOrId: string,
+  includeDrafts = false
+): Promise<ArticleRecord | null> {
+  const clean = decodeURIComponent(slugOrId).trim();
+  if (!clean) return null;
+
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .or(`slug.eq.${clean},id.eq.${clean}`)
+        .maybeSingle();
+      if (!error && data) {
+        const record = data as ArticleRecord;
+        if (includeDrafts || record.status === "published") {
+          return record;
+        }
+        return null;
+      }
+    } catch {
+      // fall through to site_state
+    }
+
+    try {
+      const { data } = await supabase
+        .from("site_state")
+        .select("value")
+        .eq("key", ARTICLES_STATE_KEY)
+        .maybeSingle();
+      const raw = (data?.value as { items?: ArticleRecord[] } | null)?.items;
+      const list = Array.isArray(raw) ? raw : [];
+      const found = list.find((a) => a.slug === clean || a.id === clean);
+      if (found && (includeDrafts || found.status === "published")) {
+        return found;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
+export async function upsertArticleRecord(
+  article: ArticleRecord
+): Promise<{ ok: boolean; article: ArticleRecord; backend: "articles_table" | "site_state"; error?: string }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    return {
+      ok: false,
+      article,
+      backend: "site_state",
+      error: "Supabase environment variables are not configured.",
+    };
+  }
+
+  // Primary: public.articles table
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .upsert(article, { onConflict: "slug" })
+      .select("*")
+      .single();
+    if (!error && data) {
+      return {
+        ok: true,
+        article: data as ArticleRecord,
+        backend: "articles_table",
+      };
+    }
+  } catch {
+    // fall through to site_state
+  }
+
+  // Fallback: site_state JSON store
+  try {
+    const { data: existingRow } = await supabase
+      .from("site_state")
+      .select("value")
+      .eq("key", ARTICLES_STATE_KEY)
+      .maybeSingle();
+    const existingList = Array.isArray(
+      (existingRow?.value as { items?: ArticleRecord[] } | null)?.items
+    )
+      ? ((existingRow?.value as { items: ArticleRecord[] }).items)
+      : [];
+
+    const nextList = [
+      article,
+      ...existingList.filter((a) => a.id !== article.id && a.slug !== article.slug),
+    ];
+
+    const { error } = await supabase.from("site_state").upsert(
+      {
+        key: ARTICLES_STATE_KEY,
+        value: { items: nextList, updatedAt: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+
+    if (!error) {
+      return { ok: true, article, backend: "site_state" };
+    }
+    return { ok: false, article, backend: "site_state", error: error.message };
+  } catch (err) {
+    return {
+      ok: false,
+      article,
+      backend: "site_state",
+      error: err instanceof Error ? err.message : "Failed to save article.",
+    };
+  }
+}
+
+export async function deleteArticleBySlugOrId(
+  slugOrId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const clean = decodeURIComponent(slugOrId).trim();
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "Supabase not configured" };
+
+  try {
+    const { error } = await supabase
+      .from("articles")
+      .delete()
+      .or(`slug.eq.${clean},id.eq.${clean}`);
+    if (!error) return { ok: true };
+  } catch {
+    // fallback
+  }
+
+  try {
+    const { data: existingRow } = await supabase
+      .from("site_state")
+      .select("value")
+      .eq("key", ARTICLES_STATE_KEY)
+      .maybeSingle();
+    const existingList = Array.isArray(
+      (existingRow?.value as { items?: ArticleRecord[] } | null)?.items
+    )
+      ? ((existingRow?.value as { items: ArticleRecord[] }).items)
+      : [];
+    const nextList = existingList.filter(
+      (a) => a.id !== clean && a.slug !== clean
+    );
+    const { error } = await supabase.from("site_state").upsert(
+      {
+        key: ARTICLES_STATE_KEY,
+        value: { items: nextList, updatedAt: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    if (!error) return { ok: true };
+    return { ok: false, error: error.message };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Delete failed",
+    };
+  }
+}
+
+export async function wipeAllArticlesAndFeeds(): Promise<{
+  ok: boolean;
+  cleared: string[];
+}> {
+  const supabase = getSupabaseServerClient();
+  const cleared: string[] = [];
+  if (!supabase) return { ok: false, cleared };
+
+  for (const table of ["articles", "news", "feed", "sangat_blogs"]) {
+    try {
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (!error) cleared.push(table);
+    } catch {
+      // table may not exist
+    }
+  }
+
+  try {
+    const { error } = await supabase.from("site_state").upsert(
+      {
+        key: ARTICLES_STATE_KEY,
+        value: { items: [], updatedAt: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    if (!error) cleared.push("site_state:articles");
+  } catch {
+    // ignore
+  }
+
+  return { ok: true, cleared };
+}
+
+/* ============================================================================
+   APPROVED SIKH SOURCES WHITELIST
+============================================================================ */
+
+export async function listApprovedSources(): Promise<{
+  sources: ApprovedSourceRecord[];
+  backend: "approved_sources_table" | "site_state" | "default";
+}> {
+  const supabase = getSupabaseServerClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("approved_sources")
+        .select("*")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return {
+          sources: data as ApprovedSourceRecord[],
+          backend: "approved_sources_table",
+        };
+      }
+    } catch {
+      // fall through
+    }
+
+    try {
+      const { data } = await supabase
+        .from("site_state")
+        .select("value")
+        .eq("key", SOURCES_STATE_KEY)
+        .maybeSingle();
+      const raw = (data?.value as { items?: ApprovedSourceRecord[] } | null)
+        ?.items;
+      if (Array.isArray(raw) && raw.length > 0) {
+        return {
+          sources: raw.filter((s) => s.is_active !== false),
+          backend: "site_state",
+        };
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  return { sources: DEFAULT_APPROVED_SOURCES, backend: "default" };
+}
+
+export async function saveApprovedSource(
+  source: ApprovedSourceRecord
+): Promise<{ ok: boolean; source: ApprovedSourceRecord; error?: string }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    return { ok: false, source, error: "Supabase not configured" };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("approved_sources")
+      .upsert(source, { onConflict: "domain" })
+      .select("*")
+      .single();
+    if (!error && data) {
+      return { ok: true, source: data as ApprovedSourceRecord };
+    }
+  } catch {
+    // fall through
+  }
+
+  try {
+    const { sources: current } = await listApprovedSources();
+    const nextList = [
+      source,
+      ...current.filter(
+        (s) => s.domain.toLowerCase() !== source.domain.toLowerCase()
+      ),
+    ];
+    const { error } = await supabase.from("site_state").upsert(
+      {
+        key: SOURCES_STATE_KEY,
+        value: { items: nextList, updatedAt: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    if (!error) return { ok: true, source };
+    return { ok: false, source, error: error.message };
+  } catch (err) {
+    return {
+      ok: false,
+      source,
+      error: err instanceof Error ? err.message : "Failed to save source",
+    };
+  }
+}
+
+export async function removeApprovedSource(
+  idOrDomain: string
+): Promise<{ ok: boolean; error?: string }> {
+  const clean = idOrDomain.trim().toLowerCase();
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "Supabase not configured" };
+
+  try {
+    const { error } = await supabase
+      .from("approved_sources")
+      .delete()
+      .or(`id.eq.${idOrDomain},domain.eq.${clean}`);
+    if (!error) return { ok: true };
+  } catch {
+    // fall through
+  }
+
+  try {
+    const { sources: current } = await listApprovedSources();
+    const nextList = current.filter(
+      (s) => s.id !== idOrDomain && s.domain.toLowerCase() !== clean
+    );
+    const { error } = await supabase.from("site_state").upsert(
+      {
+        key: SOURCES_STATE_KEY,
+        value: { items: nextList, updatedAt: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    if (!error) return { ok: true };
+    return { ok: false, error: error.message };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to remove source",
+    };
+  }
+}

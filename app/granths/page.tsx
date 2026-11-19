@@ -2125,6 +2125,84 @@ export default function GranthsAndKirtanPage() {
               </div>
 
               {/* ============================================================
+                  FEATURED EDITORIAL SECTION: KIRTAN & THE 31 RAAGS
+              ============================================================ */}
+              <section
+                aria-label="Kirtan and The 31 Raags Educational Feature"
+                className="rounded-3xl border border-[#C59B27]/50 bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-8 space-y-6 w-full min-w-0 shadow-xl"
+              >
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#C59B27]/45 bg-[#121C15] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#C59B27]">
+                    ✦ Gurmat Sangeet • Sacred Sound &amp; Contemplation
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-serif font-bold leading-tight">
+                    Kirtan &amp; The 31 Raags of Sri Guru Granth Sahib Ji
+                  </h2>
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-sm sm:text-base leading-relaxed"
+                  >
+                    In Sikhi, <strong className="font-bold">Gurbani Kirtan</strong> is far more than
+                    background music—it is the living union of Divine Word (<em>Shabad</em>) and
+                    sacred melody (<em>Raag</em>). Unlike texts arranged by chronology or topic, the
+                    central body of <strong className="font-bold">Sri Guru Granth Sahib Ji (Ang 14–1353)</strong>{" "}
+                    is architected around <strong className="font-bold">31 Classical Raags</strong>,
+                    each paired with a prescribed time of day (<em>Pehar</em>), rhythmic cycle (<em>Taal</em>),
+                    and emotional atmosphere (<em>Ras</em>) so the listener&apos;s mind moves naturally from
+                    restlessness into serene equipoise (<em>Sehaj</em>).
+                  </p>
+                </div>
+
+                {/* Visual 31 Raags Architectural Callout */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { value: "31", label: "Main Classical Raags", sub: "Sri Raag to Jaijawanti" },
+                    { value: "14–1353", label: "Raag Ang Architecture", sub: "Structured by melody & Ras" },
+                    { value: "8 Pehars", label: "24-Hour Time Alignment", sub: "Amrit Vela through Night" },
+                    { value: "5 Saaj", label: "Traditional Tanti Saaj", sub: "Rabab, Saranda, Taus, Dilruba, Jori" },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="rounded-2xl border border-[#C59B27]/35 bg-[#121C15] p-4 space-y-1"
+                    >
+                      <p className="font-serif text-xl sm:text-2xl font-bold text-[#C59B27]">
+                        {stat.value}
+                      </p>
+                      <p className="text-xs font-extrabold leading-snug">
+                        {stat.label}
+                      </p>
+                      <p
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-[11px] leading-snug"
+                      >
+                        {stat.sub}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Learn Sikhi Lifelong-Learning Mission Banner */}
+                <div className="rounded-2xl border border-[#C59B27]/45 border-l-4 border-l-[#C59B27] bg-[#121C15] p-5 space-y-2">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#C59B27]">
+                    ✦ Learn Sikhi — A Lifelong Learning Sanctuary
+                  </p>
+                  <p className="font-serif text-lg sm:text-xl font-bold leading-snug">
+                    Sikhi is not a destination to rush through—it is a lifelong path of curiosity, humility, and Shabad Vichaar.
+                  </p>
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-xs sm:text-sm leading-relaxed"
+                  >
+                    Whether you are discovering your first Raag, learning Gurmukhi alongside family,
+                    or studying classical Puratan chronicles like <em>Suraj Prakash</em> and{" "}
+                    <em>Sri Gur Panth Prakash</em>, Learn Sikhi is built to keep primary Gurbani,
+                    authentic Kirtan, and verified Sikh scholarship open and welcoming for every
+                    generation.
+                  </p>
+                </div>
+              </section>
+
+              {/* ============================================================
                   INTERACTIVE "WHAT IS GURMAT SANGEET & THE 31 RAGAS?" GUIDE
               ============================================================ */}
               <div className="rounded-3xl border border-[#C59B27]/45 bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-7 space-y-6 w-full min-w-0">

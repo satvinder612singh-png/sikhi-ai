@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { SlidePresentationCanvas } from "@/components/inline-cms-editor";
@@ -885,15 +886,23 @@ function pushFrameToServer(
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
         storageMode?: "supabase" | "fallback";
+        supabaseError?: string;
+        frames?: Record<string, HeritageFrameSettings>;
         error?: string;
       } | null;
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || `Sync failed (${res.status})`);
       }
+      if (data.frames) {
+        writeCmsCache({ frames: data.frames });
+      }
       if (data.storageMode === "supabase") {
         onStatus?.("synced", "✓ Image saved & synced globally (Supabase)");
       } else {
-        onStatus?.("synced", "✓ Image synced to server");
+        onStatus?.(
+          "error",
+          `Saved locally only — Supabase sync warning: ${data.supabaseError || "check site_state RLS/credentials"}`
+        );
       }
     } catch (err) {
       onStatus?.(
@@ -961,6 +970,7 @@ export function EditableHeritageImage({
   onImageChange,
 }: EditableHeritageImageProps) {
   const { user } = useAuth();
+  const router = useRouter();
 
   const buildDefaults = (): HeritageFrameSettings => ({
     src: defaultSrc,
@@ -1121,8 +1131,51 @@ export function EditableHeritageImage({
   const handleFileUpload = async (file: File | undefined) => {
     if (!file) return;
     setSyncStatus("syncing");
-    setSyncMessage("Uploading & syncing image...");
+    setSyncMessage("Uploading to Supabase Storage & syncing...");
     try {
+      const token = await getVerifiedAdminToken();
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "heritage-frames");
+      formData.append("recordId", imageKey);
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers["x-admin-token"] = token;
+      }
+
+      const uploadRes = await fetch("/api/upload-image", {
+        method: "POST",
+        headers,
+        body: formData,
+        cache: "no-store",
+      });
+      const uploadJson = (await uploadRes.json().catch(() => null)) as {
+        ok?: boolean;
+        publicUrl?: string;
+        error?: string;
+      } | null;
+
+      if (uploadRes.ok && uploadJson?.ok && uploadJson.publicUrl) {
+        setNaturalRatio(null);
+        updateSettings({
+          src: uploadJson.publicUrl,
+          orientation: "natural",
+          fitMode: "contain-museum",
+          hidden: false,
+        });
+        router.refresh();
+        return;
+      }
+
+      // Surface real Supabase Storage error visibly instead of failing silently
+      const storageErr =
+        uploadJson?.error ||
+        `Storage upload failed (HTTP ${uploadRes.status}).`;
+      console.error("[EditableHeritageImage] Storage upload failed:", storageErr);
+
+      // Fallback compression so the admin still gets immediate visual feedback + error details
       const compressed = await compressImageFile(file, 1000, 0.72);
       setNaturalRatio(null);
       updateSettings({
@@ -1131,11 +1184,14 @@ export function EditableHeritageImage({
         fitMode: "contain-museum",
         hidden: false,
       });
-    } catch (err) {
       setSyncStatus("error");
-      setSyncMessage(
-        err instanceof Error ? err.message : "Failed to process uploaded image."
-      );
+      setSyncMessage(`Fallback saved locally — ${storageErr}`);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to upload image.";
+      console.error("[EditableHeritageImage] Upload exception:", err);
+      setSyncStatus("error");
+      setSyncMessage(msg);
     }
   };
 

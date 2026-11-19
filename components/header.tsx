@@ -58,6 +58,8 @@ function resolveDefaultThemeId(raw?: string, pageBg?: string): string | null {
  */
 const LINKS: { href: string; title: string; sub?: string }[] = [
   { href: "/", title: "Home", sub: "SikhStack & SikhInterest" },
+  { href: "/articles", title: "Articles", sub: "In-Page Sikh Research & Essays" },
+  { href: "/studio", title: "Write", sub: "Substack-Style Publishing Studio" },
   { href: "/foundations", title: "Foundations" },
   { href: "/nitnem", title: "Daily Bani" },
   { href: "/granths", title: "Granths & Kirtan" },
