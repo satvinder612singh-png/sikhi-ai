@@ -1066,8 +1066,8 @@ export default function GranthsAndKirtanPage() {
   return (
     <div
       style={{
-        backgroundColor: layoutCfg.pageBgColor || "#FAF6EE",
-        color: layoutCfg.bodyTextColor || "#171917",
+        backgroundColor: "var(--bg-primary)",
+        color: "var(--text-primary)",
         fontFamily: pageFont,
       }}
       className={`min-h-screen flex flex-col ${getPageTransitionClass(layoutCfg.pageTransition)}`}
@@ -1115,14 +1115,13 @@ export default function GranthsAndKirtanPage() {
             <GodModeBox id="granths-hero-box" pageKey="granths" label="Hero Section">
             <section
               style={{
-                backgroundColor: heroOv?.bgColor || layoutCfg.cardBgColor || undefined,
-                borderColor: heroOv?.borderColor || layoutCfg.accentColor || undefined,
-                color: heroOv?.textColor || undefined,
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-subtle)",
                 fontFamily: heroOv?.fontFamily
                   ? resolveCmsFontFamily(heroOv.fontFamily)
                   : undefined,
               }}
-              className={`rounded-3xl border border-[#d4af37]/30 bg-[#1B2A20] p-8 md:p-10 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 ${widthCls}`}
+              className={`rounded-2xl border p-8 md:p-10 ${widthCls}`}
             >
               <div className="flex justify-end mb-2">
                 <InlineTopicEditor

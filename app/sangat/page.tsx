@@ -2037,45 +2037,21 @@ function SangatHubContent() {
             | InlineTopicEditData
             | undefined;
           return (
+        <>
         <GodModeBox id="sangat-hero-box" pageKey="sangat" label="Hero Section">
         <section
           id="topic-sangat-hero"
           style={{
-            backgroundColor:
-              heroInline?.bgColor || layoutCfg.cardBgColor || "var(--bg-surface)",
-            borderColor:
-              heroInline?.borderColor || layoutCfg.accentColor || "var(--border-subtle)",
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
             fontFamily: heroInline?.fontFamily
               ? resolveCmsFontFamily(heroInline.fontFamily)
               : undefined,
-            color: heroInline?.textColor || undefined,
           }}
-          className={`sanctuary-hero-glow relative ${
+          className={`relative ${
             liveEditMode ? "overflow-visible" : "overflow-hidden"
-          } rounded-3xl border p-6 sm:p-8 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 space-y-6 ${widthCls}`}
+          } rounded-2xl border p-6 sm:p-8 space-y-5 ${widthCls}`}
         >
-          {/* Ambient Heritage Hero Backdrop */}
-          {heroBannerUrl && (
-            <div className="mb-2">
-              <EditableHeritageImage
-                imageKey="sangat-hero-banner"
-                defaultSrc={heroBannerUrl}
-                alt="Puratan Darbar Sahib — SikhStack & SikhInterest Heritage Banner"
-                defaultOrientation="landscape"
-                defaultFit="contain-museum"
-                onImageChange={(newSrc) => {
-                  setHeroBannerUrl(newSrc);
-                  try {
-                    window.localStorage.setItem(STORAGE_KEYS.HERO_BANNER, newSrc);
-                  } catch {
-                    // ignore quota errors
-                  }
-                  pushSiteSync({ heroBannerUrl: newSrc });
-                }}
-              />
-            </div>
-          )}
-
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div className={`space-y-2 max-w-2xl ${alignCls}`}>
               <div className="flex flex-wrap items-center gap-2">
@@ -2083,15 +2059,15 @@ function SangatHubContent() {
                   id="sangat-hero-badge"
                   pageKey="sangat"
                   tag="p"
-                  defaultText={heroInline?.badge || "SIKHSTACKS & SIKHINTEREST"}
-                  style={{ color: layoutCfg.accentColor || undefined }}
-                  className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+                  defaultText={heroInline?.badge || "LEARN SIKHI • EDITORIAL & VISUAL COMMONS"}
+                  style={{ color: "var(--accent-text)" }}
+                  className="text-[11px] font-semibold uppercase tracking-[0.18em]"
                 />
                 <InlineTopicEditor
                   itemId="sangat-hero-header"
                   defaults={{
                     title: heroSec?.customTitle || "SikhStacks & SikhInterest",
-                    badge: "SIKHSTACKS & SIKHINTEREST",
+                    badge: "LEARN SIKHI • EDITORIAL & VISUAL COMMONS",
                     description:
                       heroSec?.customSubtitle ||
                       "A safe space for Sikhs and scholars to share knowledge, sources, books, and work together.",
@@ -2103,9 +2079,6 @@ function SangatHubContent() {
                 pageKey="sangat"
                 tag="h1"
                 defaultText={heroInline?.title || heroSec?.customTitle || "SikhStacks & SikhInterest"}
-                style={{
-                  color: heroInline?.textColor || layoutCfg.headingTextColor || undefined,
-                }}
                 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight"
               />
               <GodModeText
@@ -2118,32 +2091,16 @@ function SangatHubContent() {
                   "A safe space for Sikhs and scholars to share knowledge, sources, books, and work together."
                 }
                 style={{
-                  color:
-                    heroInline?.textColor ||
-                    layoutCfg.bodyTextColor ||
-                    "var(--theme-text-muted)",
+                  color: "var(--theme-text-muted)",
                 }}
                 className="text-sm sm:text-base leading-relaxed"
               />
-              {isStealthAdmin && (
-                <div className="pt-1">
-                  <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border border-[#C59B27]/50 bg-[#C59B27]/10 text-[11px] font-bold text-[#9A7418] dark:text-[#E5C158] hover:border-[#C59B27] transition">
-                    <span>Change Page Banner / Upload New Artwork</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(e) => handleHeroBannerFile(e.target.files?.[0])}
-                    />
-                  </label>
-                </div>
-              )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               {isMaintenancePaused ? (
-                <span className="px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-xs font-bold text-amber-700 dark:text-amber-300">
-                  🛡️ Community Submissions Paused
+                <span className="px-3.5 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs font-semibold">
+                  Community Submissions Paused
                 </span>
               ) : (
                 <button
@@ -2155,19 +2112,24 @@ function SangatHubContent() {
                         secCfg.requireEmailVerification) &&
                       !user
                     ) {
-                      setAuthGateActionLabel("Submit an Essay or Link");
+                      setAuthGateActionLabel("Submit a Visual Pin or Resource");
                       return;
                     }
                     resetShareForm();
                     setIsShareOpen(true);
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                    color: "var(--text-primary)",
+                  }}
+                  className="px-3.5 py-2 rounded-lg border text-xs font-semibold hover:border-[var(--accent-primary)] transition-colors duration-150"
                 >
                   <GodModeText
                     id="sangat-share-cta"
                     pageKey="sangat"
                     tag="span"
-                    defaultText="+ Share Article or Link"
+                    defaultText="+ Share to SikhInterest"
                   />
                 </button>
               )}
@@ -2176,10 +2138,10 @@ function SangatHubContent() {
                 type="button"
                 onClick={() => setIsStudioOpen(true)}
                 style={{
-                  backgroundColor: "var(--theme-card-darker)",
+                  backgroundColor: "var(--bg-tertiary)",
                   borderColor: "var(--border-subtle)",
                 }}
-                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl border hover:border-[#C59B27] transition text-left"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border hover:border-[var(--accent-primary)] transition-colors duration-150 text-left"
               >
                 <SikhHeritageAvatar
                   preset={profile.avatarPreset}
@@ -2190,26 +2152,46 @@ function SangatHubContent() {
                   <span className="block text-xs font-serif font-bold truncate max-w-[140px]">
                     {profile.displayName}
                   </span>
-                  <span className="block text-[10px] font-semibold text-[#C59B27] truncate">
+                  <span
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="block text-[10px] font-medium truncate"
+                  >
                     {profile.roleBadge}
                   </span>
                 </span>
               </button>
             </div>
           </div>
+        </section>
+        </GodModeBox>
 
-          {/* SikhStacks Publishing Studio, In-Page Reader & Threaded Comments */}
-          {!activeBlog && (
-            <div className="pt-2">
-              <SikhStacksHub />
+        {/* SikhStacks Publishing Studio, In-Page Reader & Threaded Comments */}
+        {!activeBlog && <SikhStacksHub />}
+
+        {/* SikhInterest & Visual Discovery Tabs */}
+        <section
+          style={{
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
+          }}
+          className="rounded-2xl border p-5 sm:p-6 space-y-3"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <p
+                style={{ color: "var(--accent-text)" }}
+                className="text-[11px] font-semibold uppercase tracking-[0.18em]"
+              >
+                SikhInterest • Visual &amp; Archival Discovery
+              </p>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold">
+                Curated Heritage Visuals &amp; Research Links
+              </h2>
             </div>
-          )}
 
-          {/* Clean Minimal Text Tabs */}
           <nav
             aria-label="Feed categories"
-            className="flex flex-wrap items-center gap-1 sm:gap-2 border-t pt-4"
-            style={{ borderColor: "var(--border-subtle)" }}
+            className="flex flex-wrap items-center gap-1.5"
           >
             {FEED_TABS.map((tab) => {
               const active = !activeBlog && feedTab === tab.id;
@@ -2221,11 +2203,20 @@ function SangatHubContent() {
                     setActiveBlogId(null);
                     setFeedTab(tab.id);
                   }}
-                  className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm transition ${
+                  style={
                     active
-                      ? "bg-[#C59B27]/15 text-[#C59B27] font-bold border border-[#C59B27]/50"
-                      : "font-medium opacity-75 hover:opacity-100 border border-transparent"
-                  }`}
+                      ? {
+                          backgroundColor: "var(--text-primary)",
+                          color: "var(--bg-primary)",
+                          borderColor: "var(--text-primary)",
+                        }
+                      : {
+                          backgroundColor: "transparent",
+                          borderColor: "var(--border-subtle)",
+                          color: "var(--theme-text-muted)",
+                        }
+                  }
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-150"
                 >
                   <GodModeText
                     id={`sangat-tab-label-${tab.id}`}
@@ -2238,8 +2229,9 @@ function SangatHubContent() {
               );
             })}
           </nav>
+          </div>
         </section>
-        </GodModeBox>
+        </>
           );
         })()}
 
@@ -2842,7 +2834,12 @@ function SangatHubContent() {
           onClick={() => setReadingItem(null)}
         >
           <div
-            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl bg-[#FAF7F0] dark:bg-[#111318] text-[#18181B] dark:text-[#FAF7F0] border border-[#C59B27]/35 shadow-2xl overflow-hidden"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+              color: "var(--text-primary)",
+            }}
+            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex items-start justify-between gap-4">
@@ -3030,7 +3027,12 @@ function SangatHubContent() {
           onClick={() => setIsShareOpen(false)}
         >
           <div
-            className="w-full max-w-xl max-h-[88vh] flex flex-col rounded-2xl bg-[#FAF7F0] dark:bg-[#111318] text-[#18181B] dark:text-[#FAF7F0] border border-[#C59B27]/35 shadow-2xl overflow-hidden"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+              color: "var(--text-primary)",
+            }}
+            className="w-full max-w-xl max-h-[88vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex items-center justify-between gap-4">

@@ -56,7 +56,31 @@ async function writeFallbackComments(comments: PostCommentRecord[]): Promise<voi
 }
 
 export async function GET(req: NextRequest) {
+  const countsOnly = req.nextUrl.searchParams.get("counts") === "true";
   const postId = req.nextUrl.searchParams.get("postId")?.trim() || "";
+
+  if (countsOnly) {
+    const counts: Record<string, number> = {};
+    const supabase = getSupabaseServerClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("post_comments")
+        .select("post_id");
+      if (!error && Array.isArray(data)) {
+        for (const row of data) {
+          const pid = String((row as { post_id?: string }).post_id || "");
+          if (pid) counts[pid] = (counts[pid] || 0) + 1;
+        }
+        return NextResponse.json({ ok: true, counts });
+      }
+    }
+    const allFallback = await readFallbackComments();
+    for (const c of allFallback) {
+      counts[c.post_id] = (counts[c.post_id] || 0) + 1;
+    }
+    return NextResponse.json({ ok: true, counts });
+  }
+
   if (!postId) {
     return NextResponse.json(
       { ok: false, error: "Missing postId query parameter." },

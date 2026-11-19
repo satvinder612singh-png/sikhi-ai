@@ -1632,10 +1632,8 @@ export function SikhiFoundationsDeck({ headingLevel = 2 }: { headingLevel?: 1 | 
         fontFamily: deckInline?.fontFamily
           ? resolveCmsFontFamily(deckInline.fontFamily)
           : resolveCmsFontFamily(layoutCfg.fontFamily),
-        backgroundColor: deckInline?.bgColor || layoutCfg.pageBgColor || undefined,
-        color: deckInline?.textColor || layoutCfg.bodyTextColor || undefined,
       }}
-      className={`space-y-6 outline-none rounded-3xl ${getPageTransitionClass(layoutCfg.pageTransition)} ${deckWidthCls}`}
+      className={`space-y-6 outline-none rounded-2xl ${getPageTransitionClass(layoutCfg.pageTransition)} ${deckWidthCls}`}
     >
       <InlineSectionBanner
         sectionId="foundations-deck"

@@ -279,17 +279,13 @@ export function Header({ solid = false }: { solid?: boolean }) {
       const cfg = cms.layoutConfig as {
         defaultSiteTheme?: string;
         pageBgColor?: string;
-        headingTextColor?: string;
       };
       const targetTheme = resolveDefaultThemeId(cfg?.defaultSiteTheme, cfg?.pageBgColor);
       if (targetTheme) {
         document.documentElement.setAttribute("data-theme", targetTheme);
-      }
-      if (cfg?.pageBgColor) {
-        document.documentElement.style.setProperty("--bg-primary", cfg.pageBgColor);
-      }
-      if (cfg?.headingTextColor) {
-        document.documentElement.style.setProperty("--text-primary", cfg.headingTextColor);
+        const isDark = targetTheme === "indigo" || targetTheme === "obsidian";
+        document.documentElement.classList.toggle("dark", isDark);
+        document.documentElement.style.colorScheme = isDark ? "dark" : "light";
       }
     } catch {
       // ignore DOM/storage errors

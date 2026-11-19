@@ -178,6 +178,16 @@ export const EMPTY_CMS_STATE: CmsSiteState = {
 export const CMS_CACHE_KEY = "learnsikhi_cms_cache_v1";
 const CMS_UPDATED_EVENT = "learnsikhi-cms-updated";
 
+function sanitizeLayoutColors(cfg?: CmsLayoutConfig): CmsLayoutConfig {
+  const next: CmsLayoutConfig = { ...EMPTY_CMS_STATE.layoutConfig, ...(cfg || {}) };
+  // Never allow stored hex overrides to defeat Light / Dark / OLED theme tokens
+  delete next.pageBgColor;
+  delete next.cardBgColor;
+  delete next.headingTextColor;
+  delete next.bodyTextColor;
+  return next;
+}
+
 export function readCmsCache(): CmsSiteState | null {
   if (typeof window === "undefined") return null;
   try {
@@ -188,7 +198,7 @@ export function readCmsCache(): CmsSiteState | null {
     return {
       ...EMPTY_CMS_STATE,
       ...parsed,
-      layoutConfig: { ...EMPTY_CMS_STATE.layoutConfig, ...(parsed.layoutConfig || {}) },
+      layoutConfig: sanitizeLayoutColors(parsed.layoutConfig),
       securityConfig: { ...EMPTY_CMS_STATE.securityConfig, ...(parsed.securityConfig || {}) },
       sectionLayoutMap: parsed.sectionLayoutMap || {},
       sectionOrder: parsed.sectionOrder || {},
@@ -210,7 +220,10 @@ export function writeCmsCache(data: Partial<CmsSiteState>): CmsSiteState {
     data.topicEdits && typeof data.topicEdits === "object"
       ? Object.entries(data.topicEdits).reduce<Record<string, CmsTopicEdit>>(
           (acc, [k, v]) => {
-            acc[k] = { ...(acc[k] || {}), ...(v || {}) };
+            const cleanEdit = { ...(acc[k] || {}), ...(v || {}) };
+            delete cleanEdit.bgColor;
+            delete cleanEdit.textColor;
+            acc[k] = cleanEdit;
             return acc;
           },
           { ...(prev.topicEdits || {}) }
@@ -237,7 +250,7 @@ export function writeCmsCache(data: Partial<CmsSiteState>): CmsSiteState {
   const merged: CmsSiteState = {
     ...prev,
     ...data,
-    layoutConfig: { ...prev.layoutConfig, ...(data.layoutConfig || {}) },
+    layoutConfig: sanitizeLayoutColors({ ...prev.layoutConfig, ...(data.layoutConfig || {}) }),
     securityConfig: { ...prev.securityConfig, ...(data.securityConfig || {}) },
     sectionLayoutMap: mergedSectionLayoutMap,
     sectionOrder: data.sectionOrder

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 
 export type SikhiThemeId = "ivory" | "indigo" | "obsidian";
 
@@ -21,30 +20,30 @@ export const SIKHI_THEMES: SikhiThemeOption[] = [
     id: "ivory",
     name: "Light",
     shortLabel: "Light",
-    subtitle: "Clean warm light canvas with crisp dark text",
-    bgPreview: "#FAF7F0",
+    subtitle: "Warm editorial paper canvas (#FAF8F5)",
+    bgPreview: "#FAF8F5",
     surfacePreview: "#FFFFFF",
-    accentPreview: "#C59B27",
+    accentPreview: "#B45309",
     isDark: false,
   },
   {
     id: "indigo",
     name: "Dark",
     shortLabel: "Dark",
-    subtitle: "Balanced dark slate surface for comfortable reading",
-    bgPreview: "#0B132B",
-    surfacePreview: "#1C2541",
-    accentPreview: "#F59E0B",
+    subtitle: "Deep neutral charcoal (#0F1115)",
+    bgPreview: "#0F1115",
+    surfacePreview: "#161920",
+    accentPreview: "#E5A93C",
     isDark: true,
   },
   {
     id: "obsidian",
     name: "OLED",
     shortLabel: "OLED",
-    subtitle: "Pure #000000 black with high-contrast accents",
+    subtitle: "True #000000 black with #0A0A0A surfaces",
     bgPreview: "#000000",
-    surfacePreview: "#090A0F",
-    accentPreview: "#FFB800",
+    surfacePreview: "#0A0A0A",
+    accentPreview: "#F5C451",
     isDark: true,
   },
 ];
@@ -52,45 +51,36 @@ export const SIKHI_THEMES: SikhiThemeOption[] = [
 const THEME_STORAGE_KEY = "learn_sikhi_theme_v2";
 const VALID_THEME_IDS: SikhiThemeId[] = ["ivory", "indigo", "obsidian"];
 
-type WaveTransitionState = {
-  key: number;
-  theme: SikhiThemeOption;
-  x: number;
-  y: number;
-};
+function applyThemeToDocument(nextTheme: SikhiThemeId) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.setAttribute("data-theme", nextTheme);
+  const isDark = nextTheme === "indigo" || nextTheme === "obsidian";
+  root.classList.toggle("dark", isDark);
+  root.style.colorScheme = isDark ? "dark" : "light";
+  // Clear any stale inline CSS variable overrides so data-theme tokens govern
+  root.style.removeProperty("--bg-primary");
+  root.style.removeProperty("--bg-surface");
+  root.style.removeProperty("--text-primary");
+}
 
 export function ThemeSwitcher() {
   const [theme, setTheme] = useState<SikhiThemeId>("ivory");
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [wave, setWave] = useState<WaveTransitionState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const triggerBtnRef = useRef<HTMLButtonElement>(null);
-  const waveTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     try {
-      const saved = window.localStorage.getItem(THEME_STORAGE_KEY) as
-        | SikhiThemeId
-        | "marble"
-        | "terracotta"
-        | null;
+      const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
       const initial: SikhiThemeId =
         saved && VALID_THEME_IDS.includes(saved as SikhiThemeId)
           ? (saved as SikhiThemeId)
           : "ivory";
       setTheme(initial);
-      document.documentElement.setAttribute("data-theme", initial);
+      applyThemeToDocument(initial);
     } catch {
-      document.documentElement.setAttribute("data-theme", "ivory");
+      applyThemeToDocument("ivory");
     }
-
-    return () => {
-      if (waveTimeoutRef.current) {
-        window.clearTimeout(waveTimeoutRef.current);
-      }
-    };
   }, []);
 
   useEffect(() => {
@@ -108,77 +98,23 @@ export function ThemeSwitcher() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const selectTheme = (
-    nextTheme: SikhiThemeId,
-    e?: React.MouseEvent<HTMLButtonElement>
-  ) => {
-    const nextObj =
-      SIKHI_THEMES.find((t) => t.id === nextTheme) || SIKHI_THEMES[0];
-
-    let originX = typeof window !== "undefined" ? window.innerWidth - 140 : 800;
-    let originY = 36;
-    if (e && e.currentTarget) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      originX = Math.round(rect.left + rect.width / 2);
-      originY = Math.round(rect.top + rect.height / 2);
-    } else if (triggerBtnRef.current) {
-      const rect = triggerBtnRef.current.getBoundingClientRect();
-      originX = Math.round(rect.left + rect.width / 2);
-      originY = Math.round(rect.top + rect.height / 2);
+  const selectTheme = (nextTheme: SikhiThemeId) => {
+    setTheme(nextTheme);
+    applyThemeToDocument(nextTheme);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch {
+      // ignore storage errors
     }
-
-    if (typeof document !== "undefined") {
-      document.documentElement.style.setProperty("--wave-x", `${originX}px`);
-      document.documentElement.style.setProperty("--wave-y", `${originY}px`);
-    }
-
-    if (waveTimeoutRef.current) {
-      window.clearTimeout(waveTimeoutRef.current);
-    }
-    setWave({
-      key: Date.now(),
-      theme: nextObj,
-      x: originX,
-      y: originY,
-    });
-    waveTimeoutRef.current = window.setTimeout(() => {
-      setWave(null);
-    }, 680);
-
-    const applyDomTheme = () => {
-      setTheme(nextTheme);
-      document.documentElement.setAttribute("data-theme", nextTheme);
-      try {
-        window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-      } catch {
-        // Ignore storage errors
-      }
-    };
-
-    const docWithTransition = document as Document & {
-      startViewTransition?: (cb: () => void) => void;
-    };
-    if (typeof docWithTransition.startViewTransition === "function") {
-      try {
-        docWithTransition.startViewTransition(() => {
-          applyDomTheme();
-        });
-      } catch {
-        applyDomTheme();
-      }
-    } else {
-      applyDomTheme();
-    }
-
     setOpen(false);
   };
 
-  const currentObj = SIKHI_THEMES.find((t) => t.id === theme) || SIKHI_THEMES[0];
+  const currentObj =
+    SIKHI_THEMES.find((t) => t.id === theme) || SIKHI_THEMES[0];
 
   return (
     <div ref={containerRef} className="relative inline-block text-left">
       <button
-        ref={triggerBtnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -188,18 +124,19 @@ export function ThemeSwitcher() {
           backgroundColor: "var(--bg-surface)",
           color: "var(--text-primary)",
         }}
-        className="whitespace-nowrap inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
+        className="whitespace-nowrap inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-150 hover:border-[var(--accent-primary)] focus:outline-none"
       >
         <span
-          className="h-3.5 w-3.5 rounded-full border border-black/20 shadow-sm shrink-0 transition-transform duration-300"
+          className="h-3 w-3 rounded-full border border-white/20 shrink-0"
           style={{
-            background: `linear-gradient(135deg, ${currentObj.bgPreview} 50%, ${currentObj.accentPreview} 50%)`,
+            backgroundColor: currentObj.bgPreview,
+            boxShadow: `inset 0 0 0 2px ${currentObj.accentPreview}`,
           }}
         />
-        <span className="hidden sm:inline">{currentObj.shortLabel}</span>
+        <span>{currentObj.shortLabel}</span>
         <span
-          className="text-[10px]"
-          style={{ color: "var(--accent-primary)" }}
+          className="text-[10px] opacity-70"
+          style={{ color: "var(--theme-text-muted)" }}
         >
           ▾
         </span>
@@ -214,21 +151,21 @@ export function ThemeSwitcher() {
             borderColor: "var(--border-subtle)",
             color: "var(--text-primary)",
           }}
-          className="animate-fade-in-up absolute right-0 mt-2 w-64 origin-top-right rounded-2xl border p-2 shadow-2xl z-50 backdrop-blur-md"
+          className="animate-fade-in-up absolute right-0 mt-2 w-60 origin-top-right rounded-xl border p-1.5 shadow-xl z-50"
         >
           <div
-            className="px-2.5 py-1.5 border-b mb-1.5"
+            className="px-2.5 py-1.5 border-b mb-1"
             style={{ borderColor: "var(--border-subtle)" }}
           >
             <span
-              className="text-[10px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: "var(--accent-primary)" }}
+              className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+              style={{ color: "var(--theme-text-muted)" }}
             >
-              Appearance
+              Theme
             </span>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {SIKHI_THEMES.map((item) => {
               const active = item.id === theme;
               return (
@@ -236,42 +173,43 @@ export function ThemeSwitcher() {
                   key={item.id}
                   type="button"
                   role="menuitem"
-                  onClick={(e) => selectTheme(item.id, e)}
+                  onClick={() => selectTheme(item.id)}
                   style={{
                     backgroundColor: active
-                      ? "var(--theme-bg-secondary)"
+                      ? "var(--bg-tertiary)"
                       : "transparent",
                     borderColor: active
-                      ? "var(--accent-primary)"
+                      ? "var(--border-subtle)"
                       : "transparent",
                   }}
-                  className="w-full rounded-xl p-2.5 text-left transition flex items-start gap-3 border hover:opacity-90"
+                  className="w-full rounded-lg px-2.5 py-2 text-left transition-colors duration-150 flex items-center gap-2.5 border hover:bg-[var(--bg-tertiary)]"
                 >
                   <span
-                    className="mt-0.5 h-5 w-5 rounded-full border border-black/20 shrink-0 shadow-inner"
+                    className="h-4 w-4 rounded-full border border-white/15 shrink-0"
                     style={{
-                      background: `linear-gradient(135deg, ${item.bgPreview} 55%, ${item.accentPreview} 45%)`,
+                      backgroundColor: item.bgPreview,
+                      boxShadow: `inset 0 0 0 2px ${item.accentPreview}`,
                     }}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span
-                        className="text-xs font-bold"
+                        className="text-xs font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
                         {item.name}
                       </span>
                       {active && (
                         <span
-                          className="text-[10px] font-bold shrink-0"
-                          style={{ color: "var(--accent-primary)" }}
+                          className="text-[10px] font-semibold shrink-0"
+                          style={{ color: "var(--accent-text)" }}
                         >
-                          Active ✓
+                          ✓
                         </span>
                       )}
                     </div>
                     <p
-                      className="text-[11px] leading-snug mt-0.5"
+                      className="text-[11px] leading-snug truncate"
                       style={{ color: "var(--theme-text-muted)" }}
                     >
                       {item.subtitle}
@@ -283,39 +221,6 @@ export function ThemeSwitcher() {
           </div>
         </div>
       )}
-
-      {mounted &&
-        wave &&
-        createPortal(
-          <div
-            key={wave.key}
-            aria-hidden="true"
-            className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
-          >
-            <div
-              className="theme-wave-overlay absolute inset-0"
-              style={
-                {
-                  "--wave-origin-x": `${wave.x}px`,
-                  "--wave-origin-y": `${wave.y}px`,
-                  "--wave-bg": wave.theme.bgPreview,
-                  "--wave-surface": wave.theme.surfacePreview,
-                  "--wave-accent": wave.theme.accentPreview,
-                } as React.CSSProperties
-              }
-            />
-            <div
-              className="theme-wave-shimmer absolute inset-0"
-              style={
-                {
-                  "--wave-accent": wave.theme.accentPreview,
-                  "--wave-bg": wave.theme.bgPreview,
-                } as React.CSSProperties
-              }
-            />
-          </div>,
-          document.body
-        )}
     </div>
   );
 }

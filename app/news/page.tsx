@@ -19,11 +19,6 @@ export default function ExploreNewsPage() {
       >
         <Header solid />
 
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 h-72 w-[min(92vw,54rem)] rounded-full bg-gradient-to-r from-amber-400/15 via-orange-300/10 to-amber-500/15 blur-3xl"
-        />
-
         <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 pb-28 space-y-10">
           <motion.header
             initial={{ opacity: 0, y: 12 }}

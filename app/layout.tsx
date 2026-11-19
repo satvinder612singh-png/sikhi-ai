@@ -29,17 +29,31 @@ const gurmukhi = Noto_Sans_Gurmukhi({
 
 export const metadata: Metadata = {
   title: {
-    default: "Learn Sikhi — Explore the depths of Sikhi.",
+    default: "Learn Sikhi — SikhStacks, SikhInterest & Gurmat Study",
     template: "%s | Learn Sikhi",
   },
   description:
-    "Explore the depths of Sikhi. A warm, source-first sanctuary for Gurbani, Nitnem, Puratan Kirtan, Historical Granths, Unsung Sikh Women, and interactive Abhiyaas.",
+    "A safe space for Sikhs and scholars to share knowledge, sources, books, and work together.",
   applicationName: "Learn Sikhi",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FAF7F0",
+  themeColor: "#0F1115",
 };
+
+const THEME_INIT_SCRIPT = `
+(function() {
+  try {
+    var saved = window.localStorage.getItem("learn_sikhi_theme_v2");
+    var theme = (saved === "indigo" || saved === "obsidian" || saved === "ivory") ? saved : "ivory";
+    var root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    var isDark = theme === "indigo" || theme === "obsidian";
+    root.classList.toggle("dark", isDark);
+    root.style.colorScheme = isDark ? "dark" : "light";
+  } catch (e) {}
+})();
+`;
 
 export default async function RootLayout({
   children,
@@ -56,10 +70,19 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${serif.variable} ${sans.variable} ${gurmukhi.variable}`}
     >
-      <body className="bg-[#FAF7F0] text-[#18181B] antialiased selection:bg-[#C59B27]/20 selection:text-[#18181B]">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body
+        style={{
+          backgroundColor: "var(--bg-primary)",
+          color: "var(--text-primary)",
+        }}
+        className="min-h-screen antialiased selection:bg-[#C59B27]/20"
+      >
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100000] focus:rounded-xl focus:bg-[#090d16] focus:px-4 focus:py-2.5 focus:text-xs focus:font-extrabold focus:text-amber-300 focus:border focus:border-amber-400 focus:shadow-2xl"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100000] focus:rounded-lg focus:bg-[#0A0A0A] focus:px-4 focus:py-2 focus:text-xs focus:font-bold focus:text-amber-300 focus:border focus:border-amber-400"
         >
           Skip to main content
         </a>

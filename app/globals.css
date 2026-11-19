@@ -3,216 +3,207 @@
 @tailwind utilities;
 
 /* ============================================================================
-   1. 5 CURATED SANCTUARY THEMES (DEFAULT: SUNLIT IVORY & DARBAR GOLD)
+   1. MINIMALIST EDITORIAL THEME TOKENS (LIGHT, DARK, OLED)
 ============================================================================ */
 
-/* 1. Sunlit Ivory & Darbar Gold (NEW DEFAULT — Warm, Bright, Welcoming) */
+/* 1. Light — Warm Editorial Paper */
 :root,
-html[data-theme="ivory"] {
-  --bg-primary: #FAF7F0;
+html[data-theme="ivory"],
+html[data-theme="marble"],
+html[data-theme="terracotta"] {
+  color-scheme: light;
+  --bg-primary: #FAF8F5;
   --bg-surface: #FFFFFF;
-  --text-primary: #18181B;
-  --text-on-surface: #18181B;
-  --accent-primary: #C59B27;
-  --border-subtle: rgba(197, 155, 39, 0.32);
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F3F1EC;
+
+  --text-primary: #141413;
+  --text-on-surface: #141413;
+  --theme-text-primary: #141413;
+  --theme-text-muted: #57534E;
+
+  --border-subtle: #E4E2DD;
+
+  --accent-primary: #B45309;
+  --accent-text: #854D0E;
+  --theme-accent-gold: #B45309;
+  --theme-accent-bright: #92400E;
+  --theme-accent-highlight: #9A3412;
+
+  --cta-from: #D97706;
+  --cta-to: #B45309;
+  --cta-text: #FFFFFF;
 
   --logo-shield-start: #1E293B;
   --logo-shield-end: #0F172A;
 
-  --theme-bg-primary: #FAF7F0;
-  --theme-bg-secondary: #F3EDE0;
+  --theme-bg-primary: #FAF8F5;
+  --theme-bg-secondary: #F3F1EC;
   --theme-card-dark: #FFFFFF;
-  --theme-card-darker: #F4EFE4;
-  --theme-text-primary: #18181B;
-  --theme-text-muted: #3A352A;
-  --theme-accent-gold: #C59B27;
-  --theme-accent-bright: #8A5D06;
-  --theme-accent-highlight: #9A3412;
+  --theme-card-darker: #F3F1EC;
 
-  --bg-ivory: #FAF7F0;
+  --bg-ivory: #FAF8F5;
   --bg-parchment: #FFFFFF;
-  --accent-olive: #18181B;
-  --text-charcoal: #18181B;
-  --text-muted-olive: #3A352A;
+  --accent-olive: #141413;
+  --text-charcoal: #141413;
+  --text-muted-olive: #57534E;
   --highlight-saffron: #B45309;
-  --border-gold: #C59B27;
-  --border-gold-light: #E5C158;
+  --border-gold: #E4E2DD;
+  --border-gold-light: #D6D3CD;
+
+  --vivid-blue: #1D4ED8;
+  --vivid-crimson: #BE123C;
+  --vivid-emerald: #047857;
 }
 
-/* 2. Harmandir Marble & Sky (Crisp Light) */
-html[data-theme="marble"] {
-  --bg-primary: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --text-primary: #0F172A;
-  --text-on-surface: #0F172A;
-  --accent-primary: #D97706;
-  --border-subtle: #E2E8F0;
-
-  --logo-shield-start: #1E3A8A;
-  --logo-shield-end: #0F172A;
-
-  --theme-bg-primary: #F8FAFC;
-  --theme-bg-secondary: #F1F5F9;
-  --theme-card-dark: #FFFFFF;
-  --theme-card-darker: #F1F5F9;
-  --theme-text-primary: #0F172A;
-  --theme-text-muted: #475569;
-  --theme-accent-gold: #D97706;
-  --theme-accent-bright: #B45309;
-  --theme-accent-highlight: #0284C7;
-
-  --bg-ivory: #F8FAFC;
-  --bg-parchment: #FFFFFF;
-  --accent-olive: #0F172A;
-  --text-charcoal: #0F172A;
-  --text-muted-olive: #475569;
-  --highlight-saffron: #D97706;
-  --border-gold: #CBD5E1;
-  --border-gold-light: #D97706;
-}
-
-/* 3. Khalsa Royal Indigo & Basanti (Rich Modern Dark) */
+/* 2. Dark — Deep Neutral Charcoal (#0F1115 canvas, #161920 surfaces, #262A34 borders) */
 html[data-theme="indigo"] {
-  --bg-primary: #0B132B;
-  --bg-surface: #1C2541;
-  --text-primary: #F8FAFC;
-  --text-on-surface: #F8FAFC;
-  --accent-primary: #F59E0B;
-  --border-subtle: rgba(245, 158, 11, 0.34);
+  color-scheme: dark;
+  --bg-primary: #0F1115;
+  --bg-surface: #161920;
+  --bg-secondary: #161920;
+  --bg-tertiary: #1D212A;
 
-  --logo-shield-start: #263859;
-  --logo-shield-end: #0B132B;
+  --text-primary: #F3F4F6;
+  --text-on-surface: #F3F4F6;
+  --theme-text-primary: #F3F4F6;
+  --theme-text-muted: #9CA3AF;
 
-  --theme-bg-primary: #0B132B;
-  --theme-bg-secondary: #141E38;
-  --theme-card-dark: #1C2541;
-  --theme-card-darker: #080E20;
-  --theme-text-primary: #F8FAFC;
-  --theme-text-muted: #CBD5E1;
-  --theme-accent-gold: #F59E0B;
-  --theme-accent-bright: #FBBF24;
+  --border-subtle: #262A34;
+
+  --accent-primary: #E5A93C;
+  --accent-text: #F3C465;
+  --theme-accent-gold: #E5A93C;
+  --theme-accent-bright: #F3C465;
   --theme-accent-highlight: #F59E0B;
 
-  --bg-ivory: #0B132B;
-  --bg-parchment: #1C2541;
-  --accent-olive: #1C2541;
-  --text-charcoal: #F8FAFC;
-  --text-muted-olive: #CBD5E1;
-  --highlight-saffron: #F59E0B;
-  --border-gold: #F59E0B;
-  --border-gold-light: #FBBF24;
+  --cta-from: #E5A93C;
+  --cta-to: #D98A1B;
+  --cta-text: #0F1115;
+
+  --logo-shield-start: #1E2430;
+  --logo-shield-end: #0F1115;
+
+  --theme-bg-primary: #0F1115;
+  --theme-bg-secondary: #1D212A;
+  --theme-card-dark: #161920;
+  --theme-card-darker: #1D212A;
+
+  --bg-ivory: #0F1115;
+  --bg-parchment: #161920;
+  --accent-olive: #161920;
+  --text-charcoal: #F3F4F6;
+  --text-muted-olive: #9CA3AF;
+  --highlight-saffron: #E5A93C;
+  --border-gold: #262A34;
+  --border-gold-light: #353B49;
+
+  --vivid-blue: #60A5FA;
+  --vivid-crimson: #FB7185;
+  --vivid-emerald: #34D399;
 }
 
-/* 4. Anandpur Terracotta & Sand (Warm Earth) */
-html[data-theme="terracotta"] {
-  --bg-primary: #F5EBE6;
-  --bg-surface: #FFFDFB;
-  --text-primary: #2D1E17;
-  --text-on-surface: #2D1E17;
-  --accent-primary: #B84A39;
-  --border-subtle: rgba(184, 74, 57, 0.28);
-
-  --logo-shield-start: #6E261C;
-  --logo-shield-end: #2D1E17;
-
-  --theme-bg-primary: #F5EBE6;
-  --theme-bg-secondary: #EBDDD5;
-  --theme-card-dark: #FFFDFB;
-  --theme-card-darker: #EFE3DC;
-  --theme-text-primary: #2D1E17;
-  --theme-text-muted: #694E42;
-  --theme-accent-gold: #B84A39;
-  --theme-accent-bright: #9E3828;
-  --theme-accent-highlight: #B84A39;
-
-  --bg-ivory: #F5EBE6;
-  --bg-parchment: #FFFDFB;
-  --accent-olive: #2D1E17;
-  --text-charcoal: #2D1E17;
-  --text-muted-olive: #694E42;
-  --highlight-saffron: #B84A39;
-  --border-gold: #B84A39;
-  --border-gold-light: #D97706;
-}
-
-/* 5. Amrit Vela Obsidian & Rose Gold (High-Contrast OLED Dark) */
+/* 3. OLED — True #000000 Black (#000000 canvas, #0A0A0A / #111111 surfaces, #1F1F1F borders) */
 html[data-theme="obsidian"] {
-  --bg-primary: #121316;
-  --bg-surface: #1E2025;
-  --text-primary: #F8FAFC;
-  --text-on-surface: #F8FAFC;
-  --accent-primary: #E5C158;
-  --border-subtle: rgba(229, 193, 88, 0.32);
+  color-scheme: dark;
+  --bg-primary: #000000;
+  --bg-surface: #0A0A0A;
+  --bg-secondary: #0A0A0A;
+  --bg-tertiary: #111111;
 
-  --logo-shield-start: #2C2F37;
-  --logo-shield-end: #121316;
-
-  --theme-bg-primary: #121316;
-  --theme-bg-secondary: #181A1F;
-  --theme-card-dark: #1E2025;
-  --theme-card-darker: #0C0D0F;
-  --theme-text-primary: #F8FAFC;
+  --text-primary: #F5F5F5;
+  --text-on-surface: #F5F5F5;
+  --theme-text-primary: #F5F5F5;
   --theme-text-muted: #A1A1AA;
-  --theme-accent-gold: #E5C158;
-  --theme-accent-bright: #F3D886;
-  --theme-accent-highlight: #E07A5F;
 
-  --bg-ivory: #121316;
-  --bg-parchment: #1E2025;
-  --accent-olive: #1E2025;
-  --text-charcoal: #F8FAFC;
+  --border-subtle: #1F1F1F;
+
+  --accent-primary: #E5B84B;
+  --accent-text: #F5C451;
+  --theme-accent-gold: #E5B84B;
+  --theme-accent-bright: #F5C451;
+  --theme-accent-highlight: #F59E0B;
+
+  --cta-from: #F5C451;
+  --cta-to: #E5A93C;
+  --cta-text: #000000;
+
+  --logo-shield-start: #171717;
+  --logo-shield-end: #000000;
+
+  --theme-bg-primary: #000000;
+  --theme-bg-secondary: #111111;
+  --theme-card-dark: #0A0A0A;
+  --theme-card-darker: #111111;
+
+  --bg-ivory: #000000;
+  --bg-parchment: #0A0A0A;
+  --accent-olive: #0A0A0A;
+  --text-charcoal: #F5F5F5;
   --text-muted-olive: #A1A1AA;
-  --highlight-saffron: #E07A5F;
-  --border-gold: #E5C158;
-  --border-gold-light: #F3D886;
+  --highlight-saffron: #E5B84B;
+  --border-gold: #1F1F1F;
+  --border-gold-light: #27272A;
+
+  --vivid-blue: #60A5FA;
+  --vivid-crimson: #F43F5E;
+  --vivid-emerald: #10B981;
+}
+
+/* ============================================================================
+   2. BASE TYPOGRAPHY, SMOOTH 180MS TRANSITIONS & EDITORIAL SURFACES
+============================================================================ */
+:root {
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-card: 1rem;
+  --radius-control: 0.625rem;
+  --elevation-glass: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    transition: background-color 0.7s ease-in-out, color 0.5s ease-out, border-color 0.5s ease-out;
+    scroll-padding-top: 5.5rem;
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 180ms ease-out, color 180ms ease-out, border-color 180ms ease-out;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
     background-color: var(--bg-primary) !important;
     color: var(--text-primary) !important;
-    transition: background-color 0.7s ease-in-out, color 0.5s ease-out, border-color 0.5s ease-out;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+    transition: background-color 180ms ease-out, color 180ms ease-out, border-color 180ms ease-out;
     @apply font-sans antialiased;
   }
 
-  /* Polished elevation & fluid transitions for articles and heritage cards */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
   article {
-    transition: background-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-      color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.09);
+    transition: background-color 180ms ease-out,
+      color 180ms ease-out,
+      border-color 180ms ease-out,
+      transform 180ms var(--ease-out-expo);
+    box-shadow: none;
   }
 
-  html[data-theme="indigo"] article,
-  html[data-theme="obsidian"] article {
-    box-shadow: 0 18px 42px -12px rgba(0, 0, 0, 0.36);
-  }
-
-  /* Only interactive controls animate (compositor-friendly); no global per-div
-     transitions, so scrolling stays at the display's native refresh rate. */
   a,
   button {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
-      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease,
-      filter 0.2s ease;
+    transition: background-color 160ms ease-out,
+      color 160ms ease-out,
+      border-color 160ms ease-out,
+      opacity 160ms ease-out,
+      transform 180ms var(--ease-out-expo);
   }
 
   input::placeholder,
   textarea::placeholder {
     color: var(--theme-text-muted);
-    opacity: 0.9;
+    opacity: 0.75;
   }
 
   /* Generous Gurmukhi line-height so Sihari/Bihari/Lavan/Dulavan vowel marks never clip */
@@ -224,27 +215,22 @@ html[data-theme="obsidian"] {
   }
 
   ::selection {
-    background: rgba(197, 155, 39, 0.24);
+    background: rgba(229, 169, 60, 0.24);
     color: var(--text-primary);
   }
 
   section[id] {
     scroll-margin-top: 1.5rem;
   }
-
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-  }
 }
 
 /* ============================================================================
-   2. GLOBAL 100% THEME COVERAGE REMAPPING (ZERO HEAVY DARK GREEN)
+   3. ZERO WHITE BLEED REMAPPING (FULL VIEWPORT DARK & OLED COVERAGE)
 ============================================================================ */
 /* Page canvas classes */
 .bg-\[\#FAF6EE\],
-.bg-\[\#FAF7F0\] {
+.bg-\[\#FAF7F0\],
+.bg-\[\#FAF8F5\] {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
 }
@@ -266,7 +252,7 @@ html[data-theme="obsidian"] {
 .bg-\[\#121C15\]\/90,
 .bg-\[\#121C15\]\/85,
 .bg-\[\#121C15\]\/60 {
-  background-color: var(--theme-card-darker) !important;
+  background-color: var(--bg-tertiary) !important;
   color: var(--text-primary) !important;
 }
 
@@ -282,7 +268,80 @@ html[data-theme="obsidian"] {
   --tw-gradient-to: var(--bg-primary) var(--tw-gradient-to-position) !important;
 }
 
-/* Primary & Muted Typography across all 5 themes */
+/* Dark & OLED Zero-White-Bleed Guard for any hardcoded light Tailwind classes */
+html[data-theme="indigo"] :where(
+  .bg-white,
+  .bg-white\/95,
+  .bg-white\/90,
+  .bg-white\/85,
+  .bg-white\/80,
+  .bg-white\/70,
+  .bg-\[\#FFFFFF\],
+  .bg-\[\#FFFDFB\],
+  .bg-\[\#F8FAFC\],
+  .bg-slate-50,
+  .bg-slate-100,
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-zinc-50,
+  .bg-zinc-100,
+  .bg-stone-50,
+  .bg-stone-100,
+  .bg-amber-50,
+  .bg-amber-50\/80,
+  .bg-amber-50\/60,
+  .bg-amber-50\/50,
+  .bg-amber-100\/60,
+  .bg-orange-50
+):not(.slide-canvas-handle),
+html[data-theme="obsidian"] :where(
+  .bg-white,
+  .bg-white\/95,
+  .bg-white\/90,
+  .bg-white\/85,
+  .bg-white\/80,
+  .bg-white\/70,
+  .bg-\[\#FFFFFF\],
+  .bg-\[\#FFFDFB\],
+  .bg-\[\#F8FAFC\],
+  .bg-slate-50,
+  .bg-slate-100,
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-zinc-50,
+  .bg-zinc-100,
+  .bg-stone-50,
+  .bg-stone-100,
+  .bg-amber-50,
+  .bg-amber-50\/80,
+  .bg-amber-50\/60,
+  .bg-amber-50\/50,
+  .bg-amber-100\/60,
+  .bg-orange-50
+):not(.slide-canvas-handle) {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+/* Dark & OLED Form Controls — Zero white inputs, selects, or textareas */
+html[data-theme="indigo"] :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+),
+html[data-theme="obsidian"] :where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select
+) {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+  color-scheme: dark;
+}
+
+/* Primary & Muted Typography across all themes */
 .text-\[\#171917\],
 .text-\[\#18181B\],
 .text-\[\#FAF6EE\] {
@@ -304,19 +363,19 @@ html[data-theme="obsidian"] {
   color: var(--accent-primary) !important;
 }
 
-/* Accent Gold, Bright Gold & Saffron Typography & Borders */
 .text-\[\#E5C158\] {
   color: var(--theme-accent-bright) !important;
 }
 
 .text-\[\#C59B27\] {
-  color: var(--accent-primary) !important;
+  color: var(--accent-text, var(--accent-primary)) !important;
 }
 
 .text-\[\#D97706\] {
   color: var(--theme-accent-highlight) !important;
 }
 
+/* Hairline 1px editorial borders */
 .border-\[\#C59B27\],
 .border-\[\#C59B27\]\/80,
 .border-\[\#C59B27\]\/60,
@@ -326,97 +385,41 @@ html[data-theme="obsidian"] {
 .border-\[\#C59B27\]\/35,
 .border-\[\#C59B27\]\/30,
 .border-\[\#C59B27\]\/25,
-.border-\[\#C59B27\]\/20 {
+.border-\[\#C59B27\]\/20,
+.border-\[\#d4af37\]\/30,
+.border-\[\#d4af37\]\/40 {
   border-color: var(--border-subtle) !important;
 }
 
-/* Keep dark text high-contrast inside gold/accent gradient CTA buttons */
+/* Clean CTA buttons */
+.from-\[\#C59B27\] {
+  --tw-gradient-from: var(--cta-from, #D97706) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: var(--cta-to, #B45309) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
 button.from-\[\#C59B27\],
-a.from-\[\#C59B27\] {
-  color: #18181B !important;
+a.from-\[\#C59B27\],
+.from-\[\#C59B27\].text-\[\#18181B\] {
+  color: var(--cta-text, #18181B) !important;
+  font-weight: 700;
+}
+
+/* Strip noisy heavy drop shadows across cards in favor of crisp 1px borders */
+main :where(.shadow-xl, .shadow-2xl) {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+html[data-theme="obsidian"] main :where(.shadow-lg, .shadow-xl, .shadow-2xl) {
+  box-shadow: none !important;
 }
 
 /* ============================================================================
-   3. FULL-VIEWPORT THEME WAVE & RADIAL RIPPLE ANIMATION
-============================================================================ */
-@keyframes themeRadialWave {
-  0% {
-    clip-path: circle(0px at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px));
-    opacity: 0.78;
-  }
-  55% {
-    clip-path: circle(145vmax at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px));
-    opacity: 0.42;
-  }
-  100% {
-    clip-path: circle(165vmax at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px));
-    opacity: 0;
-  }
-}
-
-@keyframes themeDiagonalSweep {
-  0% {
-    transform: translateX(-110%) skewX(-18deg);
-    opacity: 0;
-  }
-  30% {
-    opacity: 0.65;
-  }
-  100% {
-    transform: translateX(125%) skewX(-18deg);
-    opacity: 0;
-  }
-}
-
-.theme-wave-overlay {
-  background: radial-gradient(
-    circle at var(--wave-origin-x, 90%) var(--wave-origin-y, 40px),
-    var(--wave-accent, #C59B27) 0%,
-    var(--wave-surface, #FFFFFF) 42%,
-    var(--wave-bg, #FAF7F0) 85%
-  );
-  animation: themeRadialWave 660ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.theme-wave-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--wave-accent, #C59B27) 38%, transparent) 45%,
-    color-mix(in srgb, var(--wave-accent, #C59B27) 68%, transparent) 50%,
-    color-mix(in srgb, var(--wave-accent, #C59B27) 38%, transparent) 55%,
-    transparent 100%
-  );
-  animation: themeDiagonalSweep 640ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Native View Transition radial clip-path support when switching themes */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-new(root) {
-  animation: viewTransitionRipple 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes viewTransitionRipple {
-  from {
-    clip-path: circle(0px at var(--wave-x, 90%) var(--wave-y, 36px));
-  }
-  to {
-    clip-path: circle(150vmax at var(--wave-x, 90%) var(--wave-y, 36px));
-  }
-}
-
-/* ============================================================================
-   4. SMOOTH ENTRANCE ANIMATIONS & UTILITIES
+   4. EDITORIAL SURFACES & MOTION UTILITIES
 ============================================================================ */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -426,12 +429,11 @@ a.from-\[\#C59B27\] {
 
 @layer utilities {
   .animate-fade-in-up {
-    animation: fadeInUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeInUp 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   .border-ornamental-gold {
     border-color: var(--border-subtle);
-    box-shadow: inset 0 0 0 1px rgba(197, 155, 39, 0.14);
   }
 
   .surface-ivory {
@@ -451,318 +453,354 @@ a.from-\[\#C59B27\] {
     border: 1px solid var(--border-subtle);
   }
 
-  /* Refined Named Heritage Design System Themes & Surfaces */
   .dark-darbar {
-    background-color: #0b101b;
-    color: #faf7f0;
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
-    transition: all 300ms ease-out;
+    background-color: #0F1115;
+    color: #F3F4F6;
+    border: 1px solid #262A34;
+    transition: all 180ms ease-out;
   }
 
   .sunlit-ivory {
-    background-color: #faf7f0;
-    color: #18181b;
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    transition: all 300ms ease-out;
+    background-color: #FAF8F5;
+    color: #141413;
+    border: 1px solid #E4E2DD;
+    transition: all 180ms ease-out;
   }
 
   .puratan-parchment {
-    background-color: #f2e9d8;
-    color: #2c1d0c;
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    transition: all 300ms ease-out;
+    background-color: #FAF8F5;
+    color: #141413;
+    border: 1px solid #E4E2DD;
+    transition: all 180ms ease-out;
   }
 
   .heritage-surface-card {
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    transition: all 300ms ease-out;
-  }
-
-  /* ============================================================================
-     GOD MODE CANVAS FREE-FORM POSITIONING & TEXT EDITING
-     ============================================================================ */
-  .god-mode-text-editable {
-    box-sizing: border-box;
-    max-width: 100%;
-    outline: 1.5px dashed rgba(212, 175, 55, 0.55);
-    outline-offset: 2px;
-    border-radius: 0.375rem;
-    cursor: text;
-    transition: outline-color 0.2s ease, background-color 0.2s ease;
-  }
-
-  .god-mode-text-editable:hover,
-  [data-edit-mode="true"].god-mode-text-editable:hover {
-    outline-color: #d4af37;
-    background-color: rgba(212, 175, 55, 0.1);
-    z-index: 999 !important;
-    position: relative;
-  }
-
-  .god-mode-box {
-    box-sizing: border-box;
-    position: relative;
-    max-width: 100%;
-    transition: box-shadow 220ms ease,
-      background-color 0.7s ease-in-out,
-      color 0.5s ease-out,
-      border-color 0.5s ease-out;
-  }
-
-  .is-actively-dragging,
-  .god-mode-box[data-dragging="true"],
-  .god-mode-box.is-actively-dragging,
-  .god-mode-text-editable[data-dragging="true"],
-  .god-mode-text-editable.is-actively-dragging {
-    transition: none !important;
-    will-change: transform, width, height;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-    z-index: 999 !important;
-  }
-
-  .god-mode-box-active {
-    border: 1.5px dashed rgba(212, 175, 55, 0.72);
-    border-radius: 1rem;
-    padding: 0.35rem;
-    overflow: visible !important;
-    will-change: transform;
-  }
-
-  body.god-mode-active .god-mode-box,
-  body.god-mode-active article,
-  body.god-mode-active section,
-  body.god-mode-active [data-god-card="true"] {
-    overflow: visible !important;
-  }
-
-  [data-edit-mode="true"].god-mode-box:hover,
-  .god-mode-hover,
-  .god-mode-selected {
-    z-index: 999 !important;
-  }
-
-  .god-mode-box-dragging {
-    transition: none !important;
-    z-index: 999 !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-    outline: 2px solid #d4af37;
-  }
-
-  .god-mode-resize-handle {
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    background: rgba(17, 19, 24, 0.9);
-    border: 1px solid rgba(212, 175, 55, 0.75);
-    color: #e5c158;
-    font-size: 10px;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: nwse-resize;
-    z-index: 35;
-    user-select: none;
-  }
-
-  /* ============================================================================
-     HIGH-CONTRAST OBSIDIAN & AMBER ADMIN STUDIO UI ISOLATION
-     ============================================================================ */
-  .admin-studio-ui {
-    background-color: #090d16 !important;
-    color: #f8fafc !important;
-    color-scheme: dark;
-    border-color: rgba(245, 158, 11, 0.5);
-  }
-
-  .admin-studio-bar-top {
-    position: relative;
-    z-index: 99999 !important;
-  }
-
-  .admin-studio-ui .admin-label-muted {
-    color: #cbd5e1 !important;
-  }
-
-  .admin-studio-ui input,
-  .admin-studio-ui select,
-  .admin-studio-ui textarea {
-    background-color: #0f172a;
-    color: #f8fafc;
-    border-color: rgba(245, 158, 11, 0.4);
-  }
-
-  .admin-studio-ui input::placeholder,
-  .admin-studio-ui textarea::placeholder {
-    color: #94a3b8;
-  }
-
-  .admin-studio-ui [data-admin-active="true"],
-  .admin-studio-ui .admin-pill-active {
-    background-color: #f59e0b !important;
-    color: #090d16 !important;
-    border-color: #fbbf24 !important;
-    font-weight: 800;
-  }
-
-  /* Magnetic dot grid & free-form grid overlays paused cleanly */
-  .god-mode-grid,
-  body.god-mode-grid-visible .god-mode-canvas-active,
-  body.god-mode-grid-visible {
-    background-image: none !important;
-  }
-
-  @keyframes kirtanBarPulse {
-    0%, 100% { transform: scaleY(0.35); }
-    50% { transform: scaleY(1); }
-  }
-
-  .kirtan-eq-bar {
-    transform-origin: bottom;
-    animation: kirtanBarPulse 0.85s ease-in-out infinite;
-  }
-
-  .smart-guide-v {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 1px;
-    background: #f59e0b;
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.85);
-    pointer-events: none;
-    z-index: 99990;
-    transform: translateX(-50%);
-  }
-
-  .smart-guide-h {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 1px;
-    background: #f59e0b;
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.85);
-    pointer-events: none;
-    z-index: 99990;
-    transform: translateY(-50%);
-  }
-
-  .sibling-guide-v {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    width: 0;
-    border-left: 1px solid #f59e0b;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.85);
-    pointer-events: none;
-    z-index: 99990;
-  }
-
-  .sibling-guide-h {
-    position: fixed;
-    left: 0;
-    right: 0;
-    height: 0;
-    border-top: 1px solid #f59e0b;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.85);
-    pointer-events: none;
-    z-index: 99990;
-  }
-
-  body.god-mode-dragging,
-  body.god-mode-dragging * {
-    user-select: none !important;
-    -webkit-user-select: none !important;
-  }
-
-  .cursor-nwse-resize {
-    cursor: nwse-resize;
-  }
-  .cursor-nesw-resize {
-    cursor: nesw-resize;
-  }
-  .cursor-ns-resize {
-    cursor: ns-resize;
-  }
-  .cursor-ew-resize {
-    cursor: ew-resize;
-  }
-
-  .slide-canvas-frame {
-    border: 2px solid rgba(37, 99, 235, 0.85);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45),
-      0 18px 40px -12px rgba(37, 99, 235, 0.22);
-  }
-
-  .slide-canvas-handle {
-    position: absolute;
-    width: 11px;
-    height: 11px;
-    border-radius: 9999px;
-    background: #ffffff;
-    border: 2px solid #2563eb;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-    z-index: 46;
-    touch-action: none;
-    transition: transform 0.14s ease, background-color 0.14s ease;
-  }
-
-  .slide-canvas-handle:hover {
-    transform: scale(1.25);
-    background: #eff6ff;
-  }
-
-  .god-mode-hover {
-    outline: 1px dashed #3b82f6 !important;
-    outline-offset: 2px;
-    background-color: rgba(59, 130, 246, 0.06);
-  }
-
-  .god-mode-selected {
-    outline: 2px solid #3b82f6 !important;
-    outline-offset: 2px;
-  }
-
-  .god-mode-type-tag {
-    position: absolute;
-    top: -11px;
-    left: 8px;
-    z-index: 48;
-    background: #3b82f6;
-    color: #ffffff;
-    font-size: 9px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 4px;
-    pointer-events: none;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
-  }
-
-  .gold-divider-rule {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(197, 155, 39, 0.25) 20%,
-      var(--accent-primary) 50%,
-      rgba(197, 155, 39, 0.25) 80%,
-      transparent 100%
-    );
+    border: 1px solid var(--border-subtle);
+    transition: all 180ms ease-out;
   }
 }
 
-/* Global Unlock-All Mode & Curated Layout Shuffle Presets */
+.sanctuary-glass {
+  background-color: var(--bg-surface);
+  border-color: var(--border-subtle);
+}
+
+.sanctuary-interactive {
+  transition: transform 180ms var(--ease-out-expo),
+    border-color 160ms ease-out,
+    background-color 160ms ease-out;
+}
+
+.sanctuary-interactive:hover {
+  transform: translate3d(0, -1px, 0);
+  border-color: var(--accent-primary);
+}
+
+.sanctuary-interactive:active {
+  transform: translate3d(0, 0, 0) scale(0.992);
+}
+
+.sanctuary-hero-glow {
+  position: relative;
+}
+
+/* ============================================================================
+   5. FOCUS RINGS & CONTRAST GUARDS
+============================================================================ */
+input:not([type="range"]):not([type="checkbox"]):not([type="file"]):not(.dark-input),
+select:not(.dark-input),
+textarea:not(.dark-input) {
+  border-color: var(--border-subtle);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Light-theme secondary text contrast guard */
+:root:not([data-theme]) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
+html[data-theme="ivory"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300) {
+  color: #1E3A5F;
+}
+
+:root:not([data-theme]) :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
+html[data-theme="ivory"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
+  color: #57534E;
+}
+
+/* Dark & OLED dark-text contrast guard (prevents dark slate/zinc text on dark surfaces) */
+html[data-theme="indigo"] :where(.text-slate-700, .text-slate-800, .text-slate-900, .text-zinc-700, .text-zinc-800, .text-zinc-900, .text-gray-700, .text-gray-800, .text-gray-900, .text-stone-700, .text-stone-800, .text-stone-900),
+html[data-theme="obsidian"] :where(.text-slate-700, .text-slate-800, .text-slate-900, .text-zinc-700, .text-zinc-800, .text-zinc-900, .text-gray-700, .text-gray-800, .text-gray-900, .text-stone-700, .text-stone-800, .text-stone-900) {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="indigo"] :where(.text-slate-500, .text-slate-600, .text-zinc-500, .text-zinc-600, .text-gray-500, .text-gray-600, .text-stone-500, .text-stone-600),
+html[data-theme="obsidian"] :where(.text-slate-500, .text-slate-600, .text-zinc-500, .text-zinc-600, .text-gray-500, .text-gray-600, .text-stone-500, .text-stone-600) {
+  color: var(--theme-text-muted) !important;
+}
+
+:where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300) {
+  color: #BAE6FD;
+}
+
+:where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-slate-300, .text-slate-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
+  color: #E4E4E7;
+}
+
+:where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) .text-zinc-400 {
+  color: #D4D4D8;
+}
+
+/* ============================================================================
+   6. GOD MODE & ADMIN STUDIO UTILITIES
+============================================================================ */
+.god-mode-text-editable {
+  box-sizing: border-box;
+  max-width: 100%;
+  outline: 1.5px dashed rgba(212, 175, 55, 0.55);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+  cursor: text;
+  transition: outline-color 0.18s ease, background-color 0.18s ease;
+}
+
+.god-mode-text-editable:hover,
+[data-edit-mode="true"].god-mode-text-editable:hover {
+  outline-color: #d4af37;
+  background-color: rgba(212, 175, 55, 0.1);
+  z-index: 999 !important;
+  position: relative;
+}
+
+.god-mode-box {
+  box-sizing: border-box;
+  position: relative;
+  max-width: 100%;
+  transition: background-color 180ms ease-out,
+    color 180ms ease-out,
+    border-color 180ms ease-out;
+}
+
+.is-actively-dragging,
+.god-mode-box[data-dragging="true"],
+.god-mode-box.is-actively-dragging,
+.god-mode-text-editable[data-dragging="true"],
+.god-mode-text-editable.is-actively-dragging {
+  transition: none !important;
+  will-change: transform, width, height;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  z-index: 999 !important;
+}
+
+.god-mode-box-active {
+  border: 1.5px dashed rgba(212, 175, 55, 0.72);
+  border-radius: 1rem;
+  padding: 0.35rem;
+  overflow: visible !important;
+  will-change: transform;
+}
+
+body.god-mode-active .god-mode-box,
+body.god-mode-active article,
+body.god-mode-active section,
+body.god-mode-active [data-god-card="true"] {
+  overflow: visible !important;
+}
+
+[data-edit-mode="true"].god-mode-box:hover,
+.god-mode-hover,
+.god-mode-selected {
+  z-index: 999 !important;
+}
+
+.god-mode-box-dragging {
+  transition: none !important;
+  z-index: 999 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  outline: 2px solid #d4af37;
+}
+
+.god-mode-resize-handle {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: rgba(17, 19, 24, 0.9);
+  border: 1px solid rgba(212, 175, 55, 0.75);
+  color: #e5c158;
+  font-size: 10px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: nwse-resize;
+  z-index: 35;
+  user-select: none;
+}
+
+.admin-studio-ui {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+  color-scheme: dark;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.admin-studio-bar-top {
+  position: relative;
+  z-index: 99999 !important;
+}
+
+.admin-studio-ui .admin-label-muted {
+  color: #cbd5e1 !important;
+}
+
+.admin-studio-ui input,
+.admin-studio-ui select,
+.admin-studio-ui textarea {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.admin-studio-ui input::placeholder,
+.admin-studio-ui textarea::placeholder {
+  color: #94a3b8;
+}
+
+.admin-studio-ui [data-admin-active="true"],
+.admin-studio-ui .admin-pill-active {
+  background-color: #f59e0b !important;
+  color: #090d16 !important;
+  border-color: #fbbf24 !important;
+  font-weight: 800;
+}
+
+.god-mode-grid,
+body.god-mode-grid-visible .god-mode-canvas-active,
+body.god-mode-grid-visible {
+  background-image: none !important;
+}
+
+@keyframes kirtanBarPulse {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+.kirtan-eq-bar {
+  transform-origin: bottom;
+  animation: kirtanBarPulse 0.85s ease-in-out infinite;
+}
+
+.smart-guide-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #f59e0b;
+  pointer-events: none;
+  z-index: 99990;
+  transform: translateX(-50%);
+}
+
+.smart-guide-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #f59e0b;
+  pointer-events: none;
+  z-index: 99990;
+  transform: translateY(-50%);
+}
+
+.sibling-guide-v {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid #f59e0b;
+  pointer-events: none;
+  z-index: 99990;
+}
+
+.sibling-guide-h {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid #f59e0b;
+  pointer-events: none;
+  z-index: 99990;
+}
+
+body.god-mode-dragging,
+body.god-mode-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.cursor-nwse-resize { cursor: nwse-resize; }
+.cursor-nesw-resize { cursor: nesw-resize; }
+.cursor-ns-resize { cursor: ns-resize; }
+.cursor-ew-resize { cursor: ew-resize; }
+
+.slide-canvas-frame {
+  border: 2px solid rgba(37, 99, 235, 0.85);
+}
+
+.slide-canvas-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #2563eb;
+  z-index: 46;
+  touch-action: none;
+}
+
+.god-mode-hover {
+  outline: 1px dashed #3b82f6 !important;
+  outline-offset: 2px;
+}
+
+.god-mode-selected {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px;
+}
+
+.god-mode-type-tag {
+  position: absolute;
+  top: -11px;
+  left: 8px;
+  z-index: 48;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.gold-divider-rule {
+  background: var(--border-subtle);
+}
+
 body.god-mode-unlock-all section,
 body.god-mode-unlock-all article,
 body.god-mode-unlock-all main,
@@ -814,82 +852,7 @@ body.god-mode-unlock-all .god-mode-text-editable {
   .section-preset-focused-2 {
     grid-template-columns: minmax(0, 1fr) !important;
   }
-}
 
-/* Equal-Height Grid Enforcement & Smooth Batch Snap Transition */
-.section-equal-heights {
-  align-items: stretch !important;
-  gap: 24px !important;
-}
-
-.section-equal-heights > [data-canvas-id] {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.section-equal-heights > [data-canvas-id] > :not(button):not(.slide-canvas-handle):not(.god-mode-type-tag) {
-  flex: 1 1 auto;
-  height: 100%;
-}
-
-.god-mode-snap-animate {
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-    height 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-    min-height 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-    gap 0.25s ease !important;
-}
-
-/* Admin Live Device Viewport Preview Switcher */
-body[data-preview-viewport="laptop"] main,
-body[data-preview-viewport="laptop"] .min-h-screen > div:not(header):not([role="dialog"]),
-body[data-preview-viewport="laptop"] .min-h-screen > section {
-  max-width: 1280px !important;
-  width: 100% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  border: 2px solid rgba(59, 130, 246, 0.45);
-  border-radius: 1.25rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
-  transition: max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease;
-}
-
-body[data-preview-viewport="mobile"] main,
-body[data-preview-viewport="mobile"] .min-h-screen > div:not(header):not([role="dialog"]),
-body[data-preview-viewport="mobile"] .min-h-screen > section {
-  max-width: 390px !important;
-  width: 100% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  padding-left: 1rem !important;
-  padding-right: 1rem !important;
-  border: 3px solid rgba(212, 175, 55, 0.72);
-  border-radius: 2rem;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  overflow-x: hidden !important;
-  transition: max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease;
-}
-
-body[data-preview-viewport="mobile"] main .grid,
-body[data-preview-viewport="mobile"] .min-h-screen > section .grid {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-
-body[data-preview-viewport="mobile"] .god-mode-box:not(.god-mode-floating-widget) {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-body[data-preview-viewport="mobile"] .god-mode-desktop-freeform:not(.god-mode-floating-widget),
-body[data-preview-viewport="mobile"] .god-mode-text-editable[data-desktop-freeform="true"] {
-  transform: none !important;
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-/* Cross-device responsive viewport clamping for free-form God Mode canvases */
-@media (max-width: 768px) {
   body:not(.god-mode-mobile-preview) .god-mode-box:not(.god-mode-floating-widget) {
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -908,251 +871,21 @@ body[data-preview-viewport="mobile"] .god-mode-text-editable[data-desktop-freefo
   }
 }
 
-/* ============================================================================
-   5. WCAG-AAA PALETTE PASS + TRUE #000000 OLED THEME
-   (Later, same-specificity rules intentionally win over section 1 tokens.)
-   --accent-text  : gold/amber used for TEXT (>= 7:1 on that theme's surfaces)
-   --cta-*        : gradient buttons with guaranteed high-contrast labels
-============================================================================ */
-html[data-theme="ivory"] {
-  --text-primary: #14110A;
-  --theme-text-muted: #3F3A2E;
-  --border-subtle: rgba(122, 90, 0, 0.5);
-  --accent-text: #6B4A00;
-  --theme-accent-bright: #6B4A00;
-  --theme-accent-highlight: #8A3B00;
-  --cta-from: #F2C04A; --cta-to: #E8A02A; --cta-text: #14110A;
-  --vivid-blue: #1D4ED8; --vivid-crimson: #BE123C; --vivid-emerald: #047857;
-}
-html[data-theme="marble"] {
-  --text-primary: #0B1220;
-  --theme-text-muted: #334155;
-  --border-subtle: rgba(100, 116, 139, 0.55);
-  --accent-text: #7A3E00;
-  --theme-accent-bright: #7A3E00;
-  --theme-accent-highlight: #075985;
-  --cta-from: #F5B04A; --cta-to: #EA8A1B; --cta-text: #0B1220;
-  --vivid-blue: #1D4ED8; --vivid-crimson: #BE123C; --vivid-emerald: #047857;
-}
-html[data-theme="indigo"] {
-  --theme-text-muted: #E2E8F0;
-  --border-subtle: rgba(251, 191, 36, 0.55);
-  --accent-text: #FCD34D;
-  --theme-accent-bright: #FCD34D;
-  --theme-accent-highlight: #FDBA74;
-  --cta-from: #FFC933; --cta-to: #FF9F1C; --cta-text: #0B132B;
-  --vivid-blue: #60A5FA; --vivid-crimson: #FB7185; --vivid-emerald: #34D399;
-}
-html[data-theme="terracotta"] {
-  --text-primary: #24150F;
-  --theme-text-muted: #4A332A;
-  --border-subtle: rgba(158, 56, 40, 0.5);
-  --accent-text: #5A3A00;
-  --theme-accent-bright: #5A3A00;
-  --theme-accent-highlight: #8A2A1B;
-  --cta-from: #F0B45A; --cta-to: #E2893A; --cta-text: #24150F;
-  --vivid-blue: #1D4ED8; --vivid-crimson: #BE123C; --vivid-emerald: #047857;
+.section-equal-heights {
+  align-items: stretch !important;
+  gap: 24px !important;
 }
 
-/* TRUE OLED: pure #000000 canvas, #090A0F obsidian glass, vivid accents */
-html[data-theme="obsidian"] {
-  --bg-primary: #000000;
-  --bg-surface: #090A0F;
-  --text-primary: #FFFFFF;
-  --text-on-surface: #FFFFFF;
-  --accent-primary: #FFB800;
-  --border-subtle: rgba(255, 184, 0, 0.5);
-
-  --logo-shield-start: #1D4ED8;
-  --logo-shield-end: #000000;
-
-  --theme-bg-primary: #000000;
-  --theme-bg-secondary: #05060A;
-  --theme-card-dark: #090A0F;
-  --theme-card-darker: #12141C;
-  --theme-text-primary: #FFFFFF;
-  --theme-text-muted: #D4D8E1;
-  --theme-accent-gold: #FFB800;
-  --theme-accent-bright: #FFC933;
-  --theme-accent-highlight: #FF6B8A;
-
-  --accent-text: #FFC933;
-  --cta-from: #FFB800; --cta-to: #FF9500; --cta-text: #000000;
-  --vivid-blue: #3B82F6; --vivid-crimson: #F43F5E; --vivid-emerald: #10B981;
-
-  --bg-ivory: #000000;
-  --bg-parchment: #090A0F;
-  --accent-olive: #090A0F;
-  --text-charcoal: #FFFFFF;
-  --text-muted-olive: #D4D8E1;
-  --highlight-saffron: #F43F5E;
-  --border-gold: #FFB800;
-  --border-gold-light: #FFC933;
+.section-equal-heights > [data-canvas-id] {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-/* Gold TEXT now always uses the AAA-safe per-theme token */
-.text-\[\#C59B27\] { color: var(--accent-text, var(--accent-primary)) !important; }
-
-/* Gradient CTA buttons: vivid fill + high-contrast label on every theme */
-.from-\[\#C59B27\] {
-  --tw-gradient-from: var(--cta-from, #C59B27) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: var(--cta-to, #D97706) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
-}
-button.from-\[\#C59B27\],
-a.from-\[\#C59B27\],
-.from-\[\#C59B27\].text-\[\#18181B\] {
-  color: var(--cta-text, #18181B) !important;
-  font-weight: 700;
-}
-
-/* Inputs / selects: clear borders and contrast without breaking dark-surface inputs */
-input:not([type="range"]):not([type="checkbox"]):not([type="file"]):not(.dark-input),
-select:not(.dark-input),
-textarea:not(.dark-input) {
-  border-color: var(--border-subtle);
-}
-
-.dark-surface input:not([type="range"]):not([type="checkbox"]):not([type="file"]),
-.dark-surface select,
-.dark-surface textarea,
-.dark-input {
-  color: #f8fafc !important;
-  color-scheme: dark;
-}
-
-.dark-surface input::placeholder,
-.dark-surface textarea::placeholder,
-.dark-input::placeholder {
-  color: #94a3b8 !important;
-}
-
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible,
-a:focus-visible,
-[role="button"]:focus-visible {
-  outline: 2.5px solid var(--vivid-blue, #2563EB);
-  outline-offset: 2px;
-}
-
-.dark-surface input:focus-visible,
-.dark-surface select:focus-visible,
-.dark-surface textarea:focus-visible,
-.dark-surface button:focus-visible,
-.dark-surface a:focus-visible,
-.admin-studio-ui button:focus-visible,
-.admin-studio-ui input:focus-visible,
-.admin-studio-ui select:focus-visible,
-.admin-studio-ui a:focus-visible {
-  outline: 2.5px solid #f59e0b;
-  outline-offset: 2px;
-}
-
-/* OLED punch: crisp glass cards with a faint gold rim and vivid depth */
-html[data-theme="obsidian"] .bg-\[\#1B2A20\],
-html[data-theme="obsidian"] article {
-  box-shadow: 0 0 0 1px rgba(255, 184, 0, 0.22), 0 14px 40px rgba(0, 0, 0, 0.85);
-}
-html[data-theme="obsidian"] .surface-parchment,
-html[data-theme="obsidian"] .glass-card {
-  background-color: #090A0F;
-  border-color: rgba(255, 184, 0, 0.5);
-}
-
-/* ============================================================================
-   6. NATIVE-REFRESH-RATE MOTION SYSTEM & DESIGN TOKENS (compositor-only)
-============================================================================ */
-:root {
-  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
-  --radius-card: 1.5rem;
-  --radius-control: 0.75rem;
-  --elevation-glass: 0 20px 48px -18px rgba(0, 0, 0, 0.35);
-}
-
-html {
-  scroll-padding-top: 5.5rem;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-h1, h2, h3 {
-  text-wrap: balance;
-}
-
-.sanctuary-glass {
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: var(--elevation-glass);
-}
-
-.sanctuary-interactive {
-  transition: transform 200ms var(--ease-out-expo),
-    box-shadow 220ms var(--ease-out-expo),
-    border-color 180ms ease,
-    background-color 180ms ease;
-  will-change: transform;
-}
-
-.sanctuary-interactive:hover {
-  transform: translate3d(0, -2px, 0);
-  box-shadow: 0 12px 30px -12px rgba(197, 155, 39, 0.28),
-    0 0 0 1px rgba(197, 155, 39, 0.35);
-}
-
-.sanctuary-interactive:active {
-  transform: translate3d(0, 0, 0) scale(0.988);
-}
-
-.sanctuary-hero-glow {
-  position: relative;
-}
-
-.sanctuary-hero-glow::before {
-  content: "";
-  position: absolute;
-  inset: -1.5rem -1rem auto -1rem;
-  height: 16rem;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse 62% 55% at 50% 25%,
-    rgba(212, 175, 55, 0.16),
-    rgba(217, 119, 6, 0.06) 52%,
-    transparent 76%
-  );
-  z-index: 0;
-}
-
-/* ============================================================================
-   7. SUNLIT IVORY & LIGHT-THEME WCAG AA+ SECONDARY TEXT CONTRAST GUARD
-   Darkens faint light-blue / pale slate / stone secondary copy on light surfaces
-   while preserving crisp light text inside explicit dark surfaces.
-============================================================================ */
-:root:not([data-theme]) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
-html[data-theme="ivory"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300),
-html[data-theme="marble"] :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300, .text-cyan-200, .text-cyan-300, .text-indigo-200, .text-indigo-300) {
-  color: #1E3A5F;
-}
-
-:root:not([data-theme]) :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
-html[data-theme="ivory"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]),
-html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-gray-400, .text-stone-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
-  color: #44403C;
-}
-
-/* Restore crisp light text ONLY inside genuinely dark cards, modals, and studios */
-:where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-sky-200, .text-sky-300, .text-blue-200, .text-blue-300) {
-  color: #BAE6FD;
-}
-
-:where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) :where(.text-slate-300, .text-slate-400, .text-\[\#CBD5E1\], .text-\[\#E2E8F0\]) {
-  color: #E4E4E7;
-}
-
-:where(.dark-surface, .admin-studio-ui, .bg-\[\#090d16\], .bg-\[\#0B101B\], .bg-slate-900, .bg-slate-950, .bg-black) .text-zinc-400 {
-  color: #D4D4D8;
+.section-equal-heights > [data-canvas-id] > :not(button):not(.slide-canvas-handle):not(.god-mode-type-tag) {
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .tracklist-row {
@@ -1160,28 +893,19 @@ html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-40
   contain-intrinsic-size: auto 68px;
 }
 
-.ambient-layer { contain: layout paint style; }
-.ambient-gpu { will-change: transform; transform: translate3d(0, 0, 0); backface-visibility: hidden; }
-
-@keyframes ambientFloat {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
-  50% { transform: translate3d(0, -18px, 0) rotate(calc(var(--rot, 0deg) + 4deg)); }
-}
-.ambient-float { animation: ambientFloat var(--dur, 16s) ease-in-out infinite; will-change: transform; }
-
-/* Symmetric modal enter AND exit */
+/* Symmetric modal enter AND exit (180ms-220ms ease-out) */
 .modal-anim-root {
   position: fixed; inset: 0; z-index: 50;
   opacity: 0;
-  transition: opacity 220ms var(--ease-out-expo);
+  transition: opacity 180ms var(--ease-out-expo);
   will-change: opacity;
 }
 .modal-anim-root[data-state="open"] { opacity: 1; }
 .modal-anim-root[data-state="closed"] { pointer-events: none; }
 .modal-anim-root [role="dialog"] > div:first-child {
-  transform: translate3d(0, 16px, 0) scale(0.98);
+  transform: translate3d(0, 10px, 0) scale(0.99);
   opacity: 0;
-  transition: transform 260ms var(--ease-out-expo), opacity 220ms var(--ease-out-expo);
+  transition: transform 200ms var(--ease-out-expo), opacity 180ms var(--ease-out-expo);
   will-change: transform, opacity;
 }
 .modal-anim-root[data-state="open"] [role="dialog"] > div:first-child {
@@ -1189,19 +913,17 @@ html[data-theme="marble"] :where(.text-slate-300, .text-slate-400, .text-zinc-40
   opacity: 1;
 }
 
-/* Route enter (opacity only, so fixed/sticky children never re-anchor) */
 @keyframes pageEnter { from { opacity: 0; } to { opacity: 1; } }
-.page-enter { animation: pageEnter 260ms var(--ease-out-expo) both; }
+.page-enter { animation: pageEnter 200ms var(--ease-out-expo) both; }
 
-/* Slide-deck directional slides */
-@keyframes slideFromRight { from { opacity: 0; transform: translate3d(40px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-@keyframes slideFromLeft { from { opacity: 0; transform: translate3d(-40px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
-.slide-from-right { animation: slideFromRight 360ms var(--ease-out-expo) both; }
-.slide-from-left { animation: slideFromLeft 360ms var(--ease-out-expo) both; }
+@keyframes slideFromRight { from { opacity: 0; transform: translate3d(24px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes slideFromLeft { from { opacity: 0; transform: translate3d(-24px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.slide-from-right { animation: slideFromRight 240ms var(--ease-out-expo) both; }
+.slide-from-left { animation: slideFromLeft 240ms var(--ease-out-expo) both; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto !important; }
-  .ambient-float, .page-enter, .slide-from-right, .slide-from-left, .kirtan-eq-bar { animation: none !important; }
+  .page-enter, .slide-from-right, .slide-from-left, .kirtan-eq-bar { animation: none !important; }
   .modal-anim-root, .modal-anim-root [role="dialog"] > div:first-child, .sanctuary-interactive {
     transition-duration: 1ms !important;
     transform: none !important;
