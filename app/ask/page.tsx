@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
+import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
 const GURMUKHI_NUMERALS = ["੧", "੨", "੩", "੪", "੫", "੬"];
@@ -67,97 +67,68 @@ function AskContent() {
     askQuestion(question);
   };
 
-  const presets = [
-    "What is the meaning of Hukam?",
-    "What is the purpose of Langar?",
-    "What are Miri and Piri?",
-    "How does Gurbani view Nature (Kudrat)?",
-  ];
-
   return (
-    <div className="min-h-screen bg-[#FAF6EE] text-[#171917] flex flex-col">
-      <header className="border-b border-[#C59B27]/35 bg-[#1B2A20]/95 text-[#FAF6EE] backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-3 text-xl font-serif text-[#FAF6EE] hover:text-[#E5C158] transition"
-          >
-            <BrandLogo size="sm" />
-            <span>
-              Learn <span className="text-[#E5C158]">Sikhi</span>
-            </span>
-          </Link>
-          <nav className="flex items-center gap-6 text-sm text-[#F3ECE0]">
-            <Link href="/#baani" className="hover:text-[#E5C158] transition">
-              Gurbani
-            </Link>
-            <Link href="/#ecology" className="hover:text-[#E5C158] transition">
-              Ecology &amp; Seva
-            </Link>
-            <Link href="/sources" className="hover:text-[#E5C158] transition">
-              Primary Sources
-            </Link>
-            <Link href="/" className="hover:text-[#E5C158] transition">
-               Return to Exhibition
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div
+      style={{
+        backgroundColor: "var(--bg-primary)",
+        color: "var(--text-primary)",
+      }}
+      className="min-h-screen flex flex-col"
+    >
+      <Header solid />
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-12">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-2">
-            <span className="h-[1px] w-8 bg-[#C59B27]" />
-            <span className="text-xs uppercase tracking-[0.25em] text-[#D97706] font-semibold">
-              Scriptural &amp; Historical Inquiry
-            </span>
-            <span className="h-[1px] w-8 bg-[#C59B27]" />
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-serif font-bold mt-1 text-[#171917]">
-            Explore Gurmat &amp; Historical Sources
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-12">
+        <div className="text-center mb-8 space-y-2">
+          <p
+            style={{ color: "var(--accent-text)" }}
+            className="text-xs uppercase tracking-[0.22em] font-semibold"
+          >
+            Khoj AI
+          </p>
+          <h1 className="text-3xl sm:text-5xl font-serif font-bold">
+            Khoj AI — Gurmat &amp; Classical Sources
           </h1>
-          <p className="text-[#4A554E] mt-3 text-sm max-w-2xl mx-auto leading-relaxed">
-            Every synthesis is grounded in Sri Guru Granth Sahib Ji, canonical Vaaran, and
-            historical Granths, accompanied by the primary citations it draws upon.
+          <p
+            style={{ color: "var(--theme-text-muted)" }}
+            className="text-sm max-w-2xl mx-auto leading-relaxed"
+          >
+            Ask a question grounded in Sri Guru Granth Sahib Ji, classical
+            Kavis, Nirmale scholarship, and traditional Sikh historians.
           </p>
         </div>
 
-        <div className="bg-[#F3ECE0] border border-[#C59B27]/45 rounded-2xl p-5 shadow-parchment">
+        <div
+          style={{
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
+          }}
+          className="border rounded-2xl p-5"
+        >
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Inquire into Gurbani, Sikh history, or Gurmat philosophy..."
-              className="flex-1 bg-[#FAF6EE] border border-[#C59B27]/50 focus:border-[#D97706] rounded-xl px-4 py-3.5 text-[#171917] placeholder:text-[#4A554E]/75 outline-none"
+              placeholder="Ask Khoj AI about Gurbani, Sikh history, or Gurmat philosophy..."
+              style={{
+                backgroundColor: "var(--bg-tertiary)",
+                borderColor: "var(--border-subtle)",
+                color: "var(--text-primary)",
+              }}
+              className="flex-1 border rounded-xl px-4 py-3.5 outline-none"
             />
             <button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-[#C59B27] to-[#D97706] hover:brightness-105 disabled:opacity-50 text-[#171917] font-semibold px-6 py-3.5 rounded-xl transition"
+              style={{
+                backgroundColor: "var(--accent-primary)",
+                color: "var(--cta-text)",
+              }}
+              className="disabled:opacity-50 font-semibold px-6 py-3.5 rounded-xl transition hover:opacity-95"
             >
-              {loading ? "Consulting Sources..." : "Inquire"}
+              {loading ? "Consulting Sources..." : "Ask Khoj AI"}
             </button>
           </form>
-
-          <div className="flex flex-wrap items-center gap-2 mt-4">
-            <span className="text-xs uppercase tracking-wider font-semibold text-[#4A554E] mr-1">
-              Suggested Inquiries:
-            </span>
-            {presets.map((p) => (
-              <button
-                key={p}
-                onClick={() => {
-                  setQuestion(p);
-                  router.replace("/ask?q=" + encodeURIComponent(p), { scroll: false });
-                  askQuestion(p);
-                }}
-                className="text-xs px-3 py-1.5 rounded-full bg-[#1B2A20] hover:bg-[#D97706] text-[#FAF6EE] border border-[#C59B27]/40 transition"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
         </div>
 
         {loading && (

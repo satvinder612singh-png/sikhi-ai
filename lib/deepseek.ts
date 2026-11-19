@@ -111,20 +111,20 @@ export const SIKHI_SOURCES: SourceItem[] = [
     keywords: ["miri", "piri", "khalsa", "sword", "justice", "guru gobind singh", "guru hargobind", "akal takht", "sant sipahi"],
   },
   {
-    id: "rehat-maryada",
-    title: "Sikh Rehat Maryada",
-    gurmukhi: "ਸਿੱਖ ਰਹਿਤ ਮਰਯਾਦਾ",
-    category: "Code of Conduct",
-    reference: "SGPC Official Code of Conduct",
-    period: "1945 CE (Codified from historical Rehatnamas)",
+    id: "traditional-sikh-historians",
+    title: "Nirmale Scholars, Classical Kavis & Traditional Sikh Historians",
+    gurmukhi: "ਨਿਰਮਲੇ ਵਿਦਵਾਨ, ਪੁਰਾਤਨ ਕਵੀ ਅਤੇ ਸਿੱਖ ਇਤਿਹਾਸਕਾਰ",
+    category: "Canonical Exegesis",
+    reference: "Pandit Tara Singh Narotam • Giani Gian Singh • Bhai Kahn Singh Nabha • Prof. Sahib Singh",
+    period: "17th–20th Century CE",
     excerpt:
-      "Defines personal and communal Sikh ethics, Nitnem (daily prayers), Gurdwara protocol, Langar egalitarianism, and Amrit Sanskar.",
+      "Preserves Gurmat exegesis, Gurbani grammar (Viyakaran), classical poetry, and primary Sikh historiography across Nirmale, Kavi, Bhagat, and modern scholarly lineages.",
     detailedNotes: [
-      "The Sikh Rehat Maryada codifies both personal spiritual discipline (Shakhsi Rehat) and collective community life (Panthic Rehat) rooted in the teachings of the ten Gurus and Sri Guru Granth Sahib Ji.",
-      "It outlines daily Nitnem prayers (Japji Sahib, Jaap Sahib, Tav-Prasad Savaiye, Chaupai Sahib, and Anand Sahib in the morning; Rehras Sahib in the evening; and Kirtan Sohila before sleep).",
-      "It strictly prohibits superstitions, caste discrimination, dowry, and ritualism, emphasizing that every Gurdwara and Langar is open to all humanity regardless of background, creed, or status."
+      "Nirmale scholars such as Pandit Tara Singh Narotam, Giani Gian Singh (Twarikh Guru Khalsa), and the Mahakavi Santokh Singh lineage authored foundational lexicons, commentaries, and historical chronicles.",
+      "Classical Kavis—Bhai Gurdas Ji (Vaaran), Kavi Sainapati (Sri Gur Sobha), and Mahakavi Santokh Singh (Suraj Prakash)—recorded eyewitness testimony and poetic theology of the Guru period.",
+      "19th and 20th-century Sikh historians and exegetes including Bhai Rattan Singh Bhangu (Sri Gur Panth Prakash), Bhai Kahn Singh Nabha (Mahan Kosh), Bhai Vir Singh, and Prof. Sahib Singh (Gurbani Viyakaran & Darpan) preserved Sikh primary sources with enduring rigor."
     ],
-    keywords: ["rehat", "maryada", "conduct", "gurdwara", "prayer", "nitnem", "equality", "rules", "amrit", "5 ks"],
+    keywords: ["nirmale", "nirmaliye", "kavi", "historian", "bhangu", "nabha", "mahan kosh", "vir singh", "sahib singh", "tara singh narotam", "gian singh", "bhagat", "suraj prakash"],
   },
   {
     id: "sggs-kudrat-ecology",

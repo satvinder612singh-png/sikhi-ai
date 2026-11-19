@@ -14,6 +14,7 @@ import {
   LogIn,
   MessageSquare,
   PenLine,
+  Repeat2,
   Send,
   Trash2,
   X,
@@ -22,6 +23,10 @@ import { useAuth } from "@/components/auth-provider";
 import { isStealthAdminEmail } from "@/components/editable-heritage-image";
 import { ArticleMarkdownRenderer } from "@/components/articles/markdown-renderer";
 import { ThreadedComments } from "@/components/sikhstacks/threaded-comments";
+import {
+  ReshareModal,
+  type ReshareTarget,
+} from "@/components/social/reshare-modal";
 import type { ArticleRecord } from "@/lib/articles-store";
 
 export const SIKHSTACKS_POST_TYPES = [
@@ -55,6 +60,7 @@ export function SikhStacksHub() {
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState<string>("All");
   const [selectedPost, setSelectedPost] = useState<ArticleRecord | null>(null);
+  const [reshareTarget, setReshareTarget] = useState<ReshareTarget | null>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
@@ -407,17 +413,50 @@ export function SikhStacksHub() {
 
               <div
                 style={{ color: "var(--theme-text-muted)" }}
-                className="flex flex-wrap items-center gap-2.5 text-xs font-medium pt-1"
+                className="flex flex-wrap items-center justify-between gap-2.5 text-xs font-medium pt-1"
               >
-                <span style={{ color: "var(--text-primary)" }} className="font-semibold">
-                  {selectedPost.author_name}
-                </span>
-                <span>·</span>
-                <span>{formatShortDate(selectedPost.created_at)}</span>
-                <span>·</span>
-                <span>
-                  {estimateReadMinutes(selectedPost.content_markdown)} min read
-                </span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Link
+                    href={`/u/${encodeURIComponent(
+                      selectedPost.author_id || selectedPost.author_name
+                    )}`}
+                    style={{ color: "var(--text-primary)" }}
+                    className="font-semibold hover:underline"
+                  >
+                    {selectedPost.author_name}
+                  </Link>
+                  <span>·</span>
+                  <span>{formatShortDate(selectedPost.created_at)}</span>
+                  <span>·</span>
+                  <span>
+                    {estimateReadMinutes(selectedPost.content_markdown)} min read
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReshareTarget({
+                      target_type: "sikhstacks",
+                      target_id: selectedPost.id,
+                      target_title: selectedPost.title,
+                      target_summary: selectedPost.summary_short,
+                      target_image_url: selectedPost.cover_image_url,
+                      target_author_name: selectedPost.author_name,
+                      target_author_id: selectedPost.author_id,
+                      target_category: selectedPost.category,
+                    })
+                  }
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                    color: "var(--text-primary)",
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:border-[var(--accent-primary)] transition-colors duration-150"
+                >
+                  <Repeat2 className="w-3.5 h-3.5" />
+                  Reshare
+                </button>
               </div>
 
               {selectedPost.source_url && (
@@ -503,6 +542,11 @@ export function SikhStacksHub() {
           onCountChange={(count) =>
             setCommentCounts((prev) => ({ ...prev, [selectedPost.id]: count }))
           }
+        />
+
+        <ReshareModal
+          target={reshareTarget}
+          onClose={() => setReshareTarget(null)}
         />
       </motion.div>
     );
@@ -1053,12 +1097,16 @@ export function SikhStacksHub() {
                       >
                         {post.category}
                       </span>
-                      <span
+                      <Link
+                        href={`/u/${encodeURIComponent(
+                          post.author_id || post.author_name
+                        )}`}
+                        onClick={(e) => e.stopPropagation()}
                         style={{ color: "var(--theme-text-muted)" }}
-                        className="truncate"
+                        className="truncate hover:underline hover:text-[var(--text-primary)]"
                       >
                         {post.author_name}
-                      </span>
+                      </Link>
                       <span style={{ color: "var(--theme-text-muted)" }}>·</span>
                       <span style={{ color: "var(--theme-text-muted)" }}>
                         {formatShortDate(post.created_at)}
@@ -1095,6 +1143,26 @@ export function SikhStacksHub() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReshareTarget({
+                            target_type: "sikhstacks",
+                            target_id: post.id,
+                            target_title: post.title,
+                            target_summary: post.summary_short,
+                            target_image_url: post.cover_image_url,
+                            target_author_name: post.author_name,
+                            target_author_id: post.author_id,
+                            target_category: post.category,
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 hover:text-[var(--accent-text)] font-medium transition-colors"
+                      >
+                        <Repeat2 className="w-3.5 h-3.5" />
+                        Reshare
+                      </button>
                       {canDeletePost(post) && (
                         <button
                           type="button"
@@ -1149,6 +1217,10 @@ export function SikhStacksHub() {
           <ArrowUpRight className="w-3.5 h-3.5" />
         </a>
       </div>
+      <ReshareModal
+        target={reshareTarget}
+        onClose={() => setReshareTarget(null)}
+      />
     </section>
   );
 }

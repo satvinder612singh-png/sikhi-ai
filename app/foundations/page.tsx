@@ -4,9 +4,9 @@ import { Footer } from "@/components/footer";
 import { SikhiFoundationsDeck } from "@/components/sikhi-foundations-deck";
 
 export const metadata: Metadata = {
-  title: "Start Here — Who is a Sikh? & Foundations of Sikhi",
+  title: "Foundations of Sikhi — Traditional Sikh Scholarship & History",
   description:
-    "Sikhi 101: the Sikh Rehat Maryada definition, the Five Ks, the Ten Gurus, Panj Pyare, Chaar Sahibzaade, Shaheeds and today's Nanakshahi date.",
+    "Foundations of Sikhi grounded in Nirmale scholars, Classical Kavis, the Bhagats of Sri Guru Granth Sahib Ji, 19th–20th century Sikh historians, the Five Ks, the Ten Gurus, Panj Pyare, Chaar Sahibzaade, and Shaheeds.",
 };
 
 export default function FoundationsPage() {

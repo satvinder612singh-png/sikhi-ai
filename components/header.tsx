@@ -366,9 +366,13 @@ export function Header({ solid = false }: { solid?: boolean }) {
           {user ? (
             <li className="shrink-0 flex items-center gap-2">
               <Link
-                href="/?studio=1"
-                style={{ borderColor: "var(--border-subtle)" }}
-                className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:border-[#C59B27] ${focusRing}`}
+                href="/profile"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className={`whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold hover:border-[var(--accent-primary)] transition-colors ${focusRing}`}
               >
                 Profile
               </Link>

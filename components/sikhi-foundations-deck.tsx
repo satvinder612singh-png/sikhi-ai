@@ -382,6 +382,45 @@ const PURATAN_SCHOLARS: PuratanScholar[] = [
     context:
       "Giani Gian Singh Ji's encyclopedic histories emphasize that Sikhi is a welcoming spiritual continuum rooted in devotion to Sri Guru Granth Sahib Ji rather than narrow institutional gatekeeping.",
   },
+  {
+    id: "tara-singh-narotam",
+    name: "Pandit Tara Singh Narotam",
+    work: "Sri Gur Tirath Sangrah & Gurmat Nirnaya Sagar",
+    era: "19th Century (Nirmale Scholarship)",
+    summary:
+      "Preeminent Nirmala scholar who catalogued 508 historical Sikh shrines and authored foundational Gurbani lexicons and philosophical treatises.",
+    quoteGurmukhi: "ਗੁਰਮਤਿ ਨਿਰਣੈ ਸਾਗਰੁ ॥",
+    quoteTranslation:
+      "The Ocean of Gurmat Discernment—illuminating Gurbani philosophy through rigorous classical scholarship.",
+    context:
+      "Part of the Nirmale intellectual lineage alongside Giani Gian Singh and Mahakavi Santokh Singh, Pandit Tara Singh Narotam preserved encyclopedic knowledge of Sikh theology, Sanskrit-Braj etymology, and sacred geography.",
+  },
+  {
+    id: "bhagats-sggs",
+    name: "Bhagats of Sri Guru Granth Sahib Ji",
+    work: "Bhagat Bani (Kabir, Namdev, Ravidas, Farid & 11 Others)",
+    era: "12th–16th Century • Enshrined in SGGS Ji",
+    summary:
+      "Fifteen luminous saint-poets across diverse regions and castes whose hymns Guru Arjan Dev Ji enshrined as eternal Gurbani.",
+    quoteGurmukhi: "ਅਵਲਿ ਅਲਹ ਨੂਰੁ ਉਪਾਇਆ ਕੁਦਰਤਿ ਕੇ ਸਭ ਬੰਦੇ ॥ (ਅੰਗ ੧੩੪੯)",
+    quoteTranslation:
+      "First, the Divine created the Light; all beings are of that one Kudrat (Bhagat Kabir Ji, Ang 1349).",
+    context:
+      "From Bhagat Farid Ji's poignant Saloks to Bhagat Ravidas Ji's vision of Begampura (the city without sorrow), Bhagat Bani anchors Sikh universalism and spiritual equality.",
+  },
+  {
+    id: "kahn-singh-vir-singh-sahib-singh",
+    name: "Bhai Kahn Singh Nabha, Bhai Vir Singh & Prof. Sahib Singh",
+    work: "Mahan Kosh (1930) • Santhiya & Gurbani Viyakaran",
+    era: "19th–20th Century Sikh Historians & Exegetes",
+    summary:
+      "Pioneering modern Sikh encyclopedists, editors, and grammarians who bridged classical Puratan scholarship with modern textual rigor.",
+    quoteGurmukhi: "ਗੁਰਬਾਣੀ ਵਿਆਕਰਣ ਤੇ ਮਹਾਨ ਕੋਸ਼ ॥",
+    quoteTranslation:
+      "Preserving Sikh history, lexicon, and internal Gurbani grammar for future generations.",
+    context:
+      "Bhai Kahn Singh Nabha's Gurshabad Ratnakar Mahan Kosh, Bhai Vir Singh's critical editions of Suraj Prakash and Panth Prakash, and Prof. Sahib Singh's 10-volume Sri Guru Granth Sahib Darpan form the bedrock of modern Sikh study.",
+  },
 ];
 
 /* ----------------------------- SLIDE 1 ----------------------------------- */
@@ -521,7 +560,7 @@ function SlideWho() {
           id="foundations-scholars-eyebrow"
           pageKey="foundations"
           tag="p"
-          defaultText="17th–19th Century Puratan Scholarship • Click to Expand"
+          defaultText="Traditional Sikh Lineages: Nirmale Scholars, Classical Kavis, Bhagats & 19th–20th Century Historians"
           className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
         />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 items-start">
@@ -1535,7 +1574,7 @@ function SlideToday() {
         </ul>
         <p className="text-xs" style={muted}>
           Dates above use the original Nanakshahi calendar structure (Chet 1 = 14 March). Many Gurdwaras observe
-          Gurpurabs by the lunar calendar, so confirm with SGPC or your local Gurdwara.
+          Gurpurabs by the lunar calendar, so confirm with your local Gurdwara.
         </p>
       </div>
     </div>

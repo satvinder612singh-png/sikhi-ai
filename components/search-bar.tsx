@@ -3,20 +3,15 @@
 import { useId, type FormEvent } from "react";
 import { MAX_PROMPT, MIN_PROMPT } from "@/lib/answer";
 
-export const SUGGESTIONS = [
-  "What is the meaning of Hukam?",
-  "What is the purpose of Langar?",
-  "What are Miri and Piri?",
-  "How does Gurbani view Nature (Kudrat)?",
-];
+export const SUGGESTIONS: string[] = [];
 
-/** Controlled search field shared by the hero and the Scriptural Inquiry workspace. */
+/** Controlled search field shared by Khoj AI workspaces. */
 export function SearchBar({
   value,
   onChange,
   onSubmit,
   busy = false,
-  buttonLabel = "Inquire",
+  buttonLabel = "Ask Khoj AI",
   busyLabel = "Consulting Sources…",
 }: {
   value: string;
@@ -58,7 +53,7 @@ export function SearchBar({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Inquire into Gurbani, Sikh history, or Gurmat philosophy…"
+          placeholder="Ask Khoj AI about Gurbani, Sikh history, or Gurmat philosophy…"
           autoComplete="off"
           maxLength={MAX_PROMPT}
           className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-base text-[#171917] placeholder:text-[#4A554E]/75 focus:outline-none sm:text-lg"
@@ -75,31 +70,10 @@ export function SearchBar({
   );
 }
 
-export function SuggestionChips({
-  onPick,
-  disabled = false,
-  className = "",
-}: {
-  onPick: (text: string) => void;
+export function SuggestionChips(_props: {
+  onPick?: (text: string) => void;
   disabled?: boolean;
   className?: string;
 }) {
-  return (
-    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <span className="text-xs font-semibold uppercase tracking-widest text-[#C59B27]">
-        Inquiries:
-      </span>
-      {SUGGESTIONS.map((s) => (
-        <button
-          key={s}
-          type="button"
-          disabled={disabled}
-          onClick={() => onPick(s)}
-          className="rounded-full border border-[#C59B27]/45 bg-[#1B2A20]/85 px-3.5 py-1.5 text-xs font-medium text-[#FAF6EE] transition hover:border-[#D97706] hover:bg-[#D97706] hover:text-[#FAF6EE] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] disabled:opacity-50 sm:text-sm"
-        >
-          {s}
-        </button>
-      ))}
-    </div>
-  );
+  return null;
 }

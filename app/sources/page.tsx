@@ -158,7 +158,7 @@ export default function SourcesPage() {
                     )}`}
                     className="text-[#E5C158] hover:text-[#D97706] hover:underline font-semibold"
                   >
-                    Inquire into this source →
+                    Ask Khoj AI about this source →
                   </Link>
                 </div>
               </div>

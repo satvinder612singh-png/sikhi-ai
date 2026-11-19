@@ -717,7 +717,7 @@ export function SevaConcierge() {
 
   const greeting =
     supportCfg.greetingText ||
-    "Sat Sri Akal! Ask Khoj AI anything about Gurbani, Nitnem, History, or Granths.";
+    "Sat Sri Akal! Ask Khoj AI anything about Gurbani, Sikh History, or classical Granths.";
   const headerTitle = supportCfg.headerTitle || "Khoj AI";
   const inputPlaceholder =
     supportCfg.placeholderText || "Ask Khoj AI a question...";
@@ -787,9 +787,9 @@ export function SevaConcierge() {
         {
           id: `a-${Date.now()}`,
           role: "ai",
-          text: "Open full Scriptural Inquiry to explore primary Sri Guru Granth Sahib Ji and historical Granth citations for your question.",
+          text: "Open Khoj AI to explore primary Sri Guru Granth Sahib Ji and classical Sikh Granth citations for your question.",
           href: `/ask?q=${encodeURIComponent(q)}`,
-          ctaLabel: "Open in Scriptural Inquiry →",
+          ctaLabel: "Open in Khoj AI →",
         },
       ]);
     }

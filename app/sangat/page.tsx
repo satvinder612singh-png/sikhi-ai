@@ -3,12 +3,18 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { BookOpen, Heart, Image as ImageIcon, Repeat2, Upload } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { useAuth } from "@/components/auth-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
 import { SikhStacksHub } from "@/components/sikhstacks/sikhstacks-hub";
+import {
+  ReshareModal,
+  type ReshareTarget,
+} from "@/components/social/reshare-modal";
 import {
   EditableHeritageImage,
   compressImageFile,
@@ -377,6 +383,8 @@ function SangatHubContent() {
   const router = useRouter();
 
   const [activeMode, setActiveMode] = useState<"blogs" | "pins" | "dil">("blogs");
+  const [homeBubble, setHomeBubble] = useState<"sikhstacks" | "sikhinterest">("sikhstacks");
+  const [reshareTarget, setReshareTarget] = useState<ReshareTarget | null>(null);
 
   // User Profile Studio State
   const [profile, setProfile] = useState<SangatUserProfile>(DEFAULT_SANGAT_PROFILE);
@@ -1912,45 +1920,8 @@ function SangatHubContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              {isMaintenancePaused ? (
-                <span className="px-3.5 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs font-semibold">
-                  Community Submissions Paused
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      !isStealthAdmin &&
-                      (secCfg.requireSignInForSubmissions ||
-                        secCfg.requireEmailVerification) &&
-                      !user
-                    ) {
-                      setAuthGateActionLabel("Submit a Visual Pin or Resource");
-                      return;
-                    }
-                    resetShareForm();
-                    setIsShareOpen(true);
-                  }}
-                  style={{
-                    backgroundColor: "var(--bg-tertiary)",
-                    borderColor: "var(--border-subtle)",
-                    color: "var(--text-primary)",
-                  }}
-                  className="px-3.5 py-2 rounded-lg border text-xs font-semibold hover:border-[var(--accent-primary)] transition-colors duration-150"
-                >
-                  <GodModeText
-                    id="sangat-share-cta"
-                    pageKey="sangat"
-                    tag="span"
-                    defaultText="+ Share to SikhInterest"
-                  />
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setIsStudioOpen(true)}
+              <Link
+                href="/profile"
                 style={{
                   backgroundColor: "var(--bg-tertiary)",
                   borderColor: "var(--border-subtle)",
@@ -1964,87 +1935,158 @@ function SangatHubContent() {
                 />
                 <span className="min-w-0">
                   <span className="block text-xs font-serif font-bold truncate max-w-[140px]">
-                    {profile.displayName}
+                    {user?.email?.split("@")[0] || profile.displayName}
                   </span>
                   <span
                     style={{ color: "var(--theme-text-muted)" }}
                     className="block text-[10px] font-medium truncate"
                   >
-                    {profile.roleBadge}
+                    View Profile →
                   </span>
                 </span>
-              </button>
+              </Link>
             </div>
           </div>
         </section>
         </GodModeBox>
 
-        {/* SikhStacks Publishing Studio, In-Page Reader & Threaded Comments */}
-        {!activeBlog && <SikhStacksHub />}
-
-        {/* SikhInterest & Visual Discovery Tabs */}
-        <section
-          style={{
-            backgroundColor: "var(--bg-surface)",
-            borderColor: "var(--border-subtle)",
-          }}
-          className="rounded-2xl border p-5 sm:p-6 space-y-3"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <p
-                style={{ color: "var(--accent-text)" }}
-                className="text-[11px] font-semibold uppercase tracking-[0.18em]"
-              >
-                SikhInterest • Visual &amp; Archival Discovery
-              </p>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold">
-                Curated Heritage Visuals &amp; Research Links
-              </h2>
-            </div>
-
-          <nav
-            aria-label="Feed categories"
-            className="flex flex-wrap items-center gap-1.5"
+        {/* Prominent Centered Sliding Bubble Switcher (SikhStacks ↔ SikhInterest) */}
+        <div className="flex justify-center">
+          <div
+            role="tablist"
+            aria-label="Home feed view"
+            style={{
+              backgroundColor: "var(--bg-surface)",
+              borderColor: "var(--border-subtle)",
+            }}
+            className="inline-flex items-center p-1 rounded-full border"
           >
-            {FEED_TABS.map((tab) => {
-              const active = !activeBlog && feedTab === tab.id;
+            {(
+              [
+                {
+                  id: "sikhstacks",
+                  label: "SikhStacks",
+                  icon: <BookOpen className="w-4 h-4" />,
+                },
+                {
+                  id: "sikhinterest",
+                  label: "SikhInterest",
+                  icon: <ImageIcon className="w-4 h-4" />,
+                },
+              ] as const
+            ).map((tab) => {
+              const active = homeBubble === tab.id;
               return (
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={active}
                   onClick={() => {
-                    setActiveBlogId(null);
-                    setFeedTab(tab.id);
+                    setHomeBubble(tab.id);
+                    if (tab.id === "sikhinterest") {
+                      setFeedTab("visuals");
+                    }
                   }}
-                  style={
-                    active
-                      ? {
-                          backgroundColor: "var(--text-primary)",
-                          color: "var(--bg-primary)",
-                          borderColor: "var(--text-primary)",
-                        }
-                      : {
-                          backgroundColor: "transparent",
-                          borderColor: "var(--border-subtle)",
-                          color: "var(--theme-text-muted)",
-                        }
-                  }
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-150"
+                  style={{
+                    color: active
+                      ? "var(--bg-primary)"
+                      : "var(--theme-text-muted)",
+                  }}
+                  className="relative px-5 sm:px-7 py-2 rounded-full text-xs sm:text-sm font-semibold transition-colors duration-150 inline-flex items-center gap-2"
                 >
-                  <GodModeText
-                    id={`sangat-tab-label-${tab.id}`}
-                    pageKey="sangat"
-                    tag="span"
-                    defaultText={tab.label}
-                  />{" "}
-                  ({feedCounts[tab.id]})
+                  {active && (
+                    <motion.span
+                      layoutId="home-bubble-pill"
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 32,
+                      }}
+                      style={{ backgroundColor: "var(--text-primary)" }}
+                      className="absolute inset-0 rounded-full z-0"
+                    />
+                  )}
+                  <span className="relative z-10 inline-flex items-center gap-2">
+                    {tab.icon}
+                    {tab.label}
+                  </span>
                 </button>
               );
             })}
-          </nav>
           </div>
-        </section>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {homeBubble === "sikhstacks" ? (
+            <motion.div
+              key="bubble-sikhstacks"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              <SikhStacksHub />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="bubble-sikhinterest"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="space-y-6"
+            >
+              <section
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="rounded-2xl border p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <p
+                    style={{ color: "var(--accent-text)" }}
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em]"
+                  >
+                    SikhInterest • Visual Heritage Gallery
+                  </p>
+                  <h2 className="font-serif text-xl sm:text-2xl font-bold">
+                    Paintings, Gurmukhi Calligraphy &amp; Visual Graphics
+                  </h2>
+                </div>
+
+                {isMaintenancePaused ? (
+                  <span className="px-3.5 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs font-semibold">
+                    Community Submissions Paused
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!user && !isStealthAdmin) {
+                        setAuthGateActionLabel("Upload Art to SikhInterest");
+                        return;
+                      }
+                      resetShareForm();
+                      setShareTab("write");
+                      setWriteKind("pin");
+                      setIsShareOpen(true);
+                    }}
+                    style={{
+                      backgroundColor: "var(--accent-primary)",
+                      color: "var(--cta-text)",
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs sm:text-sm font-semibold hover:opacity-95 transition-opacity shrink-0"
+                  >
+                    <Upload className="w-4 h-4" />
+                    + Upload Art
+                  </button>
+                )}
+              </section>
+            </motion.div>
+          )}
+        </AnimatePresence>
         </>
           );
         })()}
@@ -2056,8 +2098,9 @@ function SangatHubContent() {
         )}
 
         {/* ================================================================
-            MAIN DISPATCH FEED OR FULL ESSAY READER
+            SIKHINTEREST VISUAL GALLERY (ONLY VISIBLE WHEN SIKHINTEREST BUBBLE IS ACTIVE)
         ================================================================ */}
+        {homeBubble === "sikhinterest" && (
         <SlidePresentationCanvas
           id="sangat-feed-canvas"
           pageKey="sangat"
@@ -2491,7 +2534,18 @@ function SangatHubContent() {
                                 isMicroElement={true}
                               >
                                 <p className="text-xs font-semibold opacity-75">
-                                  By {displayContributor(item.byline)}
+                                  By{" "}
+                                  <Link
+                                    href={`/u/${encodeURIComponent(
+                                      item.kind === "visual"
+                                        ? item.pin.authorHandle || item.byline
+                                        : item.byline
+                                    )}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="hover:underline"
+                                  >
+                                    {displayContributor(item.byline)}
+                                  </Link>
                                 </p>
                               </SlidePresentationCanvas>
 
@@ -2530,16 +2584,54 @@ function SangatHubContent() {
                                 </button>
                               </SlidePresentationCanvas>
 
-                              {item.kind === "link" && (
-                                <a
-                                  href={item.link.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="font-semibold opacity-80 hover:opacity-100 hover:underline truncate max-w-[160px]"
+                              <div className="flex items-center gap-3">
+                                {item.kind === "visual" && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleSavePin(item.pin.id);
+                                    }}
+                                    className={`inline-flex items-center gap-1 font-semibold transition-colors ${
+                                      savedPinIds.includes(item.pin.id)
+                                        ? "text-rose-500"
+                                        : "opacity-75 hover:opacity-100"
+                                    }`}
+                                  >
+                                    <Heart className="w-3.5 h-3.5" />
+                                    {item.pin.savesCount}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReshareTarget({
+                                      target_type: "sikhinterest",
+                                      target_id: item.id,
+                                      target_title: item.title,
+                                      target_summary: item.preview,
+                                      target_image_url: imgSrc || null,
+                                      target_author_name: item.byline,
+                                      target_category: badge,
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1 font-medium opacity-75 hover:opacity-100 hover:text-[var(--accent-text)] transition-colors"
                                 >
-                                  {getDomain(item.link.url)} ↗
-                                </a>
-                              )}
+                                  <Repeat2 className="w-3.5 h-3.5" />
+                                  Reshare
+                                </button>
+                                {item.kind === "link" && (
+                                  <a
+                                    href={item.link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold opacity-80 hover:opacity-100 hover:underline truncate max-w-[140px]"
+                                  >
+                                    {getDomain(item.link.url)} ↗
+                                  </a>
+                                )}
+                              </div>
                             </div>
 
                             {isStealthAdmin && (
@@ -2637,7 +2729,13 @@ function SangatHubContent() {
             )}
           </div>
         </SlidePresentationCanvas>
+        )}
       </main>
+
+      <ReshareModal
+        target={reshareTarget}
+        onClose={() => setReshareTarget(null)}
+      />
 
       {/* ================================================================
           CLICK-TO-READ SUMMARY & SOURCE ATTRIBUTION MODAL
