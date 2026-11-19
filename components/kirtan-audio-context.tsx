@@ -1267,13 +1267,6 @@ export function GlobalKirtanMiniPlayer() {
             + Suggest Kirtan
           </button>
 
-          <Link
-            href="/live-kirtan"
-            className="text-[11px] font-bold uppercase tracking-wider text-[#C59B27] hover:underline px-1"
-          >
-            Live Hub
-          </Link>
-
           <button
             type="button"
             onClick={() => setIsMinimized(true)}

@@ -934,11 +934,11 @@ function SlideGurus({ onOpenModal }: { onOpenModal: (item: FoundationModalItem) 
               Read Historical Sakhi &amp; Citations →
             </span>
             <Link
-              href="/nitnem"
+              href="/granths"
               onClick={(e) => e.stopPropagation()}
               className="text-xs font-bold text-[#D97706] underline"
             >
-              Open Nitnem Reader →
+              Explore Granths &amp; Kirtan →
             </Link>
           </div>
         </div>

@@ -1253,13 +1253,6 @@ export default function GranthsAndKirtanPage() {
                         />
                       </span>
                     </button>
-                    <Link
-                      href="/live-kirtan"
-                      className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-[#C59B27]/45 text-[#E5C158] hover:border-[#E5C158] transition flex items-center gap-1.5"
-                    >
-                      <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                      Live 24/7 Darbar Sahib
-                    </Link>
                   </div>
                 </div>
 
@@ -1853,7 +1846,6 @@ export default function GranthsAndKirtanPage() {
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "All", label: "All Playable Tracks" },
-                    { id: "Live 24/7 Gurdwara Broadcasts", label: "🔴 Live 24/7 Darbar Sahib" },
                     { id: "Verified Local & Approved Audio", label: "📂 Local & Approved Tracks" },
                   ].map((col) => (
                     <button
@@ -2900,12 +2892,6 @@ export default function GranthsAndKirtanPage() {
                     Browse GurmatVeechar Repository ↗
                   </a>
                 </div>
-                <Link
-                  href="/nitnem"
-                  className="text-xs font-semibold text-[#C59B27] hover:underline"
-                >
-                  Open Live Nitnem &amp; Bani Reader →
-                </Link>
               </div>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { MotionConfig, motion } from "framer-motion";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { ArticleMarkdownRenderer } from "@/components/articles/markdown-renderer";
+import { ThreadedComments } from "@/components/sikhstacks/threaded-comments";
 import type { ArticleRecord } from "@/lib/articles-store";
 
 function formatLongDate(iso: string): string {
@@ -75,7 +76,7 @@ export default function ArticleReaderPage() {
         <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 pb-28 space-y-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
-              href="/articles"
+              href="/"
               style={{
                 backgroundColor: "var(--bg-surface)",
                 borderColor: "var(--border-subtle)",
@@ -83,7 +84,7 @@ export default function ArticleReaderPage() {
               className="sanctuary-interactive inline-flex items-center gap-2 rounded-[var(--radius-control)] border px-4 py-2 text-sm font-semibold hover:border-[#C59B27]"
             >
               <span aria-hidden="true">←</span>
-              <span>All Articles</span>
+              <span>Back to SikhStacks</span>
             </Link>
 
             {article && (
@@ -131,10 +132,10 @@ export default function ArticleReaderPage() {
               </p>
               <div className="flex justify-center gap-3 pt-2">
                 <Link
-                  href="/articles"
+                  href="/"
                   className="sanctuary-interactive rounded-[var(--radius-control)] bg-gradient-to-r from-[#C59B27] to-[#D97706] px-6 py-2.5 text-sm font-extrabold text-[#18181B]"
                 >
-                  Browse Articles
+                  Back to SikhStacks
                 </Link>
               </div>
             </div>
@@ -279,6 +280,8 @@ export default function ArticleReaderPage() {
               </div>
             </motion.article>
           )}
+
+          {article && <ThreadedComments postId={article.id} />}
         </main>
 
         <Footer />

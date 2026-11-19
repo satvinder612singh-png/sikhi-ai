@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { ApprovedSourcesAdminPanel } from "@/components/admin/approved-sources-panel";
 import {
   EditableHeritageImage,
   useAdminEditMode,
@@ -14,7 +13,7 @@ import {
   type HeritageFrameSettings,
 } from "@/components/editable-heritage-image";
 
-type AdminTab = "security" | "moderation" | "sources" | "vault";
+type AdminTab = "security" | "moderation" | "vault";
 
 interface KirtanTrackRecord {
   id: string;
@@ -756,10 +755,6 @@ export default function AdminControlCenterPage() {
                     {
                       id: "moderation",
                       label: `✅ Moderation & Approval Queue (${(siteState.pendingSubmissions || []).length})`,
-                    },
-                    {
-                      id: "sources",
-                      label: "📚 Sikh Sources & Articles",
                     },
                     {
                       id: "vault",
@@ -1507,9 +1502,6 @@ export default function AdminControlCenterPage() {
                 </section>
               </div>
             )}
-
-            {/* TAB 4: VERIFIED SIKH SOURCES WHITELIST & ARTICLES */}
-            {activeTab === "sources" && <ApprovedSourcesAdminPanel />}
           </>
         )}
       </main>

@@ -332,14 +332,14 @@ export function SubstackPublishingStudio() {
 
             <div className="flex flex-wrap items-center gap-2">
               <Link
-                href="/articles"
+                href="/"
                 style={{
                   backgroundColor: "var(--bg-surface)",
                   borderColor: "var(--border-subtle)",
                 }}
                 className="sanctuary-interactive rounded-[var(--radius-control)] border px-4 py-2 text-xs sm:text-sm font-semibold hover:border-[#C59B27]"
               >
-                ← Browse Articles
+                ← Back to SikhStacks
               </Link>
               <button
                 type="button"

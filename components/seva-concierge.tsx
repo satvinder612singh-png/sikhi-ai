@@ -74,10 +74,10 @@ export const INTENT_ROUTES: IntentRouteItem[] = [
     angCitation: "Sri Guru Granth Sahib Ji • Ang 819 (Raag Bilaaval)",
     guidance:
       "When the mind feels overwhelmed, Guru Arjan Dev Ji invites us into Sukhmani Sahib (The Psalm of Peace) and the protective shelter of Raag Bilaaval Kirtan.",
-    primaryHref: "/nitnem",
-    primaryCta: "Read Sukhmani Sahib & Soothing Banis →",
-    secondaryHref: "/hukamnama",
-    secondaryCta: "Read Today's Darbar Sahib Hukamnama →",
+    primaryHref: "/granths",
+    primaryCta: "Listen to Soothing Puratan Kirtan →",
+    secondaryHref: "/foundations",
+    secondaryCta: "Explore Foundations of Sikhi →",
     kirtanTrackId: "raag-bilaaval-gurmej-singh",
   },
   {
@@ -128,10 +128,10 @@ export const INTENT_ROUTES: IntentRouteItem[] = [
     angCitation: "Sri Guru Granth Sahib Ji • Ang 2 (Japji Sahib, Pauri 4)",
     guidance:
       "Read today's live Hukamnama from Sri Harmandir Sahib, Amritsar, or open the distraction-free Nitnem & Sukhmani Sahib reader with Larivaar/Padchhed toggles and adjustable font sizes.",
-    primaryHref: "/nitnem",
-    primaryCta: "Open Nitnem & Sukhmani Sahib Reader →",
-    secondaryHref: "/hukamnama",
-    secondaryCta: "Read Today's Live Hukamnama →",
+    primaryHref: "/granths",
+    primaryCta: "Open Granths & Kirtan →",
+    secondaryHref: "/foundations",
+    secondaryCta: "Study Foundations of Sikhi →",
   },
   {
     id: "unsung-women",

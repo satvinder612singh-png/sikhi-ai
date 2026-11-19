@@ -26,10 +26,7 @@ import {
   clampFloatingWidgetPos,
   getRegisteredCanvasNodesSnapshot,
 } from "@/components/inline-cms-editor";
-import {
-  GlobalExplorerSidebar,
-  OPEN_EXPLORER_EVENT,
-} from "@/components/global-explorer-sidebar";
+import { GlobalExplorerSidebar } from "@/components/global-explorer-sidebar";
 
 const VISITOR_THEME_KEY = "learn_sikhi_theme_v2";
 
@@ -52,19 +49,15 @@ function resolveDefaultThemeId(raw?: string, pageBg?: string): string | null {
 }
 
 /**
- * Publication-grade primary navigation: typography only, no emoji or icon
- * glyphs, and no duplicate links (Community lives on Home, Live Kirtan lives
- * inside Granths, Hukamnama lives inside Daily Bani).
+ * Focused 6-page core navigation architecture alongside Auth & Theme controls.
  */
 const LINKS: { href: string; title: string; sub?: string }[] = [
-  { href: "/", title: "Home", sub: "SikhStack & SikhInterest" },
-  { href: "/articles", title: "Articles", sub: "In-Page Sikh Research & Essays" },
-  { href: "/studio", title: "Write", sub: "Substack-Style Publishing Studio" },
-  { href: "/foundations", title: "Foundations" },
-  { href: "/nitnem", title: "Daily Bani" },
+  { href: "/", title: "Home", sub: "SikhStacks & SikhInterest" },
+  { href: "/foundations", title: "Foundations of Sikhi" },
   { href: "/granths", title: "Granths & Kirtan" },
   { href: "/matriarchs", title: "Sikh Women" },
-  { href: "/games", title: "Games" },
+  { href: "/games", title: "Sikhi Games" },
+  { href: "/news", title: "Explore & News" },
 ];
 
 const focusRing =
@@ -370,21 +363,6 @@ export function Header({ solid = false }: { solid?: boolean }) {
             );
           })}
 
-          <li className="shrink-0 pl-1">
-            <button
-              type="button"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "news" } })
-                )
-              }
-              title="Open Sikh News Editorial Slides & Topic Explorer"
-              className={`sanctuary-interactive whitespace-nowrap rounded-full border border-[#C59B27]/65 bg-[#C59B27]/15 px-3 py-1 text-[11px] font-extrabold text-[#785106] dark:text-[#FDE68A] hover:border-[#C59B27] hover:bg-[#C59B27]/25 transition ${focusRing}`}
-            >
-              🧭 Explore &amp; News
-            </button>
-          </li>
-
           <li className="shrink-0 pl-2">
             <ThemeSwitcher />
           </li>
@@ -450,18 +428,6 @@ export function Header({ solid = false }: { solid?: boolean }) {
         </ul>
 
         <div className="flex items-center gap-2 lg:hidden">
-          <button
-            type="button"
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent(OPEN_EXPLORER_EVENT, { detail: { tab: "news" } })
-              )
-            }
-            aria-label="Open Sikh News Briefing Slides and Topic Explorer"
-            className={`sanctuary-interactive whitespace-nowrap rounded-full border border-[#C59B27]/65 bg-[#C59B27]/15 px-2.5 py-1 text-[10px] font-extrabold text-[#785106] dark:text-[#FDE68A] ${focusRing}`}
-          >
-            🧭 News
-          </button>
           {isStealthAdmin && (
             <button
               type="button"
@@ -848,12 +814,12 @@ export function Header({ solid = false }: { solid?: boolean }) {
                           bodyTextColor: "#D6D3CD",
                           accentColor: "#E5C158",
                         },
-                        "Dark Darbar Theme"
+                        "Dark Theme"
                       )
                     }
                     className="px-2.5 py-1.5 rounded-lg border border-amber-400/40 bg-slate-900 text-slate-100 font-semibold hover:border-amber-400"
                   >
-                    🌙 Dark Darbar
+                    🌙 Dark
                   </button>
                   <button
                     type="button"
@@ -867,12 +833,31 @@ export function Header({ solid = false }: { solid?: boolean }) {
                           bodyTextColor: "#3F3F46",
                           accentColor: "#9A7418",
                         },
-                        "Light Ivory Theme"
+                        "Light Theme"
                       )
                     }
                     className="px-2.5 py-1.5 rounded-lg border border-amber-400/40 bg-slate-900 text-slate-100 font-semibold hover:border-amber-400"
                   >
-                    ☀️ Light Ivory
+                    ☀️ Light
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void applyAdminLayoutPatch(
+                        {
+                          defaultSiteTheme: "obsidian",
+                          pageBgColor: "#000000",
+                          cardBgColor: "#0A0A0A",
+                          headingTextColor: "#FFFFFF",
+                          bodyTextColor: "#D4D4D8",
+                          accentColor: "#F5C451",
+                        },
+                        "OLED Theme"
+                      )
+                    }
+                    className="px-2.5 py-1.5 rounded-lg border border-amber-400/40 bg-slate-900 text-slate-100 font-semibold hover:border-amber-400"
+                  >
+                    ⚫ OLED
                   </button>
                   <button
                     type="button"

@@ -8,6 +8,7 @@ import { Footer } from "@/components/footer";
 import { useAuth } from "@/components/auth-provider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ChitrakariCardHeader } from "@/components/chitrakari-card-header";
+import { SikhStacksHub } from "@/components/sikhstacks/sikhstacks-hub";
 import {
   EditableHeritageImage,
   compressImageFile,
@@ -2082,18 +2083,18 @@ function SangatHubContent() {
                   id="sangat-hero-badge"
                   pageKey="sangat"
                   tag="p"
-                  defaultText={heroInline?.badge || "SIKHSTACK & SIKHINTEREST"}
+                  defaultText={heroInline?.badge || "SIKHSTACKS & SIKHINTEREST"}
                   style={{ color: layoutCfg.accentColor || undefined }}
                   className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
                 />
                 <InlineTopicEditor
                   itemId="sangat-hero-header"
                   defaults={{
-                    title: heroSec?.customTitle || "SikhStack & SikhInterest",
-                    badge: "SIKHSTACK & SIKHINTEREST",
+                    title: heroSec?.customTitle || "SikhStacks & SikhInterest",
+                    badge: "SIKHSTACKS & SIKHINTEREST",
                     description:
                       heroSec?.customSubtitle ||
-                      "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage.",
+                      "A safe space for Sikhs and scholars to share knowledge, sources, books, and work together.",
                   }}
                 />
               </div>
@@ -2101,7 +2102,7 @@ function SangatHubContent() {
                 id="sangat-hero-title"
                 pageKey="sangat"
                 tag="h1"
-                defaultText={heroInline?.title || heroSec?.customTitle || "SikhStack & SikhInterest"}
+                defaultText={heroInline?.title || heroSec?.customTitle || "SikhStacks & SikhInterest"}
                 style={{
                   color: heroInline?.textColor || layoutCfg.headingTextColor || undefined,
                 }}
@@ -2114,7 +2115,7 @@ function SangatHubContent() {
                 defaultText={
                   heroInline?.description ||
                   heroSec?.customSubtitle ||
-                  "Independent essays on Gurbani & Sikh history, curated research links with original source attribution, and SikhInterest visual heritage."
+                  "A safe space for Sikhs and scholars to share knowledge, sources, books, and work together."
                 }
                 style={{
                   color:
@@ -2196,6 +2197,13 @@ function SangatHubContent() {
               </button>
             </div>
           </div>
+
+          {/* SikhStacks Publishing Studio, In-Page Reader & Threaded Comments */}
+          {!activeBlog && (
+            <div className="pt-2">
+              <SikhStacksHub />
+            </div>
+          )}
 
           {/* Clean Minimal Text Tabs */}
           <nav
@@ -2790,34 +2798,31 @@ function SangatHubContent() {
                       href="/foundations"
                       className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
                     >
-                      <GodModeText
-                        id="sangat-pillar-foundations"
-                        pageKey="sangat"
-                        tag="span"
-                        defaultText="Foundations →"
-                      />
-                    </a>
-                    <a
-                      href="/nitnem"
-                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
-                    >
-                      <GodModeText
-                        id="sangat-pillar-nitnem"
-                        pageKey="sangat"
-                        tag="span"
-                        defaultText="Daily Bani →"
-                      />
+                      Foundations of Sikhi →
                     </a>
                     <a
                       href="/granths"
                       className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
                     >
-                      <GodModeText
-                        id="sangat-pillar-granths"
-                        pageKey="sangat"
-                        tag="span"
-                        defaultText="Granths & Kirtan →"
-                      />
+                      Granths &amp; Kirtan →
+                    </a>
+                    <a
+                      href="/matriarchs"
+                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
+                    >
+                      Sikh Women →
+                    </a>
+                    <a
+                      href="/games"
+                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
+                    >
+                      Sikhi Games →
+                    </a>
+                    <a
+                      href="/news"
+                      className="px-3 py-1.5 rounded-lg border border-[#C59B27]/30 hover:border-[#C59B27] transition"
+                    >
+                      Explore &amp; News →
                     </a>
                   </div>
                 </section>

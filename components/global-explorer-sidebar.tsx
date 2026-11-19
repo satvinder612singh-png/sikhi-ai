@@ -532,17 +532,6 @@ export function GlobalExplorerSidebar({
         ]),
       },
       {
-        key: "nitnem",
-        label: "Daily Bani & Nitnem",
-        href: "/nitnem",
-        matchPaths: ["/nitnem"],
-        badge: "10 Sacred Banis",
-        topics: filterAndDecorate([
-          ...customByPage("nitnem"),
-          ...STATIC_BANI_TOPICS,
-        ]),
-      },
-      {
         key: "granths",
         label: "Granths & Puratan Kirtan",
         href: "/granths",
