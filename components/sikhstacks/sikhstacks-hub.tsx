@@ -1,12 +1,17 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowUpRight,
   BookOpen,
+  Code2,
   Eye,
   ImagePlus,
+  Link2,
+  LogIn,
   MessageSquare,
   PenLine,
   Send,
@@ -51,6 +56,30 @@ export function SikhStacksHub() {
   const [activeType, setActiveType] = useState<string>("All");
   const [selectedPost, setSelectedPost] = useState<ArticleRecord | null>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+
+  // Auto-open composer when returning from sign-in with ?compose=1
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("compose") === "1" && user) {
+      setIsComposerOpen(true);
+      setShowSignInPrompt(false);
+    }
+  }, [user]);
+
+  const handleOpenComposer = () => {
+    if (isComposerOpen) {
+      setIsComposerOpen(false);
+      return;
+    }
+    if (!user) {
+      setShowSignInPrompt((prev) => !prev);
+      return;
+    }
+    setShowSignInPrompt(false);
+    setIsComposerOpen(true);
+  };
 
   // Composer state
   const [title, setTitle] = useState("");
@@ -390,6 +419,31 @@ export function SikhStacksHub() {
                   {estimateReadMinutes(selectedPost.content_markdown)} min read
                 </span>
               </div>
+
+              {selectedPost.source_url && (
+                <div className="pt-2">
+                  <a
+                    href={selectedPost.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      backgroundColor: "var(--bg-tertiary)",
+                      borderColor: "var(--border-subtle)",
+                      color: "var(--accent-text)",
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors duration-150 hover:border-[var(--accent-primary)]"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>
+                      {selectedPost.source_name &&
+                      selectedPost.source_name !== "SikhStacks Original"
+                        ? selectedPost.source_name
+                        : "Visit External Link"}
+                    </span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
             </header>
 
             <div className="max-w-none">
@@ -416,19 +470,28 @@ export function SikhStacksHub() {
                 {selectedPost.source_name || "SikhStacks Original"}
               </p>
               {selectedPost.source_url && (
-                <p className="pt-0.5">
+                <div className="pt-2">
                   <a
                     href={selectedPost.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
+                      backgroundColor: "var(--bg-surface)",
+                      borderColor: "var(--border-subtle)",
                       color: "var(--accent-text)",
                     }}
-                    className="font-medium underline hover:opacity-80"
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors duration-150 hover:border-[var(--accent-primary)]"
                   >
-                    View Reference Link ↗
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>
+                      {selectedPost.source_name &&
+                      selectedPost.source_name !== "SikhStacks Original"
+                        ? selectedPost.source_name
+                        : "Open External Link"}
+                    </span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </a>
-                </p>
+                </div>
               )}
             </footer>
           </div>
@@ -447,11 +510,108 @@ export function SikhStacksHub() {
 
   return (
     <section id="sikhstacks-hub" className="space-y-6">
-      {/* Editorial Section Header + "Start Writing" CTA */}
+      {/* Editorial Section Header + Open Community "+ Contribute / Write on SikhStacks" CTA */}
       <div
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4"
+        className="flex flex-col gap-4 border-b pb-4"
         style={{ borderColor: "var(--border-subtle)" }}
       >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight">
+              SikhStacks Community Publishing
+            </h2>
+            <p
+              style={{ color: "var(--theme-text-muted)" }}
+              className="text-xs sm:text-sm"
+            >
+              Open to all learners, scholars, authors, and builders—share essays,
+              research, books, Sikh businesses, or open-source resources.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenComposer}
+            style={
+              isComposerOpen
+                ? {
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                    color: "var(--text-primary)",
+                  }
+                : {
+                    backgroundColor: "var(--accent-primary)",
+                    color: "var(--cta-text)",
+                  }
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs sm:text-sm font-semibold border border-transparent transition-opacity duration-150 hover:opacity-95 shrink-0"
+          >
+            {isComposerOpen ? (
+              <>
+                <X className="w-4 h-4" />
+                Close Studio
+              </>
+            ) : (
+              <>
+                <PenLine className="w-4 h-4" />
+                + Contribute / Write on SikhStacks
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Smooth Sign-In Prompt for Signed-Out Visitors */}
+        <AnimatePresence>
+          {showSignInPrompt && !user && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.16, ease: "easeOut" }}
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-subtle)",
+              }}
+              className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold">
+                  Sign in to publish on SikhStacks
+                </p>
+                <p
+                  style={{ color: "var(--theme-text-muted)" }}
+                  className="text-xs"
+                >
+                  Anyone can contribute essays, book notes, Sikh businesses, or
+                  open-source links. Sign in once and we&apos;ll open the writer
+                  studio right away.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href="/login?next=%2F%3Fcompose%3D1"
+                  style={{
+                    backgroundColor: "var(--accent-primary)",
+                    color: "var(--cta-text)",
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold hover:opacity-95"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  Sign In to Write
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowSignInPrompt(false)}
+                  style={{ borderColor: "var(--border-subtle)" }}
+                  className="rounded-lg border px-3 py-2 text-xs font-medium"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex flex-wrap items-center gap-1.5">
           {["All", ...SIKHSTACKS_POST_TYPES].map((type) => {
             const active = activeType === type;
@@ -480,36 +640,6 @@ export function SikhStacksHub() {
             );
           })}
         </div>
-
-        <button
-          type="button"
-          onClick={() => setIsComposerOpen((v) => !v)}
-          style={
-            isComposerOpen
-              ? {
-                  backgroundColor: "var(--bg-tertiary)",
-                  borderColor: "var(--border-subtle)",
-                  color: "var(--text-primary)",
-                }
-              : {
-                  backgroundColor: "var(--accent-primary)",
-                  color: "var(--cta-text)",
-                }
-          }
-          className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold border border-transparent transition-opacity duration-150 hover:opacity-95 shrink-0"
-        >
-          {isComposerOpen ? (
-            <>
-              <X className="w-4 h-4" />
-              Close Studio
-            </>
-          ) : (
-            <>
-              <PenLine className="w-4 h-4" />
-              Start Writing
-            </>
-          )}
-        </button>
       </div>
 
       {/* Distraction-Free SikhStacks Writer Studio */}
@@ -648,30 +778,46 @@ export function SikhStacksHub() {
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={sourceName}
-                    onChange={(e) => setSourceName(e.target.value)}
-                    placeholder="Source / Book / Business citation (optional)"
-                    style={{
-                      backgroundColor: "var(--bg-tertiary)",
-                      borderColor: "var(--border-subtle)",
-                      color: "var(--text-primary)",
-                    }}
-                    className="rounded-lg border px-3.5 py-2 text-sm focus:outline-none"
-                  />
-                  <input
-                    type="url"
-                    value={sourceUrl}
-                    onChange={(e) => setSourceUrl(e.target.value)}
-                    placeholder="Reference link https://… (optional)"
-                    style={{
-                      backgroundColor: "var(--bg-tertiary)",
-                      borderColor: "var(--border-subtle)",
-                      color: "var(--text-primary)",
-                    }}
-                    className="rounded-lg border px-3.5 py-2 text-sm focus:outline-none"
-                  />
+                  <div className="space-y-1">
+                    <label
+                      style={{ color: "var(--theme-text-muted)" }}
+                      className="block text-[11px] font-medium"
+                    >
+                      External Link (Website, Book, Substack, or Repo) — optional
+                    </label>
+                    <input
+                      type="url"
+                      value={sourceUrl}
+                      onChange={(e) => setSourceUrl(e.target.value)}
+                      placeholder="https://…"
+                      style={{
+                        backgroundColor: "var(--bg-tertiary)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                      className="w-full rounded-lg border px-3.5 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      style={{ color: "var(--theme-text-muted)" }}
+                      className="block text-[11px] font-medium"
+                    >
+                      Link Label / Source Name — optional
+                    </label>
+                    <input
+                      type="text"
+                      value={sourceName}
+                      onChange={(e) => setSourceName(e.target.value)}
+                      placeholder="e.g., My Substack, GitHub Repo, Book Title"
+                      style={{
+                        backgroundColor: "var(--bg-tertiary)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                      className="w-full rounded-lg border px-3.5 py-2 text-sm focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Minimal Formatting Bar */}
@@ -845,7 +991,7 @@ export function SikhStacksHub() {
           <div className="pt-2">
             <button
               type="button"
-              onClick={() => setIsComposerOpen(true)}
+              onClick={handleOpenComposer}
               style={{
                 backgroundColor: "var(--accent-primary)",
                 color: "var(--cta-text)",
@@ -853,7 +999,7 @@ export function SikhStacksHub() {
               className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs sm:text-sm font-semibold"
             >
               <PenLine className="w-4 h-4" />
-              Start Writing
+              + Contribute / Write on SikhStacks
             </button>
           </div>
         </div>
@@ -974,6 +1120,35 @@ export function SikhStacksHub() {
           })}
         </div>
       )}
+
+      {/* Minimalistic Open-Source Community Platform Note */}
+      <div
+        style={{
+          borderColor: "var(--border-subtle)",
+          color: "var(--theme-text-muted)",
+        }}
+        className="flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs"
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Code2 className="w-3.5 h-3.5" style={{ color: "var(--accent-text)" }} />
+          <span>
+            <strong style={{ color: "var(--text-primary)" }} className="font-semibold">
+              Open-Source Community Platform
+            </strong>{" "}
+            — Built in the open for Sikhs, scholars, writers, and developers to share knowledge together.
+          </span>
+        </span>
+        <a
+          href="https://github.com/satvinder612singh-png/sikhi-ai"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent-text)" }}
+          className="inline-flex items-center gap-1 font-medium hover:underline shrink-0"
+        >
+          Contribute on GitHub
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </a>
+      </div>
     </section>
   );
 }

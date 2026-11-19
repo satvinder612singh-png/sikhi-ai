@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SITE_STATE_KEY = "site_frames";
+const SITE_STATE_KEY = "learnsikhi_global_site_frames_v1";
 
 function isAdminEmail(email?: string | null): boolean {
   const clean = (email || "").trim().toLowerCase();
