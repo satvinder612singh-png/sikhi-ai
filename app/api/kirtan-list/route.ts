@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface DriveFileItem {
   id?: string;
@@ -27,6 +28,20 @@ export interface DriveKirtanTrackItem {
 }
 
 const AUDIO_EXT_RE = /\.(mp3|m4a|wav|ogg|aac|flac|webm)$/i;
+
+function stripWrappingQuotes(raw: string): string {
+  return raw.trim().replace(/^["']|["']$/g, "").trim();
+}
+
+function extractDriveFolderId(raw: string): string {
+  const cleaned = stripWrappingQuotes(raw);
+  if (!cleaned) return "";
+  const folderPathMatch = cleaned.match(/\/folders\/([a-zA-Z0-9_-]{8,128})/);
+  if (folderPathMatch?.[1]) return folderPathMatch[1];
+  const queryIdMatch = cleaned.match(/[?&]id=([a-zA-Z0-9_-]{8,128})/);
+  if (queryIdMatch?.[1]) return queryIdMatch[1];
+  return cleaned;
+}
 
 function cleanSegment(raw: string): string {
   return raw
@@ -65,23 +80,38 @@ function isAudioFile(file: DriveFileItem): boolean {
 }
 
 export async function GET() {
-  const folderId = (process.env.KIRTAN_DRIVE_FOLDER_ID || "").trim();
-  const apiKey = (process.env.GOOGLE_DRIVE_API_KEY || "").trim();
+  const folderId = extractDriveFolderId(
+    process.env.KIRTAN_DRIVE_FOLDER_ID ||
+      process.env.NEXT_PUBLIC_KIRTAN_DRIVE_FOLDER_ID ||
+      process.env.GOOGLE_DRIVE_FOLDER_ID ||
+      ""
+  );
+  const apiKey = stripWrappingQuotes(
+    process.env.GOOGLE_DRIVE_API_KEY ||
+      process.env.NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY ||
+      ""
+  );
 
-  if (!folderId || !apiKey) {
+  const missingVars: string[] = [];
+  if (!folderId) missingVars.push("KIRTAN_DRIVE_FOLDER_ID");
+  if (!apiKey) missingVars.push("GOOGLE_DRIVE_API_KEY");
+
+  if (missingVars.length > 0) {
     return NextResponse.json(
       {
         ok: true,
+        missingConfig: true,
         configured: false,
+        missingVars,
         count: 0,
         tracks: [] as DriveKirtanTrackItem[],
-        message:
-          "Set KIRTAN_DRIVE_FOLDER_ID and GOOGLE_DRIVE_API_KEY in environment variables to auto-sync your Google Drive Kirtan folder.",
+        files: [] as DriveKirtanTrackItem[],
+        message: `Missing server environment variable(s): ${missingVars.join(", ")}.`,
       },
       {
         status: 200,
         headers: {
-          "Cache-Control": "no-store, max-age=0",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       }
     );
@@ -97,6 +127,8 @@ export async function GET() {
         q,
         fields: "nextPageToken,files(id,name,size,mimeType)",
         pageSize: "1000",
+        supportsAllDrives: "true",
+        includeItemsFromAllDrives: "true",
         key: apiKey,
       });
       if (pageToken) {
@@ -105,21 +137,30 @@ export async function GET() {
 
       const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
       const res = await fetch(url, {
-        next: { revalidate: 60 },
+        cache: "no-store",
       });
 
       const data = (await res.json().catch(() => null)) as DriveFilesResponse | null;
       if (!res.ok || !data) {
+        const errorMsg =
+          data?.error?.message ||
+          `Google Drive API request failed with HTTP ${res.status}`;
+        console.error("[/api/kirtan-list] Google Drive API error:", res.status, errorMsg);
         return NextResponse.json(
           {
             ok: false,
+            missingConfig: false,
             configured: true,
             tracks: [] as DriveKirtanTrackItem[],
-            error:
-              data?.error?.message ||
-              `Google Drive API request failed with status ${res.status}`,
+            files: [] as DriveKirtanTrackItem[],
+            error: errorMsg,
           },
-          { status: 502 }
+          {
+            status: 502,
+            headers: {
+              "Cache-Control": "no-store, no-cache, must-revalidate",
+            },
+          }
         );
       }
 
@@ -163,9 +204,11 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: true,
+        missingConfig: false,
         configured: true,
         count: tracks.length,
         tracks,
+        files: tracks,
       },
       {
         status: 200,
@@ -175,17 +218,26 @@ export async function GET() {
       }
     );
   } catch (err) {
+    const errorMsg =
+      err instanceof Error
+        ? err.message
+        : "Unexpected error fetching Google Drive Kirtan list.";
+    console.error("[/api/kirtan-list] Unexpected error:", errorMsg);
     return NextResponse.json(
       {
         ok: false,
+        missingConfig: false,
         configured: true,
         tracks: [] as DriveKirtanTrackItem[],
-        error:
-          err instanceof Error
-            ? err.message
-            : "Unexpected error fetching Google Drive Kirtan list.",
+        files: [] as DriveKirtanTrackItem[],
+        error: errorMsg,
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+      }
     );
   }
 }

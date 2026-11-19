@@ -17,7 +17,14 @@ async function proxyDriveAudio(
     return new Response("Invalid Google Drive file ID", { status: 400 });
   }
 
-  const apiKey = (process.env.GOOGLE_DRIVE_API_KEY || "").trim();
+  const apiKey = (
+    process.env.GOOGLE_DRIVE_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY ||
+    ""
+  )
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
   if (!apiKey) {
     return new Response("Google Drive API key is not configured", {
       status: 503,
@@ -26,7 +33,7 @@ async function proxyDriveAudio(
 
   const driveUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(
     cleanId
-  )}?alt=media&key=${encodeURIComponent(apiKey)}`;
+  )}?alt=media&supportsAllDrives=true&key=${encodeURIComponent(apiKey)}`;
 
   const upstreamHeaders = new Headers();
   const incomingRange = req.headers.get("range");

@@ -24,6 +24,8 @@ export interface DriveKirtanTrack {
 interface KirtanPlayerContextValue {
   tracks: DriveKirtanTrack[];
   loadingTracks: boolean;
+  missingConfig: boolean;
+  missingVars: string[];
   configured: boolean;
   tracksError: string | null;
   activeTrack: DriveKirtanTrack | null;
@@ -98,7 +100,8 @@ export function KirtanPlayerProvider({
 }) {
   const [tracks, setTracks] = useState<DriveKirtanTrack[]>([]);
   const [loadingTracks, setLoadingTracks] = useState(true);
-  const [configured, setConfigured] = useState(true);
+  const [missingConfig, setMissingConfig] = useState(false);
+  const [missingVars, setMissingVars] = useState<string[]>([]);
   const [tracksError, setTracksError] = useState<string | null>(null);
 
   const [activeTrack, setActiveTrack] = useState<DriveKirtanTrack | null>(null);
@@ -128,33 +131,72 @@ export function KirtanPlayerProvider({
       const res = await fetch("/api/kirtan-list", { cache: "no-store" });
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
+        missingConfig?: boolean;
+        missingVars?: string[];
         configured?: boolean;
         tracks?: DriveKirtanTrack[];
+        files?: DriveKirtanTrack[];
         error?: string;
+        message?: string;
       } | null;
 
-      if (!res.ok || !data) {
-        setConfigured(true);
-        setTracksError(data?.error || "Unable to load Kirtan library.");
+      if (!res.ok || !data || data.ok === false) {
+        const message =
+          data?.error ||
+          data?.message ||
+          `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ""} while loading /api/kirtan-list`;
+        console.error("[KirtanPlayer] /api/kirtan-list request failed:", {
+          status: res.status,
+          data,
+        });
+        setMissingConfig(false);
+        setMissingVars([]);
+        setTracksError(message);
         return;
       }
-      if (data.configured === false) {
-        setConfigured(false);
+
+      if (data.missingConfig === true) {
+        setMissingConfig(true);
+        setMissingVars(
+          Array.isArray(data.missingVars)
+            ? data.missingVars
+            : ["KIRTAN_DRIVE_FOLDER_ID", "GOOGLE_DRIVE_API_KEY"]
+        );
         setTracks([]);
         return;
       }
-      setConfigured(true);
-      if (Array.isArray(data.tracks)) {
-        setTracks(
-          data.tracks.map((t) => ({
-            ...t,
-            title: cleanDisplayTitle(t.title),
-          }))
-        );
+
+      setMissingConfig(false);
+      setMissingVars([]);
+
+      const rawList = Array.isArray(data.tracks)
+        ? data.tracks
+        : Array.isArray(data.files)
+          ? data.files
+          : null;
+
+      if (!rawList) {
+        const errMsg = "Unexpected response format from /api/kirtan-list.";
+        console.error("[KirtanPlayer]", errMsg, data);
+        setTracksError(errMsg);
+        return;
       }
-    } catch {
-      setConfigured(true);
-      setTracksError("Network error while syncing Kirtan library.");
+
+      setTracks(
+        rawList.map((t) => ({
+          ...t,
+          title: cleanDisplayTitle(t.title),
+        }))
+      );
+    } catch (err) {
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : "Network error while syncing Kirtan library.";
+      console.error("[KirtanPlayer] Network error fetching /api/kirtan-list:", err);
+      setMissingConfig(false);
+      setMissingVars([]);
+      setTracksError(errMsg);
     } finally {
       setLoadingTracks(false);
     }
@@ -387,7 +429,9 @@ export function KirtanPlayerProvider({
     () => ({
       tracks,
       loadingTracks,
-      configured,
+      missingConfig,
+      missingVars,
+      configured: !missingConfig,
       tracksError,
       activeTrack,
       isPlaying,
@@ -408,7 +452,8 @@ export function KirtanPlayerProvider({
     [
       tracks,
       loadingTracks,
-      configured,
+      missingConfig,
+      missingVars,
       tracksError,
       activeTrack,
       isPlaying,
@@ -630,7 +675,8 @@ export function GoogleDriveKirtanTracklist() {
   const {
     tracks,
     loadingTracks,
-    configured,
+    missingConfig,
+    missingVars,
     tracksError,
     activeTrack,
     isPlaying,
@@ -679,9 +725,13 @@ export function GoogleDriveKirtanTracklist() {
               Sacred Kirtan Stream
             </h2>
             <p className="text-xs sm:text-sm text-zinc-300">
-              {configured
-                ? `${tracks.length} Shabad${tracks.length === 1 ? "" : "s"} ready for uninterrupted listening`
-                : "Connect your Kirtan archive to stream Shabads seamlessly."}
+              {loadingTracks && tracks.length === 0
+                ? "Syncing Shabads from your Google Drive Kirtan archive…"
+                : tracksError
+                  ? "Unable to sync Kirtan stream right now"
+                  : missingConfig
+                    ? "Connect your Kirtan archive to stream Shabads seamlessly."
+                    : `${tracks.length} Shabad${tracks.length === 1 ? "" : "s"} ready for uninterrupted listening`}
             </p>
           </div>
 
@@ -786,20 +836,51 @@ export function GoogleDriveKirtanTracklist() {
             ))}
           </div>
         ) : tracksError ? (
-          <div className="p-6 text-center space-y-2 text-xs text-amber-200">
-            <p className="font-bold text-amber-100">Could not load Kirtan stream</p>
-            <p className="text-zinc-300">{tracksError}</p>
+          <div
+            role="alert"
+            className="p-6 text-center space-y-3 text-xs text-amber-200"
+          >
+            <p className="font-serif text-sm font-bold text-amber-100">
+              Could not load Kirtan stream
+            </p>
+            <p className="max-w-md mx-auto leading-relaxed text-zinc-300">
+              {tracksError}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refreshTracks()}
+              disabled={loadingTracks}
+              className="sanctuary-interactive inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:brightness-105 disabled:opacity-50"
+            >
+              {loadingTracks ? "Retrying…" : "↻ Retry Sync"}
+            </button>
           </div>
-        ) : !configured ? (
-          <div className="p-6 text-center space-y-2 text-xs text-zinc-300">
+        ) : missingConfig ? (
+          <div className="p-6 text-center space-y-3 text-xs text-zinc-300">
             <p className="font-serif text-sm font-bold text-amber-200">
               Kirtan Archive Ready to Connect
             </p>
             <p className="max-w-md mx-auto leading-relaxed text-zinc-300">
-              Add <code className="text-amber-200">KIRTAN_DRIVE_FOLDER_ID</code>{" "}
-              and <code className="text-amber-200">GOOGLE_DRIVE_API_KEY</code>{" "}
-              in your environment settings to auto-sync your Kirtan collection.
+              Server environment variable(s) not detected:{" "}
+              {(missingVars.length > 0
+                ? missingVars
+                : ["KIRTAN_DRIVE_FOLDER_ID", "GOOGLE_DRIVE_API_KEY"]
+              ).map((name, i, arr) => (
+                <React.Fragment key={name}>
+                  <code className="text-amber-200">{name}</code>
+                  {i < arr.length - 1 ? " and " : ""}
+                </React.Fragment>
+              ))}
+              . Verify they are enabled for Production in Vercel and redeploy.
             </p>
+            <button
+              type="button"
+              onClick={() => void refreshTracks()}
+              disabled={loadingTracks}
+              className="sanctuary-interactive inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 bg-black/40 px-4 py-1.5 text-xs font-bold text-amber-200 hover:border-amber-300 disabled:opacity-50"
+            >
+              {loadingTracks ? "Checking…" : "↻ Check Again"}
+            </button>
           </div>
         ) : filteredTracks.length === 0 ? (
           <div className="p-6 text-center text-xs text-zinc-300">
