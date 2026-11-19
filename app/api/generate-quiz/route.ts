@@ -1,366 +1,474 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import type {
+  GameType,
+  LearnerAgeGroup,
+  LearnerKnowledgeLevel,
+} from "@/components/games/learner-profile";
+import {
+  buildFallbackPayload,
+  type GeneratedMatchPair,
+  type GeneratedQuizQuestion,
+  type GeneratedScenarioItem,
+} from "@/lib/games-fallback-bank";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type LearnerAgeGroup = "kids" | "youth" | "young-adults" | "adults-seniors";
-type LearnerLevel = "beginner" | "intermediate" | "fluent" | "advanced";
-type GameMode = "history" | "gurmukhi" | "concepts";
-
 interface GenerateQuizRequest {
   ageGroup?: LearnerAgeGroup;
-  level?: LearnerLevel;
-  mode?: GameMode;
+  knowledgeLevel?: LearnerKnowledgeLevel | "fluent";
+  level?: LearnerKnowledgeLevel | "fluent";
+  gameType?: GameType;
+  mode?: GameType;
   seed?: number;
 }
 
-export interface GeneratedQuizQuestion {
-  id: string;
-  question: string;
-  options: [string, string, string, string];
-  correctIndex: number;
-  explanation: string;
-}
+const VALID_AGES: LearnerAgeGroup[] = [
+  "kids",
+  "youth",
+  "young-adults",
+  "adults-seniors",
+];
 
-export interface GeneratedGurmukhiPair {
-  id: string;
-  gurmukhi: string;
-  sound: string;
-  name: string;
-  example: string;
-}
+const VALID_GAME_TYPES: GameType[] = [
+  "gurmukhi",
+  "history",
+  "concepts",
+  "gurmat-action",
+  "raag-pehar",
+  "pankti-decoder",
+  "history-crossroads",
+  "chardi-kala-sprint",
+  "gurbani-synthesis",
+  "puratan-analysis",
+];
 
-export interface GeneratedConceptPair {
-  id: string;
-  term: string;
-  gurmukhi: string;
-  meaning: string;
-}
-
-const AGE_DESCRIPTIONS: Record<LearnerAgeGroup, string> = {
-  kids: "Kids (ages 5–10): warm, gentle, playful tone with short, easy-to-read sentences and vivid imagery.",
-  youth: "Youth (ages 11–17): engaging, clear storytelling with relatable examples and inspiring historical moments.",
-  "young-adults": "Young Adults (ages 18–30): thoughtful, modern clarity connecting Sikh principles, history, and real life.",
-  "adults-seniors": "Adults & Seniors (ages 30+): respectful, serene, scholarly clarity with rich historical and Gurbani resonance.",
+const AGE_DISPLAY: Record<LearnerAgeGroup, string> = {
+  kids: "Kids (5–10)",
+  youth: "Youth (11–17)",
+  "young-adults": "Young Adults (18–30 · Students & Professionals)",
+  "adults-seniors": "Adults & Seniors (30+)",
 };
 
-const LEVEL_DESCRIPTIONS: Record<LearnerLevel, string> = {
-  beginner: "Beginner: foundational facts, welcoming plain English, no assumed prior knowledge, opening Gurmukhi letters.",
-  intermediate: "Intermediate: Ten Gurus, key historical milestones, Guru Ka Langar, Panj Pyare, everyday Sikhi terms, common consonants.",
-  fluent: "Fluent: Gurbani concepts, Raags, Nitnem compositions, Gurdwara heritage, compound Sikh terminology, varied Gurmukhi letters.",
-  advanced: "Advanced: Sri Guru Granth Sahib Ji Raags and Bhagats, Puratan Granths (Panth Prakash, Vaaran Bhai Gurdas), subtle Gurmat philosophy, advanced Gurmukhi characters and matras.",
+const LEVEL_DISPLAY: Record<LearnerKnowledgeLevel, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
 };
 
-const FALLBACK_HISTORY_BY_LEVEL: Record<LearnerLevel, GeneratedQuizQuestion[]> = {
-  beginner: [
-    {
-      id: "fb-beg-1",
-      question: "Who was the First Guru who founded Sikhi and taught equality for all?",
-      options: ["Guru Nanak Dev Ji", "Guru Arjan Dev Ji", "Guru Hargobind Sahib Ji", "Guru Tegh Bahadur Ji"],
-      correctIndex: 0,
-      explanation: "Guru Nanak Dev Ji (1469–1539) founded Sikhi and traveled far and wide sharing the message of One Creator (Ik Onkar) and universal love.",
-    },
-    {
-      id: "fb-beg-2",
-      question: "What is the free community kitchen open to everyone at every Gurdwara called?",
-      options: ["Langar", "Sarovar", "Nishan", "Chaur"],
-      correctIndex: 0,
-      explanation: "Guru Ka Langar welcomes people of every background to sit together as equals and share a freshly prepared vegetarian meal.",
-    },
-    {
-      id: "fb-beg-3",
-      question: "What do the opening words 'Ik Onkar' (ੴ) in Gurbani mean?",
-      options: ["One Universal Creator", "Five Sacred Rivers", "Morning Prayer", "Golden Temple"],
-      correctIndex: 0,
-      explanation: "Ik Onkar affirms that there is One Universal Creator present in all of creation, uniting all humanity.",
-    },
-    {
-      id: "fb-beg-4",
-      question: "Which Guru standardized the Gurmukhi alphabet so everyone could read Gurbani?",
-      options: ["Guru Angad Dev Ji", "Guru Har Rai Ji", "Guru Har Krishan Ji", "Guru Gobind Singh Ji"],
-      correctIndex: 0,
-      explanation: "Guru Angad Dev Ji, the Second Guru, organized the Gurmukhi script and encouraged open learning for children and adults alike.",
-    },
-    {
-      id: "fb-beg-5",
-      question: "What is the sacred living scripture and Eternal Guru of the Sikhs?",
-      options: ["Sri Guru Granth Sahib Ji", "Panj Bania", "Janamsakhi", "Bara Maha"],
-      correctIndex: 0,
-      explanation: "Sri Guru Granth Sahib Ji holds 1,430 Angs of sacred Gurbani and was enshrined as the Eternal Guru in 1708.",
-    },
-    {
-      id: "fb-beg-6",
-      question: "Which city is home to Sachkhand Sri Harmandir Sahib (the Golden Temple)?",
-      options: ["Amritsar", "Anandpur Sahib", "Patna", "Nanded"],
-      correctIndex: 0,
-      explanation: "Sri Harmandir Sahib sits in the heart of Amritsar, with four doors symbolizing openness to seekers from every direction.",
-    },
-  ],
-  intermediate: [
-    {
-      id: "fb-int-1",
-      question: "Which Guru taught 'Pehle Pangat, Pache Sangat'—sitting as equals in Langar before meeting the Guru?",
-      options: ["Guru Amar Das Ji", "Guru Ram Das Ji", "Guru Har Rai Ji", "Guru Angad Dev Ji"],
-      correctIndex: 0,
-      explanation: "Guru Amar Das Ji instituted Pangat so emperors and villagers sat together on the same floor, dissolving caste barriers.",
-    },
-    {
-      id: "fb-int-2",
-      question: "Who is lovingly praised in Sri Guru Granth Sahib Ji for nurturing Guru Ka Langar with warmth and generosity?",
-      options: ["Mata Khivi Ji", "Mai Bhago Ji", "Bebe Nanaki Ji", "Rani Sada Kaur"],
-      correctIndex: 0,
-      explanation: "Mata Khivi Ji, spouse of Guru Angad Dev Ji, is honored on Ang 967 for serving nourishing kheer and guiding Langar with deep compassion.",
-    },
-    {
-      id: "fb-int-3",
-      question: "Who was appointed the first Granthi when Guru Arjan Dev Ji installed the Adi Granth in 1604?",
-      options: ["Baba Buddha Ji", "Bhai Mardana Ji", "Bhai Gurdas Ji", "Bhai Mani Singh Ji"],
-      correctIndex: 0,
-      explanation: "Baba Buddha Ji, who served six Gurus from Guru Nanak Dev Ji to Guru Hargobind Sahib Ji, became the first Granthi at Sri Harmandir Sahib.",
-    },
-    {
-      id: "fb-int-4",
-      question: "Which Guru introduced the twin swords of Miri (temporal justice) and Piri (spiritual devotion)?",
-      options: ["Guru Hargobind Sahib Ji", "Guru Har Krishan Ji", "Guru Ram Das Ji", "Guru Amar Das Ji"],
-      correctIndex: 0,
-      explanation: "Guru Hargobind Sahib Ji established Sri Akal Takht Sahib facing Sri Harmandir Sahib to embody balanced spiritual and ethical leadership.",
-    },
-    {
-      id: "fb-int-5",
-      question: "Why is Guru Tegh Bahadur Ji remembered across humanity as 'Hind Di Chadar'?",
-      options: [
-        "For giving his life in 1675 to defend religious freedom for others",
-        "For founding Kartarpur Sahib",
-        "For compiling the Adi Granth",
-        "For creating the Gurmukhi alphabet",
-      ],
-      correctIndex: 0,
-      explanation: "Guru Tegh Bahadur Ji sacrificed his life in Delhi in 1675 to protect the conscience and religious liberty of Kashmiri Pandits and all people.",
-    },
-    {
-      id: "fb-int-6",
-      question: "On Vaisakhi 1699 at Anandpur Sahib, what sovereign spiritual order did Guru Gobind Singh Ji initiate?",
-      options: ["The Khalsa Panth", "The Manji Network", "The Sarbat Khalsa Misl", "The Udasi Tradition"],
-      correctIndex: 0,
-      explanation: "Through Khande-di-Pahul and the Panj Pyare, Guru Gobind Singh Ji formed the Khalsa—committed to fearlessness, equality, and selfless service.",
-    },
-  ],
-  fluent: [
-    {
-      id: "fb-flu-1",
-      question: "In which classical Raag is Sri Guru Granth Sahib Ji's Raag-organized section opened at Ang 14?",
-      options: ["Sri Raag", "Raag Asa", "Raag Gauri", "Raag Majh"],
-      correctIndex: 0,
-      explanation: "Following Japji Sahib, Rehras, and Sohila, the 31-Raag musical arrangement begins on Ang 14 with Sri Raag, evoking grounded humility.",
-    },
-    {
-      id: "fb-flu-2",
-      question: "Which revered scholar-poet served as scribe for the Adi Granth in 1604 and wrote 40 Vaaran praised as the 'Key to Gurbani'?",
-      options: ["Bhai Gurdas Ji", "Bhai Nand Lal Ji", "Bhai Santokh Singh Ji", "Bhai Rattan Singh Bhangu"],
-      correctIndex: 0,
-      explanation: "Bhai Gurdas Ji inscribed the Pothi Sahib dictated by Guru Arjan Dev Ji and authored Vaaran illuminating Gurmat philosophy.",
-    },
-    {
-      id: "fb-flu-3",
-      question: "During which Pehar (time of day) is Raag Asa traditionally sung for Asa Di Vaar?",
-      options: ["Amrit Vela (3 AM – 6 AM)", "Afternoon (12 PM – 3 PM)", "Evening (6 PM – 9 PM)", "Late Night (9 PM – 12 AM)"],
-      correctIndex: 0,
-      explanation: "Raag Asa carries dawn hope and spiritual awakening, making it the prescribed Raag for Amrit Vela Kirtan.",
-    },
-    {
-      id: "fb-flu-4",
-      question: "Which Guru established a herbal dispensary and ecological sanctuary at Kiratpur Sahib?",
-      options: ["Guru Har Rai Ji", "Guru Amar Das Ji", "Guru Angad Dev Ji", "Guru Ram Das Ji"],
-      correctIndex: 0,
-      explanation: "Guru Har Rai Ji (Seventh Guru) nurtured botanical gardens, cared for wildlife, and operated free herbal clinics for all.",
-    },
-    {
-      id: "fb-flu-5",
-      question: "How many main classical Raags structure the musical body of Sri Guru Granth Sahib Ji?",
-      options: ["31 Main Raags", "12 Main Raags", "24 Main Raags", "40 Main Raags"],
-      correctIndex: 0,
-      explanation: "From Sri Raag (Ang 14) to Raag Jaijawanti (Ang 1353), 31 main Raags pair every Shabad with a precise emotional atmosphere (Ras).",
-    },
-    {
-      id: "fb-flu-6",
-      question: "Which warrior-matriarch rallied forty Sikhs back to stand beside Guru Gobind Singh Ji at the Battle of Muktsar (1705)?",
-      options: ["Mai Bhago Ji", "Bibi Dalair Kaur Ji", "Mata Gujri Ji", "Bebe Nanaki Ji"],
-      correctIndex: 0,
-      explanation: "Mai Bhago Ji (Mata Bhag Kaur) led the Chali Mukte with steadfast devotion and remained in Guru Gobind Singh Ji's retinue to Hazur Sahib.",
-    },
-  ],
-  advanced: [
-    {
-      id: "fb-adv-1",
-      question: "Which 31st Raag—added by Guru Tegh Bahadur Ji's Banis in the Damdami Bir—concludes the Raag section of Sri Guru Granth Sahib Ji?",
-      options: ["Raag Jaijawanti", "Raag Prabhati", "Raag Kalyan", "Raag Tukhari"],
-      correctIndex: 0,
-      explanation: "Raag Jaijawanti (Ang 1352–1353) contains four Shabads by Guru Tegh Bahadur Ji, expressing serene detachment and inner victory.",
-    },
-    {
-      id: "fb-adv-2",
-      question: "Who authored 'Sri Gur Panth Prakash' (completed 1841), preserving first-hand oral histories of 18th-century Khalsa sovereignty?",
-      options: [
-        "Shaheed Bhai Rattan Singh Bhangu",
-        "Mahakavi Bhai Santokh Singh",
-        "Bhai Kahn Singh Nabha",
-        "Prof. Sahib Singh",
-      ],
-      correctIndex: 0,
-      explanation: "Bhai Rattan Singh Bhangu, grandson of Shaheed Mehtab Singh, recorded the Panth's sovereign struggle in response to British inquiries.",
-    },
-    {
-      id: "fb-adv-3",
-      question: "In Gurbani Viyakaran (grammar), what crucial grammatical clue does a Sihari (ਿ) or Aunkar (ੁ) at the end of a noun often indicate?",
-      options: [
-        "Singular masculine subject or instrumental/locative case",
-        "Always indicates plural feminine tense",
-        "Marks a musical pause in Tabla Taal",
-        "Indicates a Persian loanword only",
-      ],
-      correctIndex: 0,
-      explanation: "Prof. Sahib Singh's Gurbani Viyakaran demonstrates how final Sihari and Aunkar vowel markers govern precise syntactic meaning across Angs.",
-    },
-    {
-      id: "fb-adv-4",
-      question: "Which bowed string instrument—crafted to sustain deep meend and Vairaag—was popularized by Guru Arjan Dev Ji for Gurmat Sangeet?",
-      options: ["Saranda", "Sitar", "Santoor", "Shehnai"],
-      correctIndex: 0,
-      explanation: "The Saranda is a deeply resonant bowed Tanti Saaj instrument integral to Puratan Raag Kirtan alongside the Rabab, Taus, and Dilruba.",
-    },
-    {
-      id: "fb-adv-5",
-      question: "Which Bhagat's hymns in Sri Guru Granth Sahib Ji include the iconic Aarti 'Gagan Mai Thaal' in Raag Dhanasari?",
-      options: [
-        "Guru Nanak Dev Ji (followed by Bhagats Ravidas, Sain, Kabir, Dhanna)",
-        "Bhagat Namdev Ji alone",
-        "Bhagat Farid Ji alone",
-        "Bhatt Kalshar Ji",
-      ],
-      correctIndex: 0,
-      explanation: "Guru Nanak Dev Ji's 'Gagan Mai Thaal' (Ang 663) opens the Sohila Aarti sequence, celebrating the entire cosmos performing Aarti to the Creator.",
-    },
-    {
-      id: "fb-adv-6",
-      question: "Who compiled the monumental four-volume encyclopedic dictionary of Sikh literature and history, 'Gurushabad Ratnakar Mahan Kosh' (1930)?",
-      options: ["Bhai Kahn Singh Nabha", "Bhai Vir Singh", "Giani Dit Singh", "Principal Teja Singh"],
-      correctIndex: 0,
-      explanation: "Bhai Kahn Singh Nabha spent over fourteen years compiling Mahan Kosh, documenting over 64,000 Gurmat, historical, and linguistic entries.",
-    },
-  ],
-};
+const MANDATORY_SYSTEM_INSTRUCTIONS = `Generate game content strictly tailored to the user's profile (ageGroup and knowledgeLevel). Dynamically adjust complexity, vocabulary, real-world framing, and subject matter to match their specific tier.
+- For Advanced / Adults & Seniors profiles: Completely bypass elementary alphabet recognition, basic textbook definitions, or surface-level trivia. Generate high-level analytical challenges, nuanced Gurbani conceptual synthesis, Raag/Pehar musicology, and realistic ethical or leadership dilemmas.
+- For Young Adults / Students & Professionals: Frame scenarios around university life, career integrity, stress/burnout management, teamwork, and personal discipline grounded in Gurmat.
+- For Beginner / Kids profiles: Use warm, encouraging, accessible language, foundational Gurmukhi/Sakhi facts, and clear everyday examples.
+- Return strictly valid JSON matching the requested gameType schema (pairs for matching games, scenarios with options + panktiReflection for Dilemma/Crossroads games, or questions for Quizzes/Sprints).`;
 
-const FALLBACK_GURMUKHI_BY_LEVEL: Record<LearnerLevel, GeneratedGurmukhiPair[]> = {
-  beginner: [
-    { id: "oora", gurmukhi: "ੳ", sound: "U / O (Oora)", name: "Oora", example: "Vowel bearer for u / o" },
-    { id: "aira", gurmukhi: "ਅ", sound: "A (Aira)", name: "Aira", example: "Vowel bearer for a / aa" },
-    { id: "eeri", gurmukhi: "ੲ", sound: "I / E (Eeri)", name: "Eeri", example: "Vowel bearer for i / e" },
-    { id: "sassa", gurmukhi: "ਸ", sound: "S (Sassa)", name: "Sassa", example: "Sat (Truth)" },
-    { id: "haha", gurmukhi: "ਹ", sound: "H (Haha)", name: "Haha", example: "Hukam (Divine Order)" },
-    { id: "kakka", gurmukhi: "ਕ", sound: "K (Kakka)", name: "Kakka", example: "Kirat (Honest Work)" },
-    { id: "khakha", gurmukhi: "ਖ", sound: "Kh (Khakha)", name: "Khakha", example: "Khalsa" },
-    { id: "gagga", gurmukhi: "ਗ", sound: "G (Gagga)", name: "Gagga", example: "Guru" },
-  ],
-  intermediate: [
-    { id: "chacha", gurmukhi: "ਚ", sound: "Ch (Chacha)", name: "Chacha", example: "Chardi Kala" },
-    { id: "jajja", gurmukhi: "ਜ", sound: "J (Jajja)", name: "Jajja", example: "Japji Sahib" },
-    { id: "tatta", gurmukhi: "ਤ", sound: "T (Tatta)", name: "Tatta", example: "Soft 't' as in Tera" },
-    { id: "dadda", gurmukhi: "ਦ", sound: "D (Dadda)", name: "Dadda", example: "Daya (Compassion)" },
-    { id: "nanna", gurmukhi: "ਨ", sound: "N (Nanna)", name: "Nanna", example: "Naam (Divine Name)" },
-    { id: "pappa", gurmukhi: "ਪ", sound: "P (Pappa)", name: "Pappa", example: "Panth" },
-    { id: "babba", gurmukhi: "ਬ", sound: "B (Babba)", name: "Babba", example: "Bani" },
-    { id: "mamma", gurmukhi: "ਮ", sound: "M (Mamma)", name: "Mamma", example: "Mool Mantar" },
-  ],
-  fluent: [
-    { id: "ghagga", gurmukhi: "ਘ", sound: "Gh (Ghagga)", name: "Ghagga", example: "Ghar (Musical House)" },
-    { id: "jhajja", gurmukhi: "ਝ", sound: "Jh (Jhajja)", name: "Jhajja", example: "Jhanda / Nishan" },
-    { id: "thatha", gurmukhi: "ਥ", sound: "Th (Thatha)", name: "Thatha", example: "Thaal (Cosmic Platter)" },
-    { id: "dhadda", gurmukhi: "ਧ", sound: "Dh (Dhadda)", name: "Dhadda", example: "Dharam (Righteousness)" },
-    { id: "phapha", gurmukhi: "ਫ", sound: "Ph (Phapha)", name: "Phapha", example: "Fateh (Victory)" },
-    { id: "bhabba", gurmukhi: "ਭ", sound: "Bh (Bhabba)", name: "Bhabba", example: "Bhagti (Devotion)" },
-    { id: "rara", gurmukhi: "ਰ", sound: "R (Rara)", name: "Rara", example: "Raag / Rabab" },
-    { id: "vava", gurmukhi: "ਵ", sound: "V / W (Vava)", name: "Vava", example: "Waheguru" },
-  ],
-  advanced: [
-    { id: "nganga", gurmukhi: "ਙ", sound: "Ng (Nganga)", name: "Nganga", example: "Nasal velar consonant" },
-    { id: "nyanya", gurmukhi: "ਞ", sound: "Ny (Nyanya)", name: "Nyanya", example: "Palatal nasal consonant" },
-    { id: "tainka", gurmukhi: "ਟ", sound: "Hard T (Tainka)", name: "Tainka", example: "Retroflex 'T'" },
-    { id: "ddadda", gurmukhi: "ਡ", sound: "Hard D (Ddadda)", name: "Ddadda", example: "Retroflex 'D'" },
-    { id: "nana", gurmukhi: "ਣ", sound: "Retroflex N (Nana)", name: "Nana", example: "As in Gun (Virtues)" },
-    { id: "rharha", gurmukhi: "ੜ", sound: "Rh (Rharha)", name: "Rharha", example: "As in Pauri / Chardi" },
-    { id: "yaya", gurmukhi: "ਯ", sound: "Y (Yaya)", name: "Yaya", example: "As in Yug / Jaap" },
-    { id: "lalla", gurmukhi: "ਲ", sound: "L (Lalla)", name: "Lalla", example: "As in Langar / Larivaar" },
-  ],
-};
-
-const FALLBACK_CONCEPTS_BY_LEVEL: Record<LearnerLevel, GeneratedConceptPair[]> = {
-  beginner: [
-    { id: "seva", term: "Seva", gurmukhi: "ਸੇਵਾ", meaning: "Selfless service offered to others with kindness and humility." },
-    { id: "simran", term: "Simran", gurmukhi: "ਸਿਮਰਨ", meaning: "Loving, peaceful remembrance of the One Creator." },
-    { id: "hukam", term: "Hukam", gurmukhi: "ਹੁਕਮ", meaning: "Living in joyful harmony with Divine Order." },
-    { id: "kirat-karni", term: "Kirat Karni", gurmukhi: "ਕਿਰਤ ਕਰਨੀ", meaning: "Earning an honest living through sincere hard work." },
-    { id: "vand-chakna", term: "Vand Chakna", gurmukhi: "ਵੰਡ ਛਕਣਾ", meaning: "Sharing your food, time, and blessings with others." },
-    { id: "chardi-kala", term: "Chardi Kala", gurmukhi: "ਚੜ੍ਹਦੀ ਕਲਾ", meaning: "An ever-rising spirit filled with hope and courage." },
-    { id: "miri-piri", term: "Miri-Piri", gurmukhi: "ਮੀਰੀ-ਪੀਰੀ", meaning: "Balancing spiritual devotion with standing up for justice." },
-  ],
-  intermediate: [
-    { id: "sangat", term: "Sangat", gurmukhi: "ਸੰਗਤ", meaning: "The uplifting fellowship of seekers gathering in truth and harmony." },
-    { id: "pangat", term: "Pangat", gurmukhi: "ਪੰਗਤ", meaning: "Sitting side by side in equal rows to share Guru Ka Langar." },
-    { id: "dasvandh", term: "Dasvandh", gurmukhi: "ਦਸਵੰਧ", meaning: "Dedicating one-tenth of one's honest earnings to community welfare." },
-    { id: "ardas", term: "Ardas", gurmukhi: "ਅਰਦਾਸ", meaning: "Humble prayer of gratitude, remembrance, and Sarbat Da Bhala." },
-    { id: "nitnem", term: "Nitnem", gurmukhi: "ਨਿਤਨੇਮ", meaning: "Daily rhythm of sacred Banis read at dawn, dusk, and night." },
-    { id: "hukamnama", term: "Hukamnama", gurmukhi: "ਹੁਕਮਨਾਮਾ", meaning: "Daily guiding Shabad opened from Sri Guru Granth Sahib Ji." },
-    { id: "sarbat-da-bhala", term: "Sarbat Da Bhala", gurmukhi: "ਸਰਬੱਤ ਦਾ ਭਲਾ", meaning: "Wishing peace, dignity, and well-being for all of humanity." },
-  ],
-  fluent: [
-    { id: "gurmukh", term: "Gurmukh", gurmukhi: "ਗੁਰਮੁਖਿ", meaning: "One whose awareness is turned toward the Guru's wisdom and truth." },
-    { id: "haumai", term: "Haumai", gurmukhi: "ਹਉਮੈ", meaning: "Self-centered ego that creates separation from the One." },
-    { id: "sahaj", term: "Sahaj", gurmukhi: "ਸਹਜ", meaning: "Natural spiritual equipoise, unshakable calm, and clarity." },
-    { id: "vismad", term: "Vismad", gurmukhi: "ਵਿਸਮਾਦੁ", meaning: "Transcendent awe and wonder at the vastness of Creation." },
-    { id: "shabad-guru", term: "Shabad Guru", gurmukhi: "ਸ਼ਬਦ ਗੁਰੂ", meaning: "Divine Wisdom revealed as Word, guiding consciousness beyond form." },
-    { id: "sant-sipahi", term: "Sant-Sipahi", gurmukhi: "ਸੰਤ-ਸਿਪਾਹੀ", meaning: "Saint-Soldier uniting meditative compassion with fearless justice." },
-    { id: "nadar", term: "Nadar / Mehar", gurmukhi: "ਨਦਰਿ", meaning: "The compassionate, liberating Glance of Divine Grace." },
-  ],
-  advanced: [
-    { id: "anhad-naad", term: "Anhad Naad", gurmukhi: "ਅਨਹਦ ਨਾਦ", meaning: "The unstruck celestial resonance perceived in deep Naam immersion." },
-    { id: "sargun-nirgun", term: "Sargun–Nirgun", gurmukhi: "ਸਰਗੁਣ ਨਿਰਗੁਣ", meaning: "The Divine simultaneously manifest in form and transcendent beyond attributes." },
-    { id: "jivan-mukt", term: "Jivan-Mukt", gurmukhi: "ਜੀਵਨ ਮੁਕਤੁ", meaning: "Spiritual liberation lived actively within the world, free from ego." },
-    { id: "tanti-saaj", term: "Tanti Saaj", gurmukhi: "ਤੰਤੀ ਸਾਜ਼", meaning: "Traditional stringed instruments (Rabab, Saranda, Taus, Dilruba) of Gurmat Sangeet." },
-    { id: "larivaar", term: "Larivaar", gurmukhi: "ਲੜੀਵਾਰ", meaning: "Continuous unbroken script tradition of Puratan Sri Guru Granth Sahib Ji saroops." },
-    { id: "panj-khand", term: "Panj Khand", gurmukhi: "ਪੰਜ ਖੰਡ", meaning: "Five realms of spiritual ascent in Japji Sahib culminating in Sach Khand." },
-    { id: "gian-khand", term: "Gian Khand", gurmukhi: "ਗਿਆਨ ਖੰਡ", meaning: "The Realm of Cosmic Wisdom awakening awareness of infinite worlds." },
-  ],
-};
-
-function rotateBySeed<T>(items: T[], seed: number): T[] {
-  if (items.length === 0) return items;
-  const shift = Math.abs(Math.floor(seed)) % items.length;
-  return [...items.slice(shift), ...items.slice(0, shift)];
-}
-
-function buildFallback(mode: GameMode, level: LearnerLevel, seed: number) {
-  if (mode === "history") {
-    return {
-      questions: rotateBySeed(FALLBACK_HISTORY_BY_LEVEL[level], seed),
-    };
+function normalizeKnowledgeLevel(raw: unknown): LearnerKnowledgeLevel {
+  if (raw === "beginner" || raw === "intermediate" || raw === "advanced") {
+    return raw;
   }
-  if (mode === "gurmukhi") {
-    return {
-      pairs: rotateBySeed(FALLBACK_GURMUKHI_BY_LEVEL[level], seed),
-    };
-  }
-  return {
-    pairs: rotateBySeed(FALLBACK_CONCEPTS_BY_LEVEL[level], seed),
-  };
+  if (raw === "fluent") return "intermediate";
+  return "beginner";
 }
 
-function sanitizeJsonText(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("```")) {
-    return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+function buildGameTypePrompt(
+  gameType: GameType,
+  ageGroup: LearnerAgeGroup,
+  knowledgeLevel: LearnerKnowledgeLevel,
+  seed: number
+): string {
+  const profileBlock = `Learner Profile:
+- ageGroup: ${AGE_DISPLAY[ageGroup]}
+- knowledgeLevel: ${LEVEL_DISPLAY[knowledgeLevel]}
+- gameType: ${gameType}
+- variationSeed: ${seed}`;
+
+  if (gameType === "gurmukhi") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 8 distinct foundational Gurmukhi character-to-sound matching pairs.
+Return STRICT JSON:
+{
+  "pairs": [
+    {
+      "gurmukhi": "single Gurmukhi letter",
+      "sound": "clear English phonetic sound",
+      "name": "letter name",
+      "example": "short Sikh/Punjabi example word"
+    }
+  ]
+}`;
   }
-  return trimmed;
+
+  if (gameType === "concepts") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 6 distinct foundational Sikhi concept matching pairs (e.g., Seva, Simran, Kirat Karni, Vand Chakna, Sangat, Chardi Kala, Nimrata).
+Return STRICT JSON:
+{
+  "pairs": [
+    {
+      "term": "English transliterated Sikhi term",
+      "gurmukhi": "Gurmukhi spelling",
+      "meaning": "clear plain-English definition (1 sentence)"
+    }
+  ]
+}`;
+  }
+
+  if (gameType === "raag-pehar") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 6 distinct Raag & Pehar Resonance matching pairs from the 31 classical Raags of Sri Guru Granth Sahib Ji.
+Left side: Raag name + traditional Pehar/time window. Right side: Emotional state (Ras), focus need, or daily mindset resonance.
+Return STRICT JSON:
+{
+  "pairs": [
+    {
+      "leftPrimary": "Raag Name (e.g., Raag Asa)",
+      "leftSecondary": "Pehar & time window (e.g., Amrit Vela • 3–6 AM)",
+      "rightPrimary": "Emotional resonance, mental state, or daily focus application",
+      "insight": "1-sentence Gurmat Sangeet insight"
+    }
+  ]
+}`;
+  }
+
+  if (gameType === "pankti-decoder") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 6 distinct Pankti Decoder (Word-to-Wisdom) pairs mapping pivotal Gurbani terms (e.g., Hukam, Haumai, Sehaj, Bibek, Santokh, Vairaag, Jeevan Mukti, Sabad Surat) to modern psychology, mental resilience, or lived philosophical themes.
+Return STRICT JSON:
+{
+  "pairs": [
+    {
+      "leftPrimary": "Gurbani term (English)",
+      "leftSecondary": "Gurmukhi script",
+      "rightPrimary": "Practical modern psychological or philosophical mapping (1 concise sentence)",
+      "insight": "1-sentence Gurbani reflection"
+    }
+  ]
+}`;
+  }
+
+  if (gameType === "gurbani-synthesis") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 6 high-level Gurbani Vichaar & Conceptual Synthesis pairs matching authentic Gurbani Panktis (with Bani/Ang reference) to nuanced philosophical frameworks and cross-Bani thematic synthesis. NO elementary definitions.
+Return STRICT JSON:
+{
+  "pairs": [
+    {
+      "leftPrimary": "Authentic Gurbani Pankti in Gurmukhi",
+      "leftSecondary": "Bani / Raag & Ang reference",
+      "rightPrimary": "Nuanced philosophical framework or cross-Bani synthesis (1–2 sentences)",
+      "insight": "1-sentence exegetical note"
+    }
+  ]
+}`;
+  }
+
+  if (gameType === "gurmat-action" || gameType === "history-crossroads") {
+    const isHistory = gameType === "history-crossroads";
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 3 rich, deeply engaging interactive ${
+      isHistory
+        ? "Sikh History: Crossroads strategic & ethical decision scenarios drawn from authentic Sikh history (diplomacy, governance, selfless service, resilience)"
+        : "Gurmat in Action real-world ethical dilemma scenarios tailored specifically to the learner's ageGroup and knowledgeLevel"
+    }.
+Each scenario MUST include 3 distinct choices (one clearly Gurmat-aligned, one reflective/compromise, one cautionary) and an authentic Gurbani Pankti reflection.
+Return STRICT JSON:
+{
+  "scenarios": [
+    {
+      "contextTag": "short domain tag (e.g., Career Integrity, Exam Pressure, 1705 • Muktsar)",
+      "title": "compelling scenario title",
+      "scenario": "2–3 vivid sentences setting up the real dilemma",
+      "options": [
+        {
+          "label": "clear actionable choice",
+          "outcome": "2-sentence thoughtful consequence & insight",
+          "alignment": "gurmat-aligned | reflective | cautionary"
+        }
+      ],
+      "panktiReflection": {
+        "gurmukhi": "authentic Gurbani Pankti in Gurmukhi",
+        "transliteration": "clean Roman transliteration",
+        "translation": "accurate plain-English translation",
+        "reflection": "1-sentence practical takeaway connecting the Pankti to the scenario"
+      }
+    }
+  ]
+}`;
+  }
+
+  if (gameType === "chardi-kala-sprint") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate a brisk, high-signal 3-question "3-Minute Daily Chardi Kala Sprint" with EXACTLY 3 questions in this order:
+- Question 1 (categoryTag: "1 · Concept"): A Gurmat concept applied to daily clarity.
+- Question 2 (categoryTag: "2 · History Insight"): An inspiring, accurate Sikh historical insight.
+- Question 3 (categoryTag: "3 · Real-Life Reflection"): A practical real-life reflection tailored to the user's ageGroup and knowledgeLevel.
+Each question has 4 distinct options and a 0-based correctIndex.
+Return STRICT JSON:
+{
+  "questions": [
+    {
+      "categoryTag": "1 · Concept | 2 · History Insight | 3 · Real-Life Reflection",
+      "question": "clear question",
+      "options": ["A", "B", "C", "D"],
+      "correctIndex": 0,
+      "explanation": "1–2 sentence insightful explanation"
+    }
+  ]
+}`;
+  }
+
+  if (gameType === "puratan-analysis") {
+    return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 6 high-level analytical multiple-choice challenges covering Raag/Ghar/Partaal musicology, Tanti Saaj lineages, Puratan Granths (Sri Gur Panth Prakash, Suraj Prakash, Vaaran Bhai Gurdas), and Gurbani Viyakaran (grammar). Strictly bypass elementary trivia.
+Return STRICT JSON:
+{
+  "questions": [
+    {
+      "categoryTag": "Raag Musicology | Historiography | Gurbani Viyakaran | Puratan Granths",
+      "question": "nuanced analytical question",
+      "options": ["A", "B", "C", "D"],
+      "correctIndex": 0,
+      "explanation": "2-sentence scholarly explanation",
+      "pankti": "optional short Gurmukhi reference if relevant"
+    }
+  ]
+}`;
+  }
+
+  // Default: "history"
+  return `${MANDATORY_SYSTEM_INSTRUCTIONS}
+
+${profileBlock}
+
+Generate 6 engaging, historically accurate multiple-choice questions on Sikh history, core Sakhis, the Ten Gurus, and Sikh heritage.
+Return STRICT JSON:
+{
+  "questions": [
+    {
+      "categoryTag": "short theme tag",
+      "question": "clear question",
+      "options": ["A", "B", "C", "D"],
+      "correctIndex": 0,
+      "explanation": "1–2 sentence historical explanation"
+    }
+  ]
+}`;
+}
+
+function validateAndShapeResponse(
+  gameType: GameType,
+  parsed: Record<string, unknown>,
+  seed: number
+): {
+  pairs?: GeneratedMatchPair[];
+  questions?: GeneratedQuizQuestion[];
+  scenarios?: GeneratedScenarioItem[];
+} | null {
+  if (
+    gameType === "gurmukhi" ||
+    gameType === "concepts" ||
+    gameType === "raag-pehar" ||
+    gameType === "pankti-decoder" ||
+    gameType === "gurbani-synthesis"
+  ) {
+    if (!Array.isArray(parsed.pairs)) return null;
+    const seen = new Set<string>();
+    const valid = parsed.pairs
+      .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === "object"))
+      .map((p, idx): GeneratedMatchPair | null => {
+        if (gameType === "gurmukhi") {
+          const gurmukhi = String(p.gurmukhi || p.leftPrimary || "").trim();
+          const sound = String(p.sound || p.rightPrimary || "").trim();
+          const name = String(p.name || p.leftSecondary || sound).trim();
+          const example = String(p.example || p.rightSecondary || "").trim();
+          if (!gurmukhi || !sound || seen.has(gurmukhi)) return null;
+          seen.add(gurmukhi);
+          return {
+            id: `ai-g-${seed}-${idx}`,
+            leftPrimary: gurmukhi,
+            leftSecondary: name,
+            rightPrimary: sound,
+            rightSecondary: example || `Sound: ${sound}`,
+            gurmukhi,
+            sound,
+            name,
+            example: example || `Sound: ${sound}`,
+          };
+        }
+
+        if (gameType === "concepts") {
+          const term = String(p.term || p.leftPrimary || "").trim();
+          const gurmukhi = String(p.gurmukhi || p.leftSecondary || "").trim();
+          const meaning = String(p.meaning || p.rightPrimary || "").trim();
+          if (!term || !meaning || seen.has(term.toLowerCase())) return null;
+          seen.add(term.toLowerCase());
+          return {
+            id: `ai-c-${seed}-${idx}`,
+            leftPrimary: term,
+            leftSecondary: gurmukhi || undefined,
+            rightPrimary: meaning,
+            term,
+            gurmukhi: gurmukhi || term,
+            meaning,
+          };
+        }
+
+        const leftPrimary = String(p.leftPrimary || "").trim();
+        const leftSecondary = String(p.leftSecondary || "").trim() || undefined;
+        const rightPrimary = String(p.rightPrimary || "").trim();
+        const rightSecondary = String(p.rightSecondary || "").trim() || undefined;
+        const insight = String(p.insight || "").trim() || undefined;
+        if (!leftPrimary || !rightPrimary || seen.has(leftPrimary.toLowerCase())) {
+          return null;
+        }
+        seen.add(leftPrimary.toLowerCase());
+        return {
+          id: `ai-m-${seed}-${idx}`,
+          leftPrimary,
+          leftSecondary,
+          rightPrimary,
+          rightSecondary,
+          insight,
+        };
+      })
+      .filter((x): x is GeneratedMatchPair => x !== null)
+      .slice(0, gameType === "gurmukhi" ? 8 : 6);
+
+    if (valid.length >= 5) {
+      return { pairs: valid };
+    }
+    return null;
+  }
+
+  if (gameType === "gurmat-action" || gameType === "history-crossroads") {
+    if (!Array.isArray(parsed.scenarios)) return null;
+    const valid = parsed.scenarios
+      .filter((s): s is Record<string, unknown> => Boolean(s && typeof s === "object"))
+      .map((s, idx): GeneratedScenarioItem | null => {
+        const title = String(s.title || "").trim();
+        const scenario = String(s.scenario || "").trim();
+        const contextTag = String(s.contextTag || "Gurmat Reflection").trim();
+        const rawOptions = Array.isArray(s.options) ? s.options : [];
+        const options = rawOptions
+          .filter((o): o is Record<string, unknown> => Boolean(o && typeof o === "object"))
+          .map((o) => {
+            const label = String(o.label || "").trim();
+            const outcome = String(o.outcome || "").trim();
+            const rawAlign = String(o.alignment || "reflective").trim();
+            const alignment: "gurmat-aligned" | "reflective" | "cautionary" =
+              rawAlign === "gurmat-aligned" ||
+              rawAlign === "reflective" ||
+              rawAlign === "cautionary"
+                ? rawAlign
+                : "reflective";
+            return label && outcome ? { label, outcome, alignment } : null;
+          })
+          .filter(
+            (o): o is { label: string; outcome: string; alignment: "gurmat-aligned" | "reflective" | "cautionary" } =>
+              o !== null
+          )
+          .slice(0, 4);
+
+        const rawPankti =
+          s.panktiReflection && typeof s.panktiReflection === "object"
+            ? (s.panktiReflection as Record<string, unknown>)
+            : null;
+        const gurmukhi = String(rawPankti?.gurmukhi || "").trim();
+        const transliteration = String(rawPankti?.transliteration || "").trim();
+        const translation = String(rawPankti?.translation || "").trim();
+        const reflection = String(rawPankti?.reflection || "").trim();
+
+        if (!title || !scenario || options.length < 2 || !translation) {
+          return null;
+        }
+        return {
+          id: `ai-s-${seed}-${idx}`,
+          contextTag,
+          title,
+          scenario,
+          options,
+          panktiReflection: {
+            gurmukhi: gurmukhi || "ਸਚਹੁ ਓਰੈ ਸਭੁ ਕੋ ਉਪਰਿ ਸਚੁ ਆਚਾਰੁ ॥",
+            transliteration:
+              transliteration || "Sachahu orai sabhu ko upari sachu aachaar ||",
+            translation,
+            reflection: reflection || translation,
+          },
+        };
+      })
+      .filter((x): x is GeneratedScenarioItem => x !== null)
+      .slice(0, 3);
+
+    if (valid.length >= 2) {
+      return { scenarios: valid };
+    }
+    return null;
+  }
+
+  // Quiz & Sprint games
+  if (!Array.isArray(parsed.questions)) return null;
+  const maxCount = gameType === "chardi-kala-sprint" ? 3 : 6;
+  const valid = parsed.questions
+    .filter((q): q is Record<string, unknown> => Boolean(q && typeof q === "object"))
+    .map((q, idx): GeneratedQuizQuestion | null => {
+      const question = String(q.question || "").trim();
+      const explanation = String(q.explanation || "").trim();
+      const rawOpts = Array.isArray(q.options)
+        ? q.options.map((o) => String(o || "").trim()).filter(Boolean)
+        : [];
+      const correctIndex = Number(q.correctIndex);
+      if (
+        !question ||
+        !explanation ||
+        rawOpts.length < 4 ||
+        !Number.isInteger(correctIndex) ||
+        correctIndex < 0 ||
+        correctIndex > 3
+      ) {
+        return null;
+      }
+      return {
+        id: `ai-q-${seed}-${idx}`,
+        categoryTag: q.categoryTag ? String(q.categoryTag).trim() : undefined,
+        question,
+        options: [rawOpts[0], rawOpts[1], rawOpts[2], rawOpts[3]],
+        correctIndex,
+        explanation,
+        pankti: q.pankti ? String(q.pankti).trim() : undefined,
+      };
+    })
+    .filter((x): x is GeneratedQuizQuestion => x !== null)
+    .slice(0, maxCount);
+
+  if (valid.length >= (gameType === "chardi-kala-sprint" ? 3 : 4)) {
+    return { questions: valid };
+  }
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -368,204 +476,98 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as GenerateQuizRequest;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    body = {};
   }
 
   const ageGroup: LearnerAgeGroup =
-    body.ageGroup && body.ageGroup in AGE_DESCRIPTIONS
+    body.ageGroup && VALID_AGES.includes(body.ageGroup)
       ? body.ageGroup
-      : "youth";
-  const level: LearnerLevel =
-    body.level && body.level in LEVEL_DESCRIPTIONS
-      ? body.level
-      : "beginner";
-  const mode: GameMode =
-    body.mode === "gurmukhi" || body.mode === "concepts" || body.mode === "history"
-      ? body.mode
+      : "young-adults";
+  const knowledgeLevel: LearnerKnowledgeLevel = normalizeKnowledgeLevel(
+    body.knowledgeLevel ?? body.level
+  );
+  const requestedType = body.gameType ?? body.mode;
+  const gameType: GameType =
+    requestedType && VALID_GAME_TYPES.includes(requestedType)
+      ? requestedType
       : "history";
-  const seed = typeof body.seed === "number" ? body.seed : Date.now();
+  const seed = Number.isFinite(Number(body.seed))
+    ? Number(body.seed)
+    : Date.now();
 
-  const apiKey = (
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-    ""
-  ).trim();
+  const headers = {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+  };
 
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!apiKey) {
-    return NextResponse.json({
-      ok: true,
-      source: "fallback",
-      mode,
-      ageGroup,
-      level,
-      ...buildFallback(mode, level, seed),
-    });
-  }
-
-  const audienceSpec = `${AGE_DESCRIPTIONS[ageGroup]}\n${LEVEL_DESCRIPTIONS[level]}`;
-
-  let prompt = "";
-  if (mode === "history") {
-    prompt = [
-      "You are a respectful, historically accurate Sikhi educator.",
-      `Generate 6 fresh, engaging, untimed Sikh History & Heritage multiple-choice questions tailored to:\n${audienceSpec}`,
-      `Variation seed: ${seed}. Avoid repeating clichés; ensure strict historical accuracy grounded in Sikh tradition and Sri Guru Granth Sahib Ji.`,
-      "Return ONLY valid JSON matching this exact shape:",
-      `{ "questions": [ { "id": "q-1", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "1-2 clear, warm educational sentences." } ] }`,
-      "Ensure every options array has exactly 4 distinct strings and correctIndex is 0, 1, 2, or 3.",
-    ].join("\n\n");
-  } else if (mode === "gurmukhi") {
-    prompt = [
-      "You are a gentle Gurmukhi teacher.",
-      `Generate 8 distinct Gurmukhi letter-to-phonetic-sound pairs tailored to:\n${audienceSpec}`,
-      `Variation seed: ${seed}. Use authentic Unicode Gurmukhi characters.`,
-      "Return ONLY valid JSON matching this exact shape:",
-      `{ "pairs": [ { "id": "g-1", "gurmukhi": "ੳ", "sound": "U / O (Oora)", "name": "Oora", "example": "Short example word or tip" } ] }`,
-      "Ensure all 8 gurmukhi characters and sounds are unique.",
-    ].join("\n\n");
-  } else {
-    prompt = [
-      "You are a respectful Sikhi philosophy educator.",
-      `Generate 7 distinct Sikhi concept-to-meaning pairs tailored to:\n${audienceSpec}`,
-      `Variation seed: ${seed}. Include authentic Unicode Gurmukhi for each term and a clear, concise 1-sentence plain-English meaning.`,
-      "Return ONLY valid JSON matching this exact shape:",
-      `{ "pairs": [ { "id": "c-1", "term": "Seva", "gurmukhi": "ਸੇਵਾ", "meaning": "Selfless service offered to humanity without expecting reward." } ] }`,
-      "Ensure all 7 terms are unique.",
-    ].join("\n\n");
+    return NextResponse.json(
+      {
+        ok: true,
+        source: "fallback",
+        ageGroup,
+        knowledgeLevel,
+        gameType,
+        ...buildFallbackPayload(gameType, ageGroup, knowledgeLevel, seed),
+      },
+      { headers }
+    );
   }
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-        responseMimeType: "application/json",
-      },
-    });
+    const prompt = buildGameTypePrompt(gameType, ageGroup, knowledgeLevel, seed);
 
-    const rawText = sanitizeJsonText(response.text || "");
-    const parsed = JSON.parse(rawText) as Record<string, unknown>;
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.65,
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Gemini game generation timeout")), 9500)
+      ),
+    ]);
 
-    if (mode === "history" && Array.isArray(parsed.questions)) {
-      const valid = parsed.questions
-        .filter((q): q is Record<string, unknown> => Boolean(q && typeof q === "object"))
-        .map((q, idx): GeneratedQuizQuestion | null => {
-          const opts = Array.isArray(q.options)
-            ? q.options.map((o) => String(o || "").trim()).filter(Boolean)
-            : [];
-          const ci = Number(q.correctIndex);
-          const question = String(q.question || "").trim();
-          const explanation = String(q.explanation || "").trim();
-          if (
-            !question ||
-            !explanation ||
-            opts.length !== 4 ||
-            !Number.isInteger(ci) ||
-            ci < 0 ||
-            ci > 3
-          ) {
-            return null;
-          }
-          return {
-            id: `ai-q-${seed}-${idx}`,
-            question,
-            options: [opts[0], opts[1], opts[2], opts[3]],
-            correctIndex: ci,
-            explanation,
-          };
-        })
-        .filter((q): q is GeneratedQuizQuestion => q !== null)
-        .slice(0, 6);
+    const rawText = (response.text || "").trim();
+    const cleaned = rawText
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
 
-      if (valid.length >= 4) {
-        return NextResponse.json({
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    const shaped = validateAndShapeResponse(gameType, parsed, seed);
+
+    if (shaped) {
+      return NextResponse.json(
+        {
           ok: true,
           source: "gemini",
-          mode,
           ageGroup,
-          level,
-          questions: valid,
-        });
-      }
+          knowledgeLevel,
+          gameType,
+          ...shaped,
+        },
+        { headers }
+      );
     }
-
-    if (mode === "gurmukhi" && Array.isArray(parsed.pairs)) {
-      const seen = new Set<string>();
-      const valid = parsed.pairs
-        .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === "object"))
-        .map((p, idx): GeneratedGurmukhiPair | null => {
-          const gurmukhi = String(p.gurmukhi || "").trim();
-          const sound = String(p.sound || "").trim();
-          const name = String(p.name || sound).trim();
-          const example = String(p.example || "").trim();
-          if (!gurmukhi || !sound || seen.has(gurmukhi)) return null;
-          seen.add(gurmukhi);
-          return {
-            id: `ai-g-${seed}-${idx}`,
-            gurmukhi,
-            sound,
-            name,
-            example: example || `Sound: ${sound}`,
-          };
-        })
-        .filter((p): p is GeneratedGurmukhiPair => p !== null)
-        .slice(0, 8);
-
-      if (valid.length >= 6) {
-        return NextResponse.json({
-          ok: true,
-          source: "gemini",
-          mode,
-          ageGroup,
-          level,
-          pairs: valid,
-        });
-      }
-    }
-
-    if (mode === "concepts" && Array.isArray(parsed.pairs)) {
-      const seen = new Set<string>();
-      const valid = parsed.pairs
-        .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === "object"))
-        .map((p, idx): GeneratedConceptPair | null => {
-          const term = String(p.term || "").trim();
-          const gurmukhi = String(p.gurmukhi || "").trim();
-          const meaning = String(p.meaning || "").trim();
-          if (!term || !meaning || seen.has(term.toLowerCase())) return null;
-          seen.add(term.toLowerCase());
-          return {
-            id: `ai-c-${seed}-${idx}`,
-            term,
-            gurmukhi: gurmukhi || term,
-            meaning,
-          };
-        })
-        .filter((p): p is GeneratedConceptPair => p !== null)
-        .slice(0, 7);
-
-      if (valid.length >= 5) {
-        return NextResponse.json({
-          ok: true,
-          source: "gemini",
-          mode,
-          ageGroup,
-          level,
-          pairs: valid,
-        });
-      }
-    }
-  } catch {
-    // Graceful fallback to curated level-matched set
+  } catch (err) {
+    console.warn("[/api/generate-quiz] Falling back to tier-matched local bank:", err);
   }
 
-  return NextResponse.json({
-    ok: true,
-    source: "fallback",
-    mode,
-    ageGroup,
-    level,
-    ...buildFallback(mode, level, seed),
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      source: "fallback",
+      ageGroup,
+      knowledgeLevel,
+      gameType,
+      ...buildFallbackPayload(gameType, ageGroup, knowledgeLevel, seed),
+    },
+    { headers }
+  );
 }

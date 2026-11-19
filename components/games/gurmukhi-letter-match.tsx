@@ -65,6 +65,7 @@ export function GurmukhiLetterMatch({
   const loadRound = useCallback(
     async (seedValue: number, signal?: AbortSignal) => {
       setLoading(true);
+      setPairs([]);
       setSelectedLetterId(null);
       setSelectedSoundId(null);
       setMatchedIds([]);
@@ -78,10 +79,11 @@ export function GurmukhiLetterMatch({
         const res = await fetch("/api/generate-quiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({
-            mode: "gurmukhi",
+            gameType: "gurmukhi",
             ageGroup: learnerProfile.ageGroup,
-            level: learnerProfile.level,
+            knowledgeLevel: learnerProfile.knowledgeLevel,
             seed: seedValue,
           }),
           signal,
@@ -107,7 +109,7 @@ export function GurmukhiLetterMatch({
         setLoading(false);
       }
     },
-    [learnerProfile.ageGroup, learnerProfile.level]
+    [learnerProfile.ageGroup, learnerProfile.knowledgeLevel]
   );
 
   useEffect(() => {

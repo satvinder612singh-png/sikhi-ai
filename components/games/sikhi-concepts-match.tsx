@@ -109,6 +109,7 @@ export function SikhiConceptsMatch({
   const loadRound = useCallback(
     async (seedValue: number, signal?: AbortSignal) => {
       setLoading(true);
+      setConcepts([]);
       setSelectedTermId(null);
       setSelectedMeaningId(null);
       setMatchedIds([]);
@@ -122,10 +123,11 @@ export function SikhiConceptsMatch({
         const res = await fetch("/api/generate-quiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({
-            mode: "concepts",
+            gameType: "concepts",
             ageGroup: learnerProfile.ageGroup,
-            level: learnerProfile.level,
+            knowledgeLevel: learnerProfile.knowledgeLevel,
             seed: seedValue,
           }),
           signal,
@@ -151,7 +153,7 @@ export function SikhiConceptsMatch({
         setLoading(false);
       }
     },
-    [learnerProfile.ageGroup, learnerProfile.level]
+    [learnerProfile.ageGroup, learnerProfile.knowledgeLevel]
   );
 
   useEffect(() => {

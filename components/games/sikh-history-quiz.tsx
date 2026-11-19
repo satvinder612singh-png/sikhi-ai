@@ -3,114 +3,29 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  type GameType,
   type LearnerProfile,
   formatLearnerProfileBadge,
 } from "./learner-profile";
 import { CelebrationBurst } from "./celebration-burst";
-
-interface QuizQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-}
-
-const LOCAL_FALLBACK_QUESTIONS: QuizQuestion[] = [
-  {
-    id: "q-guru-nanak",
-    question:
-      "Who founded Sikhi and established the egalitarian community of Kartarpur Sahib?",
-    options: [
-      "Guru Nanak Dev Ji",
-      "Guru Angad Dev Ji",
-      "Guru Ram Das Ji",
-      "Guru Hargobind Sahib Ji",
-    ],
-    correctIndex: 0,
-    explanation:
-      "Guru Nanak Dev Ji (1469–1539), the First Guru, founded Kartarpur Sahib where seekers lived together practicing Kirat Karni, Naam Japna, and Vand Chakna.",
-  },
-  {
-    id: "q-gurmukhi",
-    question:
-      "Which Guru standardized and popularized the Gurmukhi script so Gurbani could be read by all people?",
-    options: [
-      "Guru Amar Das Ji",
-      "Guru Angad Dev Ji",
-      "Guru Har Rai Ji",
-      "Guru Tegh Bahadur Ji",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Guru Angad Dev Ji (Second Guru) systematized Gurmukhi and opened learning centers so spiritual wisdom was accessible regardless of caste or background.",
-  },
-  {
-    id: "q-langar-khivi",
-    question:
-      "Who is lovingly honored in Sri Guru Granth Sahib Ji for nurturing and expanding Guru Ka Langar with warmth and abundance?",
-    options: [
-      "Bebe Nanaki Ji",
-      "Mata Khivi Ji",
-      "Mai Bhago Ji",
-      "Mata Sundari Ji",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Mata Khivi Ji, spouse of Guru Angad Dev Ji, is praised in the Vaar of Satta and Balwand (Ang 967) for serving kheer and nourishing the Sangat in Langar.",
-  },
-  {
-    id: "q-pangat",
-    question:
-      "What principle did Guru Amar Das Ji emphasize with 'Pehle Pangat, Pache Sangat'?",
-    options: [
-      "Everyone sits together as equals in Langar before meeting the Guru",
-      "Only scholars may study scripture",
-      "Silent fasting before sunrise",
-      "Traveling to distant pilgrimage sites",
-    ],
-    correctIndex: 0,
-    explanation:
-      "Guru Amar Das Ji required rulers and commoners alike to sit side by side on the floor in Pangat (Langar) to dissolve caste and status hierarchy.",
-  },
-  {
-    id: "q-miri-piri",
-    question:
-      "Which Guru introduced the twin swords of Miri and Piri and established Sri Akal Takht Sahib?",
-    options: [
-      "Guru Har Krishan Ji",
-      "Guru Hargobind Sahib Ji",
-      "Guru Amar Das Ji",
-      "Guru Arjan Dev Ji",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Guru Hargobind Sahib Ji (Sixth Guru) wore Miri (temporal justice) and Piri (spiritual sovereignty) and built Sri Akal Takht Sahib facing Sri Harmandir Sahib.",
-  },
-  {
-    id: "q-eternal-guru",
-    question:
-      "In 1708 at Hazur Sahib (Nanded), whom did Guru Gobind Singh Ji bestow eternal Guruship upon?",
-    options: [
-      "A hereditary dynasty",
-      "Sri Guru Granth Sahib Ji",
-      "A council of monarchs",
-      "A single regional shrine",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Guru Gobind Singh Ji enshrined Sri Guru Granth Sahib Ji as the Eternal Living Guru of the Sikhs, uniting the Panth under timeless Divine Word (Shabad Guru).",
-  },
-];
+import {
+  buildFallbackPayload,
+  type GeneratedQuizQuestion,
+} from "@/lib/games-fallback-bank";
 
 export function SikhHistoryQuiz({
+  gameType = "history",
+  title = "Sikh History & Heritage Quiz",
   learnerProfile,
 }: {
+  gameType?: Extract<
+    GameType,
+    "history" | "chardi-kala-sprint" | "puratan-analysis"
+  >;
+  title?: string;
   learnerProfile: LearnerProfile;
 }) {
-  const [questions, setQuestions] = useState<QuizQuestion[]>(
-    LOCAL_FALLBACK_QUESTIONS
-  );
+  const [questions, setQuestions] = useState<GeneratedQuizQuestion[]>([]);
   const [roundSeed, setRoundSeed] = useState(1);
   const [loading, setLoading] = useState(true);
   const [roundSource, setRoundSource] = useState<"gemini" | "fallback">(
@@ -123,7 +38,9 @@ export function SikhHistoryQuiz({
 
   const loadRound = useCallback(
     async (seedValue: number, signal?: AbortSignal) => {
+      // Clear previous state immediately so stale data is never shown
       setLoading(true);
+      setQuestions([]);
       setCurrentIndex(0);
       setSelectedOption(null);
       setScore(0);
@@ -133,10 +50,11 @@ export function SikhHistoryQuiz({
         const res = await fetch("/api/generate-quiz", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({
-            mode: "history",
+            gameType,
             ageGroup: learnerProfile.ageGroup,
-            level: learnerProfile.level,
+            knowledgeLevel: learnerProfile.knowledgeLevel,
             seed: seedValue,
           }),
           signal,
@@ -144,24 +62,36 @@ export function SikhHistoryQuiz({
         if (!res.ok) throw new Error("Failed to fetch quiz round");
         const data = (await res.json()) as {
           source?: "gemini" | "fallback";
-          questions?: QuizQuestion[];
+          questions?: GeneratedQuizQuestion[];
         };
-        if (Array.isArray(data.questions) && data.questions.length >= 4) {
+        if (Array.isArray(data.questions) && data.questions.length >= 3) {
           setQuestions(data.questions);
           setRoundSource(data.source === "gemini" ? "gemini" : "fallback");
         } else {
-          setQuestions(LOCAL_FALLBACK_QUESTIONS);
+          const fb = buildFallbackPayload(
+            gameType,
+            learnerProfile.ageGroup,
+            learnerProfile.knowledgeLevel,
+            seedValue
+          );
+          setQuestions(fb.questions || []);
           setRoundSource("fallback");
         }
       } catch (err) {
         if ((err as { name?: string })?.name === "AbortError") return;
-        setQuestions(LOCAL_FALLBACK_QUESTIONS);
+        const fb = buildFallbackPayload(
+          gameType,
+          learnerProfile.ageGroup,
+          learnerProfile.knowledgeLevel,
+          seedValue
+        );
+        setQuestions(fb.questions || []);
         setRoundSource("fallback");
       } finally {
         setLoading(false);
       }
     },
-    [learnerProfile.ageGroup, learnerProfile.level]
+    [gameType, learnerProfile.ageGroup, learnerProfile.knowledgeLevel]
   );
 
   useEffect(() => {
@@ -181,11 +111,11 @@ export function SikhHistoryQuiz({
     setFinished(false);
   };
 
-  const currentQuestion = questions[currentIndex] || questions[0];
-  const hasAnswered = selectedOption !== null;
+  const currentQuestion = questions[currentIndex] || null;
+  const hasAnswered = selectedOption !== null && currentQuestion !== null;
   const isCorrect =
     hasAnswered &&
-    currentQuestion &&
+    currentQuestion !== null &&
     selectedOption === currentQuestion.correctIndex;
 
   const progressRatio = finished
@@ -230,8 +160,7 @@ export function SikhHistoryQuiz({
               style={{ color: "var(--theme-text-muted)" }}
               className="text-sm font-medium"
             >
-              Crafting tailored questions for{" "}
-              {formatLearnerProfileBadge(learnerProfile)}…
+              Crafting {title} for {formatLearnerProfileBadge(learnerProfile)}…
             </p>
           </div>
           <div className="h-8 w-36 rounded-xl bg-current opacity-10 animate-pulse" />
@@ -268,9 +197,9 @@ export function SikhHistoryQuiz({
         <CelebrationBurst active />
         <p
           style={{ color: "var(--accent-text, var(--accent-primary))" }}
-          className="text-xs font-bold uppercase tracking-[0.2em]"
+          className="text-xs font-extrabold uppercase tracking-[0.2em]"
         >
-          Round Complete • {formatLearnerProfileBadge(learnerProfile)}
+          {title} Complete • {formatLearnerProfileBadge(learnerProfile)}
         </p>
         <h2 className="font-serif text-3xl sm:text-4xl font-bold">
           You answered {score} of {questions.length} correctly
@@ -279,8 +208,8 @@ export function SikhHistoryQuiz({
           style={{ color: "var(--theme-text-muted)" }}
           className="text-base sm:text-lg leading-relaxed max-w-lg mx-auto"
         >
-          Every round deepens your understanding of Sikh history and the living
-          wisdom of the Ten Gurus.
+          Every round sharpens discernment and deepens your connection with
+          Gurmat wisdom and Sikh heritage.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <button
@@ -306,6 +235,8 @@ export function SikhHistoryQuiz({
     );
   }
 
+  if (!currentQuestion) return null;
+
   return (
     <div
       style={{
@@ -316,21 +247,25 @@ export function SikhHistoryQuiz({
       className="sanctuary-glass mx-auto max-w-3xl rounded-[var(--radius-card)] border p-6 sm:p-8 space-y-6"
     >
       {/* Header + Progress Bar */}
-      <div className="space-y-3 border-b pb-4" style={{ borderColor: "var(--border-subtle)" }}>
+      <div
+        className="space-y-3 border-b pb-4"
+        style={{ borderColor: "var(--border-subtle)" }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p
               style={{ color: "var(--accent-text, var(--accent-primary))" }}
-              className="text-xs font-bold uppercase tracking-[0.18em]"
+              className="text-xs font-extrabold uppercase tracking-[0.18em]"
             >
               Question {currentIndex + 1} of {questions.length} •{" "}
-              {roundSource === "gemini" ? "AI-Tailored Round" : "Curated Round"}
+              {roundSource === "gemini" ? "AI-Tailored" : "Curated"} •{" "}
+              {formatLearnerProfileBadge(learnerProfile)}
             </p>
             <p
               style={{ color: "var(--theme-text-muted)" }}
               className="text-xs sm:text-sm font-medium"
             >
-              Score: {score} / {questions.length}
+              {title} • Score: {score} / {questions.length}
             </p>
           </div>
 
@@ -347,13 +282,12 @@ export function SikhHistoryQuiz({
           </button>
         </div>
 
-        {/* Animated GPU Progress Bar */}
         <div
           role="progressbar"
           aria-valuenow={Math.round(progressRatio * 100)}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Quiz progress"
+          aria-label={`${title} progress`}
           style={{ backgroundColor: "var(--theme-card-darker)" }}
           className="h-2 w-full rounded-full overflow-hidden"
         >
@@ -377,9 +311,35 @@ export function SikhHistoryQuiz({
           transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-5"
         >
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold leading-snug">
-            {currentQuestion.question}
-          </h2>
+          <div className="space-y-2">
+            {currentQuestion.categoryTag && (
+              <span
+                style={{
+                  backgroundColor: "var(--theme-card-darker)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--accent-text, var(--accent-primary))",
+                }}
+                className="inline-block rounded-full border px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em]"
+              >
+                {currentQuestion.categoryTag}
+              </span>
+            )}
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold leading-snug">
+              {currentQuestion.question}
+            </h2>
+            {currentQuestion.pankti && (
+              <p
+                lang="pa"
+                style={{
+                  backgroundColor: "var(--theme-card-darker)",
+                  borderColor: "var(--border-subtle)",
+                }}
+                className="font-gurmukhi rounded-xl border border-l-4 border-l-[#C59B27] px-4 py-2.5 text-lg font-bold"
+              >
+                {currentQuestion.pankti}
+              </p>
+            )}
+          </div>
 
           <div className="space-y-3" role="group" aria-label="Answer choices">
             {currentQuestion.options.map((opt, idx) => {
@@ -448,7 +408,7 @@ export function SikhHistoryQuiz({
         </motion.div>
       </AnimatePresence>
 
-      {/* Explanation & Next Button (stable height prevents CLS) */}
+      {/* Explanation & Next Button */}
       <div className="min-h-[7.5rem] flex flex-col justify-between gap-4 pt-1">
         <div
           role="status"
@@ -475,9 +435,7 @@ export function SikhHistoryQuiz({
           {hasAnswered && (
             <div className="space-y-1.5">
               <p className="text-sm font-extrabold">
-                {isCorrect
-                  ? "✓ Well done!"
-                  : "Good effort — here is the historical context:"}
+                {isCorrect ? "✓ Well done!" : "Insight & Commentary:"}
               </p>
               <p className="text-base leading-relaxed">
                 {currentQuestion.explanation}

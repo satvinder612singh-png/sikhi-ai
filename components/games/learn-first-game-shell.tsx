@@ -7,6 +7,7 @@ export interface LearnFirstGameShellProps {
   title: string;
   subtitle: string;
   rules: string[];
+  profileBadge?: string;
   onBackToGames: () => void;
   children: React.ReactNode;
 }
@@ -15,6 +16,7 @@ export function LearnFirstGameShell({
   title,
   subtitle,
   rules,
+  profileBadge,
   onBackToGames,
   children,
 }: LearnFirstGameShellProps) {
@@ -40,22 +42,37 @@ export function LearnFirstGameShell({
             <span>Back to Games</span>
           </button>
 
-          {started && (
-            <button
-              type="button"
-              onClick={() => setShowRulesDrawer((v) => !v)}
-              aria-expanded={showRulesDrawer}
-              aria-controls="inline-how-to-play"
-              style={{
-                backgroundColor: "var(--bg-surface)",
-                borderColor: "var(--border-subtle)",
-                color: "var(--text-primary)",
-              }}
-              className="sanctuary-interactive inline-flex items-center gap-2 rounded-[var(--radius-control)] border px-4 py-2 text-sm font-semibold hover:border-[#C59B27]"
-            >
-              <span>{showRulesDrawer ? "Hide Rules" : "How to Play"}</span>
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {profileBadge && (
+              <span
+                style={{
+                  backgroundColor: "var(--theme-card-darker)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--accent-text, var(--accent-primary))",
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-extrabold tracking-wide"
+              >
+                <span aria-hidden="true">✦</span>
+                <span>{profileBadge}</span>
+              </span>
+            )}
+            {started && (
+              <button
+                type="button"
+                onClick={() => setShowRulesDrawer((v) => !v)}
+                aria-expanded={showRulesDrawer}
+                aria-controls="inline-how-to-play"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className="sanctuary-interactive inline-flex items-center gap-2 rounded-[var(--radius-control)] border px-4 py-2 text-sm font-semibold hover:border-[#C59B27]"
+              >
+                <span>{showRulesDrawer ? "Hide Rules" : "How to Play"}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
