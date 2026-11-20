@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
     const gurmukhiCalligraphy = body.gurmukhi_calligraphy
       ? String(body.gurmukhi_calligraphy).trim().slice(0, 300)
       : null;
-    const imageUrl = body.image_url ? String(body.image_url).trim() : null;
+    const imageUrl =
+      typeof body.image_url === "string" ? body.image_url.trim() : "";
 
     if (!title || !description) {
       return NextResponse.json(

@@ -1021,10 +1021,19 @@ function SangatHubContent() {
       ? "Sangat Contributor"
       : user?.email?.split("@")[0] || profile.displayName || "Sangat Member";
     const authorSlug = slugifyName(authorDisplay);
-    const cleanImage = shareImageUrl?.trim() || null;
+    const cleanImage = shareImageUrl?.trim() || "";
 
-    // Direct SikhInterest Artwork Upload Flow -> POST /api/sikhinterest
+    // Direct SikhInterest Artwork Upload Flow -> POST /api/sikhinterest (public.sikhinterest_posts)
     if (shareTab === "write" && writeKind === "pin") {
+      if (!user) {
+        setIsShareOpen(false);
+        setAuthGateActionLabel("Upload Art to SikhInterest");
+        return;
+      }
+      if (shareUploadStatus === "uploading") {
+        setShareError("Please wait for your artwork image to finish uploading.");
+        return;
+      }
       if (!writeTitle.trim() || !writeBody.trim()) {
         setShareError("Please add an artwork title and description.");
         return;
@@ -1073,7 +1082,7 @@ function SangatHubContent() {
           category: "Sikh Art & Miniature",
           gurmukhiCalligraphy: savedPost.gurmukhi_calligraphy || "ੴ",
           visualPalette: "darbar-gold",
-          imageDataUrl: savedPost.image_url || cleanImage,
+          imageDataUrl: savedPost.image_url || cleanImage || null,
           focalPoint: shareFocalPoint,
           availableToCoordinate: false,
           artistContactNote: "",
@@ -1081,17 +1090,6 @@ function SangatHubContent() {
           createdAt: "Just now",
           isUserCreated: true,
         };
-        if (created.imageDataUrl) {
-          saveAndSyncFrame(`sangat-feed-visual-${created.id}`, {
-            src: created.imageDataUrl,
-            orientation: shareOrientation,
-            fitMode: shareFitMode,
-            posX: sharePosX,
-            posY: sharePosY,
-            zoom: shareZoom,
-            hidden: false,
-          });
-        }
         setPins((prev) => [created, ...prev]);
         setHomeBubble("sikhinterest");
         setFeedTab("visuals");
@@ -1107,75 +1105,6 @@ function SangatHubContent() {
         );
         return;
       }
-    }
-
-    const requiresApproval = !isStealthAdmin && secCfg.requireAdminApproval !== false;
-
-    if (requiresApproval) {
-      if (shareTab === "curate") {
-        let normalizedUrl = "";
-        try {
-          const parsed = new URL(curateUrl.trim());
-          if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("bad");
-          normalizedUrl = parsed.toString();
-        } catch {
-          setShareError("Please paste a valid article link (https://…).");
-          return;
-        }
-        if (!curateTitle.trim() || !curateSummary.trim()) {
-          setShareError("Title and a short summary are required.");
-          return;
-        }
-        const ok = await pushSiteSync({
-          action: "submit_for_approval",
-          submission: {
-            type: "post",
-            title: curateTitle.trim(),
-            subtitle: isIdentityHidden
-              ? getDomain(normalizedUrl)
-              : curatePublisher.trim() || getDomain(normalizedUrl),
-            description: curateSummary.trim(),
-            url: normalizedUrl,
-            image: cleanImage || undefined,
-            submittedBy: authorDisplay,
-          },
-        });
-        if (!ok) {
-          setShareError("Community submissions are temporarily paused or unavailable.");
-          return;
-        }
-        setShareToast("✓ Submitted for Admin approval! It will appear once reviewed.");
-        window.setTimeout(() => setShareToast(null), 3500);
-        resetShareForm();
-        setIsShareOpen(false);
-        return;
-      }
-
-      if (!writeTitle.trim() || !writeBody.trim()) {
-        setShareError("Title and body are required.");
-        return;
-      }
-      const ok = await pushSiteSync({
-        action: "submit_for_approval",
-        submission: {
-          type: "post",
-          title: writeTitle.trim(),
-          subtitle: writeSubtitle.trim() || undefined,
-          description: writeBody.trim(),
-          url: "https://learnsikhi.com",
-          image: cleanImage || undefined,
-          submittedBy: authorDisplay,
-        },
-      });
-      if (!ok) {
-        setShareError("Community submissions are temporarily paused or unavailable.");
-        return;
-      }
-      setShareToast("✓ Submitted for Admin approval! It will appear once reviewed.");
-      window.setTimeout(() => setShareToast(null), 3500);
-      resetShareForm();
-      setIsShareOpen(false);
-      return;
     }
 
     if (shareTab === "curate") {
@@ -1201,7 +1130,7 @@ function SangatHubContent() {
         category: curateCategory,
         curatedBy: authorDisplay,
         createdAt: "Just now",
-        imageUrl: cleanImage,
+        imageUrl: cleanImage || null,
         focalPoint: shareFocalPoint,
         isUserCreated: true,
       };
@@ -1212,24 +1141,6 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
-      if (cleanImage) {
-        saveAndSyncFrame(`sangat-feed-link-${created.id}`, {
-          src: cleanImage,
-          orientation: shareOrientation,
-          fitMode: shareFitMode,
-          posX: sharePosX,
-          posY: sharePosY,
-          zoom: shareZoom,
-          hidden: false,
-        });
-      }
-      pushSiteSync({
-        customPosts: {
-          links: userLinks,
-          blogs: blogs.filter((b) => b.isUserCreated),
-          pins: pins.filter((p) => p.isUserCreated),
-        },
-      });
       setFeedTab(curateCategory);
       setShareToast(`Published "${created.title}" with a link to its original source.`);
     } else if (writeKind === "essay") {
@@ -1258,7 +1169,7 @@ function SangatHubContent() {
         paragraphs,
         likesCount: 0,
         comments: [],
-        imageUrl: cleanImage,
+        imageUrl: cleanImage || null,
         focalPoint: shareFocalPoint,
         isUserCreated: true,
       };
@@ -1269,80 +1180,8 @@ function SangatHubContent() {
       } catch {
         // Ignore quota errors
       }
-      if (cleanImage) {
-        saveAndSyncFrame(`sangat-feed-essay-${created.id}`, {
-          src: cleanImage,
-          orientation: shareOrientation,
-          fitMode: shareFitMode,
-          posX: sharePosX,
-          posY: sharePosY,
-          zoom: shareZoom,
-          hidden: false,
-        });
-      }
-      pushSiteSync({
-        customPosts: {
-          links: curatedLinks.filter((l) => l.isUserCreated),
-          blogs: next.filter((b) => b.isUserCreated),
-          pins: pins.filter((p) => p.isUserCreated),
-        },
-      });
       setFeedTab("essays");
       setShareToast(`Published your SikhStack essay "${created.title}".`);
-    } else {
-      if (!writeTitle.trim() || !writeBody.trim()) {
-        setShareError("A pin needs a title and description.");
-        return;
-      }
-      const created: SangatVisualPin = {
-        id: `pin-${Date.now()}`,
-        authorName: authorDisplay,
-        authorHandle: authorSlug,
-        authorRole: profile.roleBadge,
-        authorBio: profile.bio,
-        authorInterests: profile.interests,
-        authorAvatarPreset: profile.avatarPreset,
-        authorCustomAvatar: profile.customAvatarDataUrl,
-        title: writeTitle.trim(),
-        description: writeBody.trim(),
-        category: "Gurmukhi Calligraphy",
-        gurmukhiCalligraphy: writeGurmukhi.trim() || "à©´",
-        visualPalette: "darbar-gold",
-        imageDataUrl: cleanImage,
-        focalPoint: shareFocalPoint,
-        availableToCoordinate: false,
-        artistContactNote: "",
-        savesCount: 0,
-        createdAt: "Just now",
-        isUserCreated: true,
-      };
-      const next = [created, ...pins];
-      setPins(next);
-      try {
-        window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(next));
-      } catch {
-        // Ignore quota errors
-      }
-      if (cleanImage) {
-        saveAndSyncFrame(`sangat-feed-visual-${created.id}`, {
-          src: cleanImage,
-          orientation: shareOrientation,
-          fitMode: shareFitMode,
-          posX: sharePosX,
-          posY: sharePosY,
-          zoom: shareZoom,
-          hidden: false,
-        });
-      }
-      pushSiteSync({
-        customPosts: {
-          links: curatedLinks.filter((l) => l.isUserCreated),
-          blogs: blogs.filter((b) => b.isUserCreated),
-          pins: next.filter((p) => p.isUserCreated),
-        },
-      });
-      setFeedTab("visuals");
-      setShareToast(`Published your SikhInterest pin "${created.title}".`);
     }
 
     window.setTimeout(() => setShareToast(null), 3500);
@@ -1846,43 +1685,96 @@ function SangatHubContent() {
     window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(nextPins));
   };
 
-  const handleCreatePin = (e: React.FormEvent) => {
+  const handleCreatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPinTitle.trim() || !newPinDesc.trim()) return;
-    const created: SangatVisualPin = {
-      id: `pin-${Date.now()}`,
-      authorName: profile.displayName,
-      authorHandle: profile.handle,
-      authorRole: profile.roleBadge,
-      authorBio: profile.bio,
-      authorInterests: profile.interests,
-      authorAvatarPreset: profile.avatarPreset,
-      authorCustomAvatar: profile.customAvatarDataUrl,
-      title: newPinTitle.trim(),
-      description: newPinDesc.trim(),
-      category: newPinCat,
-      gurmukhiCalligraphy:
-        newPinCalligraphy.trim() || "à©´ à¨¸à¨¤à¨¿à¨—à©à¨° à¨ªà©à¨°à¨¸à¨¾à¨¦à¨¿ à¥¥",
-      visualPalette: newPinPalette,
-      imageDataUrl: newPinImageDataUrl,
-      availableToCoordinate: newPinAvailable,
-      artistContactNote:
-        newPinContactNote.trim() ||
-        `Coordinate directly with @${profile.handle} on SikhInterest.`,
-      savesCount: 1,
-      createdAt: "Just now",
-      isUserCreated: true,
-    };
-    const next = [created, ...pins];
-    setPins(next);
-    window.localStorage.setItem(STORAGE_KEYS.PINS, JSON.stringify(next));
-    setNewPinTitle("");
-    setNewPinDesc("");
-    setNewPinCalligraphy("");
-    setNewPinImageDataUrl(null);
-    setNewPinAvailable(false);
-    setNewPinContactNote("");
-    setIsPinComposerOpen(false);
+    if (!user) {
+      setIsPinComposerOpen(false);
+      setAuthGateActionLabel("Upload Art to SikhInterest");
+      return;
+    }
+
+    const authorDisplay =
+      user?.email?.split("@")[0] || profile.displayName || "Sangat Artist";
+    const authorSlug = slugifyName(authorDisplay);
+    const imageUrlString = (newPinImageDataUrl || "").trim();
+
+    try {
+      const res = await fetch("/api/sikhinterest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newPinTitle.trim(),
+          description: newPinDesc.trim(),
+          category: newPinCat,
+          gurmukhi_calligraphy: newPinCalligraphy.trim() || "ੴ ਸਤਿਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+          image_url: imageUrlString,
+          author_name: authorDisplay,
+          author_handle: authorSlug,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.post) {
+        setShareToast(
+          data?.error || "Could not save artwork. Please sign in and try again."
+        );
+        window.setTimeout(() => setShareToast(null), 4000);
+        return;
+      }
+
+      const savedPost = data.post as {
+        id: string;
+        title: string;
+        description: string;
+        category?: string;
+        gurmukhi_calligraphy?: string | null;
+        image_url?: string | null;
+      };
+
+      const created: SangatVisualPin = {
+        id: savedPost.id,
+        authorName: authorDisplay,
+        authorHandle: authorSlug,
+        authorRole: profile.roleBadge,
+        authorBio: profile.bio,
+        authorInterests: profile.interests,
+        authorAvatarPreset: profile.avatarPreset,
+        authorCustomAvatar: profile.customAvatarDataUrl,
+        title: savedPost.title,
+        description: savedPost.description,
+        category: (savedPost.category as PinCategory) || newPinCat,
+        gurmukhiCalligraphy:
+          savedPost.gurmukhi_calligraphy ||
+          newPinCalligraphy.trim() ||
+          "ੴ ਸਤਿਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+        visualPalette: newPinPalette,
+        imageDataUrl: savedPost.image_url || imageUrlString || null,
+        availableToCoordinate: newPinAvailable,
+        artistContactNote:
+          newPinContactNote.trim() ||
+          `Coordinate directly with @${authorSlug} on SikhInterest.`,
+        savesCount: 0,
+        createdAt: "Just now",
+        isUserCreated: true,
+      };
+      setPins((prev) => [created, ...prev]);
+      setHomeBubble("sikhinterest");
+      setFeedTab("visuals");
+      setShareToast(`✓ Published your SikhInterest artwork "${created.title}".`);
+      window.setTimeout(() => setShareToast(null), 3500);
+      setNewPinTitle("");
+      setNewPinDesc("");
+      setNewPinCalligraphy("");
+      setNewPinImageDataUrl(null);
+      setNewPinAvailable(false);
+      setNewPinContactNote("");
+      setIsPinComposerOpen(false);
+    } catch (err) {
+      setShareToast(
+        err instanceof Error ? err.message : "Network error while saving artwork."
+      );
+      window.setTimeout(() => setShareToast(null), 4000);
+    }
   };
 
   // Handlers for Dil Di Baat
@@ -3980,16 +3872,28 @@ function SangatHubContent() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      if (typeof reader.result === "string") {
-                        setNewPinImageDataUrl(reader.result);
+                    try {
+                      const formData = new FormData();
+                      formData.append("file", f);
+                      formData.append("folder", "sikhinterest");
+                      const res = await fetch("/api/upload-image", {
+                        method: "POST",
+                        body: formData,
+                      });
+                      const data = await res.json().catch(() => null);
+                      if (res.ok && data?.url) {
+                        setNewPinImageDataUrl(String(data.url));
+                        return;
                       }
-                    };
-                    reader.readAsDataURL(f);
+                      const compressed = await compressImageFile(f, 1000, 0.72);
+                      setNewPinImageDataUrl(compressed);
+                    } catch {
+                      const compressed = await compressImageFile(f, 1000, 0.72);
+                      setNewPinImageDataUrl(compressed);
+                    }
                   }}
                   className="text-xs"
                 />
