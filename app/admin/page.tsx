@@ -561,24 +561,30 @@ export default function AdminControlCenterPage() {
   };
 
   const communityPostsList = [
-    ...(siteState.customPosts.links || []).map((l) => ({
-      compositeId: `link:${l.id}`,
-      kind: "Curated Link",
-      title: l.title || l.id,
-      sub: l.publisher || "",
-    })),
-    ...(siteState.customPosts.blogs || []).map((b) => ({
-      compositeId: `essay:${b.id}`,
-      kind: "SikhStack Essay",
-      title: b.title || b.id,
-      sub: b.subtitle || "",
-    })),
-    ...(siteState.customPosts.pins || []).map((p) => ({
-      compositeId: `visual:${p.id}`,
-      kind: "SikhInterest Pin",
-      title: p.title || p.id,
-      sub: p.description || "",
-    })),
+    ...(siteState.customPosts?.links || [])
+      .filter((l) => Boolean(l?.id))
+      .map((l) => ({
+        compositeId: `link:${l.id}`,
+        kind: "Curated Link",
+        title: l.title || l.id,
+        sub: l.publisher || "",
+      })),
+    ...(siteState.customPosts?.blogs || [])
+      .filter((b) => Boolean(b?.id))
+      .map((b) => ({
+        compositeId: `essay:${b.id}`,
+        kind: "SikhStack Essay",
+        title: b.title || b.id,
+        sub: b.subtitle || "",
+      })),
+    ...(siteState.customPosts?.pins || [])
+      .filter((p) => Boolean(p?.id))
+      .map((p) => ({
+        compositeId: `visual:${p.id}`,
+        kind: "SikhInterest Pin",
+        title: p.title || p.id,
+        sub: p.description || "",
+      })),
   ].filter((item) => !(siteState.deletedIds || []).includes(item.compositeId));
 
   return (

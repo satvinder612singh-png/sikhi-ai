@@ -71,6 +71,27 @@ export const LIVE_GURDWARA_STREAMS: KirtanTrack[] = [];
 
 export const PURATAN_KIRTAN_TRACKS: KirtanTrack[] = [];
 
+const DEFAULT_IDLE_TRACK: KirtanTrack = {
+  id: "idle-placeholder-track",
+  numeral: "੧",
+  category: "Verified Local & Approved Audio",
+  title: "Puratan Raag Kirtan Sanctuary",
+  gurmukhiTitle: "ਪੁਰਾਤਨ ਰਾਗ ਕੀਰਤਨ",
+  ragi: "Select a Shabad from the Kirtan Library",
+  raag: "Gurmat Sangeet",
+  angCitation: "SGGS • 31 Classical Raags",
+  tantiSaaj: "Rabab, Saranda, Taus, Jori & Dilruba",
+  timeOfDay: "All Pehars",
+  durationLabel: "Ready",
+  durationSec: 0,
+  audioUrl: "",
+  directArchiveMp3Url: "",
+  archiveEmbedUrl: "",
+  externalArchiveUrl: "",
+  raagNotes: "Select any track from the Kirtan library to begin playback.",
+  historicalContext: "",
+};
+
 const INITIAL_SUBMISSIONS_SEED: KirtanSubmission[] = [];
 
 const SUBMISSIONS_STORAGE_KEY = "learnsikhi_kirtan_submissions_v1";
@@ -217,7 +238,7 @@ export function KirtanAudioProvider({
   const [requestToast, setRequestToast] = useState<string | null>(null);
 
   const [currentTrack, setCurrentTrack] = useState<KirtanTrack>(
-    LIVE_GURDWARA_STREAMS[0]
+    LIVE_GURDWARA_STREAMS[0] || DEFAULT_IDLE_TRACK
   );
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasActivatedPlayer, setHasActivatedPlayer] = useState(false);
@@ -529,6 +550,7 @@ export function KirtanAudioProvider({
 
   const playTrack = useCallback(
     (track: KirtanTrack) => {
+      if (!track) return;
       setHasActivatedPlayer(true);
       setIsMinimized(false);
       setCurrentTrack(track);
@@ -541,7 +563,7 @@ export function KirtanAudioProvider({
 
   const togglePlayPause = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !currentTrack?.audioUrl) return;
 
     if (isPlaying) {
       audio.pause();
@@ -645,10 +667,13 @@ export function KirtanAudioProvider({
       setVolume(0.25);
       setIsReadingVolumePreset(true);
       const target =
-        (trackId ? allTracks.find((t) => t.id === trackId) : undefined) ||
+        (trackId ? allTracks.find((t) => t?.id === trackId) : undefined) ||
         instrumentalTracks[0] ||
+        allTracks[0] ||
         LIVE_GURDWARA_STREAMS[0];
-      playTrack(target);
+      if (target) {
+        playTrack(target);
+      }
     },
     [allTracks, instrumentalTracks, playTrack, setVolume]
   );
@@ -743,17 +768,17 @@ export function KirtanAudioProvider({
 
   const nextTrack = useCallback(() => {
     if (allTracks.length === 0) return;
-    const idx = allTracks.findIndex((t) => t.id === currentTrack.id);
+    const idx = allTracks.findIndex((t) => t?.id === currentTrack?.id);
     const next = allTracks[(idx + 1) % allTracks.length];
-    playTrack(next);
-  }, [allTracks, currentTrack.id, playTrack]);
+    if (next) playTrack(next);
+  }, [allTracks, currentTrack?.id, playTrack]);
 
   const prevTrack = useCallback(() => {
     if (allTracks.length === 0) return;
-    const idx = allTracks.findIndex((t) => t.id === currentTrack.id);
+    const idx = allTracks.findIndex((t) => t?.id === currentTrack?.id);
     const prev = allTracks[(idx - 1 + allTracks.length) % allTracks.length];
-    playTrack(prev);
-  }, [allTracks, currentTrack.id, playTrack]);
+    if (prev) playTrack(prev);
+  }, [allTracks, currentTrack?.id, playTrack]);
 
   const value = useMemo(
     () => ({

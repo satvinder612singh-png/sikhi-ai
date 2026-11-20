@@ -701,7 +701,7 @@ export default function GranthsAndKirtanPage() {
       ...remoteKirtanTracks,
     ].filter(
       (item, idx, arr) =>
-        Boolean(item?.id) && arr.findIndex((x) => x.id === item.id) === idx
+        Boolean(item?.id) && arr.findIndex((x) => x?.id === item?.id) === idx
     );
 
     const convertedRemote: (KirtanTrack & { imageUrl?: string; imageKey?: string })[] =
@@ -737,7 +737,7 @@ export default function GranthsAndKirtanPage() {
     ) => {
       const seen = new Set<string>();
       return list.filter((t) => {
-        if (seen.has(t.id)) return false;
+        if (!t?.id || seen.has(t.id)) return false;
         seen.add(t.id);
         return true;
       });
@@ -860,7 +860,7 @@ export default function GranthsAndKirtanPage() {
         (item, idx, arr) =>
           Boolean(item?.id) &&
           item.id !== data.track!.id &&
-          arr.findIndex((x) => x.id === item.id) === idx
+          arr.findIndex((x) => x?.id === item?.id) === idx
       );
       const nextList = [
         data.track,
@@ -914,15 +914,17 @@ export default function GranthsAndKirtanPage() {
     if (filteredKirtanTracks.length > 0) {
       const candidates =
         filteredKirtanTracks.length > 1
-          ? filteredKirtanTracks.filter((t) => t.id !== currentTrack.id)
+          ? filteredKirtanTracks.filter((t) => t?.id && t.id !== currentTrack?.id)
           : filteredKirtanTracks;
       const pickTrack =
         candidates[Math.floor(Math.random() * candidates.length)] ||
         filteredKirtanTracks[0];
-      playTrack(pickTrack);
-      showRequestToast(
-        `🎲 Playing "${pickTrack.title}" • Spotlighted Raag ${pickRaag.name}`
-      );
+      if (pickTrack) {
+        playTrack(pickTrack);
+        showRequestToast(
+          `🎲 Playing "${pickTrack.title}" • Spotlighted Raag ${pickRaag.name}`
+        );
+      }
     } else {
       showRequestToast(`🎲 Spotlighted Raag ${pickRaag.name} (${pickRaag.pehar})`);
     }
@@ -981,7 +983,8 @@ export default function GranthsAndKirtanPage() {
   }, [granthCategory, granthQuery, cms, isVerifiedLiveEdit]);
 
   const handleTrackClick = (track: KirtanTrack) => {
-    if (currentTrack.id === track.id) {
+    if (!track?.id) return;
+    if (currentTrack?.id === track.id) {
       togglePlayPause();
     } else {
       playTrack(track);
@@ -1694,7 +1697,8 @@ export default function GranthsAndKirtanPage() {
 
                 <div className="divide-y divide-white/10">
                   {filteredKirtanTracks.map((track, idx) => {
-                    const active = currentTrack.id === track.id;
+                    if (!track?.id) return null;
+                    const active = currentTrack?.id === track?.id;
                     const isHidden = (cms.archivedIds || []).includes(track.id);
                     const ov = cms.topicEdits?.[track.id] as
                       | InlineTopicEditData
@@ -2621,13 +2625,13 @@ export default function GranthsAndKirtanPage() {
                     type="button"
                     onClick={() => startReadingInstrumental()}
                     className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
-                      currentTrack.category === "Background Raag Instrumentals" && isPlaying
+                      currentTrack?.category === "Background Raag Instrumentals" && isPlaying
                         ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
                         : "bg-[#121C15] border-[#C59B27]/45 text-[#C59B27] hover:border-[#C59B27]"
                     }`}
                     title="Play gentle Sitar, Veena, Dilruba & Taus instrumental at 25% volume while reading"
                   >
-                    🎻 {currentTrack.category === "Background Raag Instrumentals" && isPlaying ? "25% Reading Music On" : "25% Reading Music"}
+                    🎻 {currentTrack?.category === "Background Raag Instrumentals" && isPlaying ? "25% Reading Music On" : "25% Reading Music"}
                   </button>
                   <button
                     type="button"

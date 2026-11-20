@@ -636,45 +636,49 @@ function SangatHubContent() {
         const dbPins: SangatVisualPin[] = Array.isArray(sikhInterestData?.posts)
           ? (
               sikhInterestData.posts as {
-                id: string;
+                id?: string;
                 author_name?: string;
                 author_handle?: string;
-                title: string;
-                description: string;
+                title?: string;
+                description?: string;
                 category?: string;
                 gurmukhi_calligraphy?: string | null;
                 image_url?: string | null;
                 likes_count?: number;
                 created_at?: string;
               }[]
-            ).map((row) => ({
-              id: row.id,
-              authorName: row.author_name || "Sangat Artist",
-              authorHandle: row.author_handle || "sangat_artist",
-              authorRole: "Sangat Member",
-              authorBio: "",
-              authorInterests: [],
-              authorAvatarPreset: "lotus-amritsar",
-              title: row.title,
-              description: row.description,
-              category:
-                (row.category as SangatVisualPin["category"]) ||
-                "Sikh Art & Miniature",
-              gurmukhiCalligraphy: row.gurmukhi_calligraphy || "ੴ",
-              visualPalette: "darbar-gold",
-              imageDataUrl: row.image_url || null,
-              availableToCoordinate: false,
-              artistContactNote: "",
-              savesCount: Number(row.likes_count || 0),
-              createdAt: row.created_at
-                ? new Date(row.created_at).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "Recent",
-              isUserCreated: true,
-            }))
+            )
+              .filter((row): row is NonNullable<typeof row> & { id: string } =>
+                Boolean(row?.id)
+              )
+              .map((row) => ({
+                id: row.id,
+                authorName: row.author_name || "Sangat Artist",
+                authorHandle: row.author_handle || "sangat_artist",
+                authorRole: "Sangat Member",
+                authorBio: "",
+                authorInterests: [],
+                authorAvatarPreset: "lotus-amritsar",
+                title: row.title || "Untitled Artwork",
+                description: row.description || "",
+                category:
+                  (row.category as SangatVisualPin["category"]) ||
+                  "Sikh Art & Miniature",
+                gurmukhiCalligraphy: row.gurmukhi_calligraphy || "ੴ",
+                visualPalette: "darbar-gold",
+                imageDataUrl: row.image_url || null,
+                availableToCoordinate: false,
+                artistContactNote: "",
+                savesCount: Number(row.likes_count || 0),
+                createdAt: row.created_at
+                  ? new Date(row.created_at).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "Recent",
+                isUserCreated: true,
+              }))
           : [];
 
         if (data && typeof data === "object") {
@@ -697,13 +701,19 @@ function SangatHubContent() {
                   pins?: SangatVisualPin[];
                 })
               : {};
-          setCuratedLinks(Array.isArray(cp.links) ? cp.links : []);
-          setBlogs(Array.isArray(cp.blogs) ? cp.blogs : []);
-          const legacyPins = Array.isArray(cp.pins) ? cp.pins : [];
-          const seenPinIds = new Set(dbPins.map((p) => p.id));
+          setCuratedLinks(
+            Array.isArray(cp.links) ? cp.links.filter((l) => Boolean(l?.id)) : []
+          );
+          setBlogs(
+            Array.isArray(cp.blogs) ? cp.blogs.filter((b) => Boolean(b?.id)) : []
+          );
+          const legacyPins = Array.isArray(cp.pins)
+            ? cp.pins.filter((p) => Boolean(p?.id))
+            : [];
+          const seenPinIds = new Set(dbPins.map((p) => p?.id).filter(Boolean));
           setPins([
             ...dbPins,
-            ...legacyPins.filter((p) => p && !seenPinIds.has(p.id)),
+            ...legacyPins.filter((p) => Boolean(p?.id) && !seenPinIds.has(p.id)),
           ]);
         } else {
           setPins(dbPins);
@@ -794,86 +804,92 @@ function SangatHubContent() {
   };
 
   const activeBlog = useMemo(
-    () => blogs.find((b) => b.id === activeBlogId) || null,
+    () => blogs.find((b) => Boolean(b?.id) && b.id === activeBlogId) || null,
     [blogs, activeBlogId]
   );
 
   const filteredBlogs = useMemo(() => {
-    if (selectedTopic === "All") return blogs;
-    return blogs.filter((b) => b.topicTag === selectedTopic);
+    const valid = blogs.filter((b) => Boolean(b?.id));
+    if (selectedTopic === "All") return valid;
+    return valid.filter((b) => b.topicTag === selectedTopic);
   }, [blogs, selectedTopic]);
 
   const filteredPins = useMemo(() => {
-    if (selectedPinCategory === "All") return pins;
+    const valid = pins.filter((p) => Boolean(p?.id));
+    if (selectedPinCategory === "All") return valid;
     if (selectedPinCategory === "Saved Collection") {
-      return pins.filter((p) => savedPinIds.includes(p.id));
+      return valid.filter((p) => savedPinIds.includes(p.id));
     }
-    return pins.filter((p) => p.category === selectedPinCategory);
+    return valid.filter((p) => p.category === selectedPinCategory);
   }, [pins, selectedPinCategory, savedPinIds]);
 
   const filteredDilPosts = useMemo(() => {
-    if (selectedMoodFilter === "All") return dilPosts;
-    return dilPosts.filter((d) => d.moodTag === selectedMoodFilter);
+    const valid = dilPosts.filter((d) => Boolean(d?.id));
+    if (selectedMoodFilter === "All") return valid;
+    return valid.filter((d) => d.moodTag === selectedMoodFilter);
   }, [dilPosts, selectedMoodFilter]);
 
   const feedItems: FeedItem[] = useMemo(() => {
     const cmsDeletedSet = new Set(cms.deletedIds || []);
-    const isVisible = (kind: FeedItem["kind"], id: string) =>
+    const isVisible = (kind: FeedItem["kind"], id?: string) =>
+      Boolean(id) &&
       !deletedIds.includes(`${kind}:${id}`) &&
-      !cmsDeletedSet.has(id) &&
+      !cmsDeletedSet.has(id!) &&
       !cmsDeletedSet.has(`${kind}:${id}`);
 
     const essayItems: FeedItem[] = blogs
-      .filter((b) => isVisible("essay", b.id))
+      .filter((b) => Boolean(b?.id) && isVisible("essay", b?.id))
       .map((b) => ({
         kind: "essay",
         id: b.id,
-        title: b.title,
-        byline: b.authorName,
-        preview: b.subtitle || b.paragraphs[0] || "",
+        title: b.title || "Untitled Essay",
+        byline: b.authorName || "Sangat Member",
+        preview: b.subtitle || b.paragraphs?.[0] || "",
         blog: b,
       }));
-    const customTopicEssays: FeedItem[] = (cms.customTopics?.sangat || []).map((ct) => ({
-      kind: "essay",
-      id: ct.id,
-      title: ct.title,
-      byline: ct.subtitle || "Admin Dispatch",
-      preview: ct.description,
-      blog: {
+    const customTopicEssays: FeedItem[] = (cms.customTopics?.sangat || [])
+      .filter((ct) => Boolean(ct?.id))
+      .map((ct) => ({
+        kind: "essay",
         id: ct.id,
-        authorName: ct.subtitle || "Learn Sikhi Editors",
-        authorHandle: "editors",
-        authorRole: ct.badge || "Admin Dispatch",
-        authorBio: "",
-        authorInterests: [],
-        authorAvatarPreset: "khanda-crest",
         title: ct.title,
-        subtitle: ct.subtitle || "",
-        gurmukhiHeader: ct.gurmukhi || "",
-        topicTag: "Gurbani Research",
-        readingTime: "Editorial",
-        createdAt: ct.createdAt || "Featured",
-        pullQuote: "",
-        paragraphs: [ct.description],
-        likesCount: 0,
-        comments: [],
-        imageUrl: cms.frames?.[ct.imageKey || ct.id]?.src || null,
-        isUserCreated: true,
-      },
-    }));
+        byline: ct.subtitle || "Admin Dispatch",
+        preview: ct.description,
+        blog: {
+          id: ct.id,
+          authorName: ct.subtitle || "Learn Sikhi Editors",
+          authorHandle: "editors",
+          authorRole: ct.badge || "Admin Dispatch",
+          authorBio: "",
+          authorInterests: [],
+          authorAvatarPreset: "khanda-crest",
+          title: ct.title,
+          subtitle: ct.subtitle || "",
+          gurmukhiHeader: ct.gurmukhi || "",
+          topicTag: "Gurbani Research",
+          readingTime: "Editorial",
+          createdAt: ct.createdAt || "Featured",
+          pullQuote: "",
+          paragraphs: [ct.description],
+          likesCount: 0,
+          comments: [],
+          imageUrl: cms.frames?.[ct.imageKey || ct.id]?.src || null,
+          isUserCreated: true,
+        },
+      }));
     const visualItems: FeedItem[] = pins
-      .filter((p) => isVisible("visual", p.id))
+      .filter((p) => Boolean(p?.id) && isVisible("visual", p?.id))
       .map((p) => ({
         kind: "visual",
         id: p.id,
-        title: p.title,
-        byline: p.authorName,
-        preview: p.description,
+        title: p.title || "Untitled Artwork",
+        byline: p.authorName || "Sangat Artist",
+        preview: p.description || "",
         pin: p,
       }));
     const linkItems = (cat?: CuratedCategory): FeedItem[] =>
       curatedLinks
-        .filter((l) => isVisible("link", l.id) && (!cat || l.category === cat))
+        .filter((l) => Boolean(l?.id) && isVisible("link", l?.id) && (!cat || l.category === cat))
         .map((l) => ({
           kind: "link",
           id: l.id,
@@ -2449,7 +2465,10 @@ function SangatHubContent() {
                 ) : (
                   <div className={resolveCmsGridClass(layoutCfg.feedLayout)}>
                     {feedItems.map((item) => {
-                      const feedItemIds = feedItems.map((fi) => fi.id);
+                      if (!item?.id) return null;
+                      const feedItemIds = feedItems
+                        .filter((fi) => Boolean(fi?.id))
+                        .map((fi) => fi.id);
                       const ov = cms.topicEdits?.[item.id] as
                         | InlineTopicEditData
                         | undefined;

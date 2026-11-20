@@ -114,7 +114,11 @@ export function SikhStacksHub() {
       const countsData = await countsRes.json().catch(() => null);
 
       if (articlesData?.ok && Array.isArray(articlesData.articles)) {
-        setDbPosts(articlesData.articles as ArticleRecord[]);
+        setDbPosts(
+          (articlesData.articles as ArticleRecord[]).filter((p) =>
+            Boolean(p?.id)
+          )
+        );
       }
       if (countsData?.ok && countsData.counts && typeof countsData.counts === "object") {
         setCommentCounts(countsData.counts as Record<string, number>);
@@ -196,11 +200,12 @@ export function SikhStacksHub() {
   };
 
   const filteredPosts = useMemo(() => {
-    if (activeType === "All") return allPosts;
-    return allPosts.filter(
+    const valid = allPosts.filter((p) => Boolean(p?.id));
+    if (activeType === "All") return valid;
+    return valid.filter(
       (p) =>
-        p.category === activeType ||
-        (Array.isArray(p.tags) && p.tags.includes(activeType))
+        p?.category === activeType ||
+        (Array.isArray(p?.tags) && p.tags.includes(activeType))
     );
   }, [allPosts, activeType]);
 
@@ -1056,8 +1061,9 @@ export function SikhStacksHub() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredPosts.map((post) => {
+            if (!post?.id) return null;
             const count = commentCounts[post.id] || 0;
-            const readMins = estimateReadMinutes(post.content_markdown);
+            const readMins = estimateReadMinutes(post.content_markdown || "");
             return (
               <div
                 key={post.id}

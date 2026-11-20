@@ -323,6 +323,7 @@ export function applyCmsVisibilityOrder<T>(
   cms: CmsSiteState,
   showArchivedForAdmin: boolean
 ): T[] {
+  if (!Array.isArray(items)) return [];
   const deleted = new Set(cms.deletedIds || []);
   const archived = new Set(cms.archivedIds || []);
   const pinned = new Set(cms.pinnedIds || []);
@@ -331,7 +332,9 @@ export function applyCmsVisibilityOrder<T>(
 
   return items
     .filter((item) => {
+      if (!item) return false;
       const id = getId(item);
+      if (!id) return false;
       if (deleted.has(id)) return false;
       if (!showArchivedForAdmin && archived.has(id)) return false;
       return true;

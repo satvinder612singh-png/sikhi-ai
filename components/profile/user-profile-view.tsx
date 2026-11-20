@@ -108,6 +108,7 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
       const articlesJson = await articlesRes.json().catch(() => null);
       if (articlesJson?.ok && Array.isArray(articlesJson.articles)) {
         const mine = (articlesJson.articles as ArticleRecord[]).filter((a) => {
+          if (!a?.id) return false;
           if (a.author_id && a.author_id === resolvedId) return true;
           const an = (a.author_name || "").trim().toLowerCase();
           return (
@@ -124,6 +125,7 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
       const dbPins: PinSummary[] = Array.isArray(sikhinterestJson?.posts)
         ? sikhinterestJson.posts
             .filter((row: Record<string, unknown>) => {
+              if (!row?.id) return false;
               if (row.author_id && String(row.author_id) === resolvedId) return true;
               const handle = String(row.author_handle || "").trim().toLowerCase();
               const an = String(row.author_name || "").trim().toLowerCase();
@@ -152,6 +154,7 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
         ? framesJson.customPosts.pins
         : [];
       const legacyPins = rawPins.filter((p) => {
+        if (!p?.id) return false;
         const handle = (p.authorHandle || "").trim().toLowerCase();
         const an = (p.authorName || "").trim().toLowerCase();
         return (
@@ -161,12 +164,17 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
           (an && (an === resolvedName || an === effectiveLookup.toLowerCase()))
         );
       });
-      const seenPinIds = new Set(dbPins.map((p) => p.id));
-      setPins([...dbPins, ...legacyPins.filter((p) => !seenPinIds.has(p.id))]);
+      const seenPinIds = new Set(dbPins.map((p) => p?.id).filter(Boolean));
+      setPins([
+        ...dbPins,
+        ...legacyPins.filter((p) => Boolean(p?.id) && !seenPinIds.has(p.id)),
+      ]);
 
       const resharesJson = await resharesRes.json().catch(() => null);
       if (resharesJson?.ok && Array.isArray(resharesJson.reshares)) {
-        setReshares(resharesJson.reshares as ReshareRecord[]);
+        setReshares(
+          (resharesJson.reshares as ReshareRecord[]).filter((r) => Boolean(r?.id))
+        );
       }
     } catch {
       // ignore transient errors
