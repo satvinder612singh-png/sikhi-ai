@@ -590,7 +590,7 @@ export default function MatriarchsPage() {
         </GodModeBox>
 
         {/* 13 Matriarchs & Warriors Grid */}
-        <section className={resolveCmsGridClass(layoutCfg.feedLayout)}>
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           {filteredProfiles.map((profile) => {
             const matriarchIds = filteredProfiles.map((p) => p.id);
             const ov = cms.topicEdits?.[profile.id] as InlineTopicEditData | undefined;
@@ -606,20 +606,20 @@ export default function MatriarchsPage() {
                 key={profile.id}
                 id={`topic-${profile.id}`}
                 style={{
-                  backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || "#1B2A20",
-                  borderColor: ov?.borderColor || layoutCfg.accentColor || "rgba(197,155,39,0.4)",
-                  color: ov?.textColor || layoutCfg.bodyTextColor || undefined,
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
                   fontFamily: ov?.fontFamily
                     ? resolveCmsFontFamily(ov.fontFamily)
                     : undefined,
                 }}
-                className={`rounded-2xl border border-[#d4af37]/30 p-6 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 hover:border-[#d4af37] hover:-translate-y-0.5 transition-all duration-300 ease-out flex flex-col justify-between gap-5 scroll-mt-28 ${
+                className={`h-full rounded-2xl border p-6 hover:border-[var(--accent-primary)] transition-colors duration-150 flex flex-col justify-between gap-5 scroll-mt-28 ${
                   liveEditMode ? "overflow-visible" : ""
                 } ${
                   (cms.archivedIds || []).includes(profile.id)
                     ? "opacity-55 ring-2 ring-amber-400/70"
                     : ""
-                } ${resolveCmsCardLayoutClass(ov, layoutCfg.feedLayout)}`}
+                }`}
               >
               <div className="space-y-3">
                 <HiddenItemBadgeBar itemId={profile.id} />
@@ -747,12 +747,15 @@ export default function MatriarchsPage() {
                     </h2>
                   </SlidePresentationCanvas>
                   <p
-                    style={{ color: layoutCfg.accentColor || undefined }}
-                    className="text-xs font-semibold text-[#C59B27] mt-0.5"
+                    style={{ color: "var(--accent-text)" }}
+                    className="text-xs font-semibold mt-0.5"
                   >
                     {profile.roleTitle}
                   </p>
-                  <p className="text-[11px] text-[#4A554E] mt-1">
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-[11px] font-medium mt-1"
+                  >
                     {profile.era} • {profile.region}
                   </p>
                 </div>
@@ -764,18 +767,34 @@ export default function MatriarchsPage() {
                   elementType="Text"
                   isMicroElement={true}
                 >
-                  <p className={`${cardBodyCls} opacity-85 leading-relaxed`}>
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className={`${cardBodyCls} leading-relaxed`}
+                  >
                     {profile.shortSummary}
                   </p>
                 </SlidePresentationCanvas>
 
-                <div className="p-3 rounded-xl bg-[#121C15] border border-[#C59B27]/25 text-xs font-medium text-[#C59B27]">
+                <div
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                    color: "var(--accent-text)",
+                  }}
+                  className="p-3 rounded-xl border text-xs font-medium"
+                >
                   {profile.keyQuoteOrEmblem}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#C59B27]/25 flex items-center justify-between gap-3">
-                <span className="text-[11px] text-[#4A554E] truncate">
+              <div
+                style={{ borderColor: "var(--border-subtle)" }}
+                className="pt-3 border-t flex items-center justify-between gap-3"
+              >
+                <span
+                  style={{ color: "var(--theme-text-muted)" }}
+                  className="text-[11px] font-medium truncate"
+                >
                   {profile.primaryCitation}
                 </span>
                 <SlidePresentationCanvas
@@ -814,9 +833,22 @@ export default function MatriarchsPage() {
               }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
             >
-              <div className="w-full max-w-2xl max-h-[82vh] flex flex-col rounded-2xl bg-[#FAF7F0] text-[#18181B] shadow-2xl overflow-hidden border border-[#C59B27]/50">
+              <div
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className="w-full max-w-2xl max-h-[82vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border"
+              >
                 {/* Sticky Top Header */}
-                <div className="shrink-0 px-6 py-4 border-b border-[#C59B27]/25 flex justify-between items-center gap-4 bg-[#FAF7F0]">
+                <div
+                  style={{
+                    backgroundColor: "var(--bg-surface)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                  className="shrink-0 px-6 py-4 border-b flex justify-between items-center gap-4"
+                >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-800 px-2.5 py-0.5 rounded bg-amber-100 border border-amber-600/30">

@@ -67,34 +67,9 @@ export type KirtanSubmission = {
  * is included by default alongside any local files in `public/audio/` and
  * tracks explicitly verified and approved in the Admin Review Queue.
  */
-export const LIVE_GURDWARA_STREAMS: KirtanTrack[] = [
-  {
-    id: "live-harmandir-sahib-amritsar",
-    numeral: "੧",
-    category: "Live 24/7 Gurdwara Broadcasts",
-    title: "Sri Harmandir Sahib (Darbar Sahib), Amritsar — Official SGPC Live 24/7 Stream",
-    gurmukhiTitle: "ਸੱਚਖੰਡ ਸ੍ਰੀ ਹਰਿਮੰਦਰ ਸਾਹਿਬ, ਸ੍ਰੀ ਅੰਮ੍ਰਿਤਸਰ (ਲਾਈਵ ਕੀਰਤਨ)",
-    ragi: "Hazoori Ragi Jathas • Official SGPC Live Broadcast",
-    raag: "Live 24/7 Kirtan & Mukhwaak from Sri Darbar Sahib",
-    angCitation: "VERIFIED LIVE STREAM • SGPC AMRITSAR",
-    tantiSaaj: "Harmonium, Dilruba, Taus, Rabab & Tabla",
-    timeOfDay: "24/7 Continuous Broadcast (IST — Amritsar)",
-    durationLabel: "LIVE 24/7",
-    durationSec: 0,
-    audioUrl: "https://live.sgpc.net:8443/;nocache=1",
-    directArchiveMp3Url: "https://live.sgpc.net:8443/;nocache=1",
-    archiveEmbedUrl: "https://www.sgpc.net/live-kirtan-darbar-sahib/",
-    externalArchiveUrl: "https://www.sgpc.net",
-    raagNotes:
-      "Official 24/7 live Shoutcast audio broadcast direct from Sachkhand Sri Harmandir Sahib (Golden Temple), Amritsar.",
-    historicalContext:
-      "Continuous Gurbani Kirtan from Amrit Vela Asa Di Vaar (~2:15 AM IST) and the Daily Mukhwaak through evening Rehras Sahib, Aarti, and Kirtan Sohila.",
-    isLiveStream: true,
-    locationLabel: "Amritsar, Punjab (Official SGPC Stream)",
-  },
-];
+export const LIVE_GURDWARA_STREAMS: KirtanTrack[] = [];
 
-export const PURATAN_KIRTAN_TRACKS: KirtanTrack[] = LIVE_GURDWARA_STREAMS;
+export const PURATAN_KIRTAN_TRACKS: KirtanTrack[] = [];
 
 const INITIAL_SUBMISSIONS_SEED: KirtanSubmission[] = [];
 

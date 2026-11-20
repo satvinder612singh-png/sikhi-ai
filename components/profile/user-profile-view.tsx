@@ -96,8 +96,9 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
       const resolvedName = (loadedProf?.display_name || "").toLowerCase();
       const resolvedUsername = (loadedProf?.username || "").toLowerCase();
 
-      const [articlesRes, framesRes, resharesRes] = await Promise.all([
+      const [articlesRes, sikhinterestRes, framesRes, resharesRes] = await Promise.all([
         fetch("/api/articles", { cache: "no-store" }),
+        fetch("/api/sikhinterest", { cache: "no-store" }),
         fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" }),
         fetch(`/api/reshares?userId=${encodeURIComponent(resolvedId)}`, {
           cache: "no-store",
@@ -119,11 +120,38 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
         setArticles(mine);
       }
 
+      const sikhinterestJson = await sikhinterestRes.json().catch(() => null);
+      const dbPins: PinSummary[] = Array.isArray(sikhinterestJson?.posts)
+        ? sikhinterestJson.posts
+            .filter((row: Record<string, unknown>) => {
+              if (row.author_id && String(row.author_id) === resolvedId) return true;
+              const handle = String(row.author_handle || "").trim().toLowerCase();
+              const an = String(row.author_name || "").trim().toLowerCase();
+              return (
+                (handle &&
+                  (handle === resolvedUsername ||
+                    handle === effectiveLookup.toLowerCase())) ||
+                (an && (an === resolvedName || an === effectiveLookup.toLowerCase()))
+              );
+            })
+            .map((row: Record<string, unknown>) => ({
+              id: String(row.id || ""),
+              title: String(row.title || "Untitled Visual"),
+              category: String(row.category || "Sikh Art"),
+              caption: String(row.description || ""),
+              gurmukhiCalligraphy: String(row.gurmukhi_calligraphy || ""),
+              authorName: String(row.author_name || "Sangat Artist"),
+              authorHandle: String(row.author_handle || ""),
+              imageDataUrl: typeof row.image_url === "string" ? row.image_url : undefined,
+              likes: Number(row.likes_count || 0),
+            }))
+        : [];
+
       const framesJson = await framesRes.json().catch(() => null);
       const rawPins: PinSummary[] = Array.isArray(framesJson?.customPosts?.pins)
         ? framesJson.customPosts.pins
         : [];
-      const myPins = rawPins.filter((p) => {
+      const legacyPins = rawPins.filter((p) => {
         const handle = (p.authorHandle || "").trim().toLowerCase();
         const an = (p.authorName || "").trim().toLowerCase();
         return (
@@ -133,7 +161,8 @@ export function UserProfileView({ profileId }: { profileId?: string }) {
           (an && (an === resolvedName || an === effectiveLookup.toLowerCase()))
         );
       });
-      setPins(myPins);
+      const seenPinIds = new Set(dbPins.map((p) => p.id));
+      setPins([...dbPins, ...legacyPins.filter((p) => !seenPinIds.has(p.id))]);
 
       const resharesJson = await resharesRes.json().catch(() => null);
       if (resharesJson?.ok && Array.isArray(resharesJson.reshares)) {

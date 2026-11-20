@@ -670,6 +670,16 @@ export default function GranthsAndKirtanPage() {
     showRequestToast,
   } = useKirtanAudio();
 
+  const [selectedRaagOrItem, setSelectedRaagOrItem] = useState<{
+    title: string;
+    gurmukhi?: string;
+    badge: string;
+    subtitle: string;
+    summary: string;
+    details: string[];
+    footer?: string;
+  } | null>(null);
+
   const filteredRaags = useMemo(() => {
     const q = raagSearch.trim().toLowerCase();
     return SGGS_31_RAAGS.filter((r) => {
@@ -1282,6 +1292,11 @@ export default function GranthsAndKirtanPage() {
                             setActiveTab("kirtan");
                             setRaagFilterPehar(livePehar.pehar);
                             setRaagSearch(rName);
+                            window.setTimeout(() => {
+                              document
+                                .getElementById("granths-31-raags-section")
+                                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }, 80);
                           }}
                           className="px-2.5 py-1 rounded-lg bg-[#1B2A20] border border-[#C59B27]/45 text-[11px] font-bold text-[#E5C158] hover:border-[#E5C158] transition"
                         >
@@ -1305,6 +1320,11 @@ export default function GranthsAndKirtanPage() {
                         setActiveTab("kirtan");
                         setRaagFilterPehar(livePehar.pehar);
                         setRaagSearch("");
+                        window.setTimeout(() => {
+                          document
+                            .getElementById("granths-31-raags-section")
+                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }, 80);
                       }}
                       className="px-3 py-2.5 rounded-xl border border-[#C59B27]/50 text-[#E5C158] text-xs font-bold hover:bg-[#C59B27]/15 transition"
                     >
@@ -1356,248 +1376,29 @@ export default function GranthsAndKirtanPage() {
             transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full"
           >
-            {/* Left Column: Live 24/7 Sri Harmandir Sahib Broadcast & Active Player Card */}
-            <SlidePresentationCanvas
-              id="granths-audio-player-canvas"
-              pageKey="granths"
-              label="Kirtan Audio Player"
-              className="lg:col-span-5 w-full min-w-0"
-            >
-            <div className="w-full min-w-0 rounded-3xl border-2 border-[#C59B27] bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-8 shadow-md space-y-6">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27] px-3 py-1 rounded-full bg-[#121C15] border border-[#C59B27]/40">
-                  VERIFIED ARCHIVE.ORG KIRTAN
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setPlayerMode("native")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-                      playerMode === "native"
-                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                        : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E]"
-                    }`}
-                  >
-                    Native MP3
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlayerMode("embed")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
-                      playerMode === "embed"
-                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]"
-                        : "bg-[#121C15] border border-[#C59B27]/35 text-[#4A554E]"
-                    }`}
-                  >
-                    Archive.org Player
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p
-                  lang="pa"
-                  className="font-gurmukhi text-2xl sm:text-3xl font-semibold text-[#C59B27]"
-                >
-                  {currentTrack.gurmukhiTitle}
-                </p>
-                <h2 className="text-2xl font-serif font-bold mt-1">
-                  {currentTrack.title}
-                </h2>
-                <p className="text-sm font-medium text-[#4A554E] mt-1">
-                  {currentTrack.ragi}
-                </p>
-              </div>
-
-              {/* Dual-Mode Audio Player: Native Stream vs Embedded Archive.org Playlist */}
-              {playerMode === "native" ? (
-                <div className="p-5 rounded-2xl bg-[#121C15] border border-[#C59B27]/35 space-y-4">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="tabular-nums">{formatAudioTime(currentTime)}</span>
-                    <span className="uppercase tracking-widest text-[10px] text-[#C59B27]">
-                      {isLoadingAudio
-                        ? "Buffering Archive.org MP3 Stream..."
-                        : isPlaying
-                        ? "Streaming Authentic Puratan Shabad"
-                        : "Ready to Stream"}
-                    </span>
-                    <span className="tabular-nums">{formatAudioTime(duration)}</span>
-                  </div>
-
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration || 1800}
-                    value={currentTime}
-                    onChange={(e) => seekTo(Number(e.target.value))}
-                    aria-label="Seek Kirtan audio"
-                    className="w-full accent-[#C59B27] cursor-pointer h-2 rounded-lg"
-                  />
-
-                  <div className="flex items-center justify-between gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={prevTrack}
-                      className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
-                    >
-                      ⏮ Prev
-                    </button>
-                    <button
-                      type="button"
-                      onClick={togglePlayPause}
-                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] text-xs sm:text-sm font-bold uppercase tracking-wider shadow-sm hover:brightness-105 transition"
-                    >
-                      {isLoadingAudio
-                        ? "Buffering..."
-                        : isPlaying
-                        ? "⏸ Pause Recital"
-                        : "▶ Play Puratan Shabad"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={nextTrack}
-                      className="px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-xs font-semibold hover:border-[#C59B27] transition"
-                    >
-                      Next ⏭
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#C59B27]/20 text-xs">
-                    <span className="font-semibold text-[#4A554E]">Volume</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={volume}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      aria-label="Volume control"
-                      className="w-28 accent-[#C59B27] cursor-pointer"
-                    />
-                    <button
-                      type="button"
-                      onClick={toggleReadingVolumePreset}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition ${
-                        isReadingVolumePreset
-                          ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-[#C59B27]"
-                          : "border-[#C59B27]/40 text-[#C59B27]"
-                      }`}
-                    >
-                      🎻 25% Reading Vol
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/40 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold uppercase tracking-wider text-[#C59B27]">
-                      Embedded Internet Archive Playlist Player
-                    </span>
-                    <a
-                      href={currentTrack.directArchiveMp3Url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#C59B27] underline font-semibold"
-                    >
-                      Direct MP3 ↗
-                    </a>
-                  </div>
-                  <div className="w-full h-[220px] rounded-xl overflow-hidden border border-[#C59B27]/40 bg-black">
-                    <iframe
-                      key={currentTrack.archiveEmbedUrl || "default-playlist"}
-                      src={
-                        currentTrack.archiveEmbedUrl ||
-                        "https://archive.org/embed/a-volume-1?playlist=1"
-                      }
-                      title="Puratan Kirtan & Bani Archive Playlist"
-                      className="w-full h-full border-0"
-                      allow="autoplay; fullscreen"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Raag Musicology & Tanti Saaj Metadata */}
-              <div className="space-y-3 text-xs sm:text-sm">
-                <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
-                    Tanti Saaj &amp; Pehar (Time of Day)
-                  </p>
-                  <p
-                    style={{ color: "var(--text-primary)" }}
-                    className="font-semibold mt-1"
-                  >
-                    {currentTrack.tantiSaaj}
-                  </p>
-                  <p
-                    style={{ color: "var(--theme-text-muted)" }}
-                    className="text-xs mt-0.5"
-                  >
-                    Prescribed Pehar: {currentTrack.timeOfDay}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
-                    Raag Musicology &amp; Historical Lineage
-                  </p>
-                  <p
-                    style={{ color: "var(--theme-text-muted)" }}
-                    className="leading-relaxed font-medium"
-                  >
-                    {currentTrack.raagNotes}
-                  </p>
-                  <p
-                    style={{ color: "var(--theme-text-muted)" }}
-                    className="leading-relaxed pt-1 border-t border-[#C59B27]/20"
-                  >
-                    {currentTrack.historicalContext}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <a
-                    href={currentTrack.directArchiveMp3Url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold text-[#C59B27] hover:underline"
-                  >
-                    Listen Full Archive ↗
-                  </a>
-                  <a
-                    href={currentTrack.externalArchiveUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "var(--theme-text-muted)" }}
-                    className="text-xs font-bold hover:underline"
-                  >
-                    View on Archive.org ↗
-                  </a>
-                </div>
-              </div>
-            </div>
-            </SlidePresentationCanvas>
-
-            {/* Right Column: Educational Kirtan & 31 Ragas Hub + Verified / Local Tracks */}
+            {/* Full-Width Educational Kirtan & 31 Ragas Hub + Verified / Local Tracks */}
             <SlidePresentationCanvas
               id="granths-playlist-canvas"
               pageKey="granths"
               label="Kirtan & 31 Ragas Hub"
-              className="lg:col-span-7 w-full min-w-0"
+              className="lg:col-span-12 w-full min-w-0"
             >
             <div className="w-full min-w-0 space-y-6">
-              <div className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] text-[#FAF6EE] p-6 space-y-4 w-full min-w-0">
+              <div className="rounded-3xl border border-[#C59B27]/40 bg-[#1B2A20] p-6 space-y-4 w-full min-w-0">
                 <div className="space-y-1.5 w-full min-w-0">
                   <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
-                    VERIFIED BROADCASTS • LOCAL MP3 PLAYBACK • GURMAT SANGEET
+                    PURATAN GURMAT SANGEET • LOCAL MP3 PLAYBACK • 31 CLASSICAL RAAGS
                   </span>
-                  <h2 className="text-2xl font-serif font-bold text-[#FAF6EE]">
-                    Puratan Kirtan, Local Audio &amp; 31 Ragas Hub
+                  <h2 className="text-2xl font-serif font-bold">
+                    Puratan Raag Kirtan &amp; 31 Classical Raags Hub
                   </h2>
-                  <p className="text-xs sm:text-sm text-[#E2E8F0] leading-relaxed">
-                    Listen to the verified 24/7 Sri Darbar Sahib broadcast, play `.mp3` files
-                    directly from your computer (e.g., Bhai Avtar Singh Ji recordings), or explore
-                    all 31 Classical Raags of Sri Guru Granth Sahib Ji below.
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-xs sm:text-sm leading-relaxed"
+                  >
+                    Stream tracks from our Puratan Kirtan archive, play `.mp3` files
+                    directly from your device, or click any Raag or Tanti Saaj instrument
+                    below to open its detailed musicology and historical guide.
                   </p>
                 </div>
 
@@ -2116,47 +1917,200 @@ export default function GranthsAndKirtanPage() {
               </div>
 
               {/* ============================================================
-                  FEATURED EDITORIAL SECTION: KIRTAN & THE 31 RAAGS
+                  FEATURED EDITORIAL SECTION: PURATAN RAAG KIRTAN & THE 31 RAAGS
               ============================================================ */}
               <section
-                aria-label="Kirtan and The 31 Raags Educational Feature"
-                className="rounded-3xl border border-[#C59B27]/50 bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-8 space-y-6 w-full min-w-0 shadow-xl"
+                aria-label="Puratan Raag Kirtan and The 31 Raags Educational Feature"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className="rounded-3xl border p-6 sm:p-8 space-y-6 w-full min-w-0"
               >
                 <div className="space-y-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#C59B27]/45 bg-[#121C15] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#C59B27]">
-                    ✦ Gurmat Sangeet • Sacred Sound &amp; Contemplation
+                  <span
+                    style={{
+                      backgroundColor: "var(--bg-tertiary)",
+                      borderColor: "var(--border-subtle)",
+                      color: "var(--accent-text)",
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em]"
+                  >
+                    ✦ Puratan Raag Kirtan • Sacred Sound &amp; Contemplation
                   </span>
                   <h2 className="text-2xl sm:text-3xl font-serif font-bold leading-tight">
-                    Kirtan &amp; The 31 Raags of Sri Guru Granth Sahib Ji
+                    What is Puratan Raag Kirtan?
                   </h2>
                   <p
                     style={{ color: "var(--theme-text-muted)" }}
                     className="text-sm sm:text-base leading-relaxed"
                   >
-                    In Sikhi, <strong className="font-bold">Gurbani Kirtan</strong> is far more than
-                    background music—it is the living union of Divine Word (<em>Shabad</em>) and
-                    sacred melody (<em>Raag</em>). Unlike texts arranged by chronology or topic, the
-                    central body of <strong className="font-bold">Sri Guru Granth Sahib Ji (Ang 14–1353)</strong>{" "}
-                    is architected around <strong className="font-bold">31 Classical Raags</strong>,
-                    each paired with a prescribed time of day (<em>Pehar</em>), rhythmic cycle (<em>Taal</em>),
-                    and emotional atmosphere (<em>Ras</em>) so the listener&apos;s mind moves naturally from
-                    restlessness into serene equipoise (<em>Sehaj</em>).
+                    <strong style={{ color: "var(--text-primary)" }} className="font-bold">
+                      Puratan Raag Kirtan
+                    </strong>{" "}
+                    (also known as <em>Gurmat Sangeet</em>) is the classical sacred musical discipline
+                    established directly by the Sikh Gurus—beginning with Guru Nanak Dev Ji and
+                    Bhai Mardana Ji&apos;s Rabab. Unlike devotional music where melody dominates text,
+                    Puratan Kirtan is strictly <strong style={{ color: "var(--text-primary)" }}>Shabad-Pradhan</strong>{" "}
+                    (the Divine Word is supreme): the prescribed <em>Raag</em> (melodic mode),{" "}
+                    <em>Taal</em> (rhythmic cycle), and <em>Ghar</em> (musical house/tempo system)
+                    serve as an acoustic vessel designed to attune the human mind to the exact
+                    spiritual emotion (<em>Ras</em>) of the Guru&apos;s Shabad.
                   </p>
                 </div>
 
-                {/* Visual 31 Raags Architectural Callout */}
+                {/* 4 Pillars of Puratan Raag Kirtan (Clickable for Deep Dive) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    {
+                      badge: "Pillar 1 · Shabad-Pradhan",
+                      title: "Supremacy of the Guru's Word (Shabad)",
+                      summary:
+                        "Every melodic phrase (Alaap, Taan, and Behlava) exists solely to illuminate the pronunciation and spiritual meaning of the Gurbani Pankti—never to display virtuosity.",
+                      details: [
+                        "In Puratan Kirtan, the Rahao (Pause / Central Theme line) of the Shabad is established as the anchor (Asthai) to which the Kirtaniya and Sangat return after every verse (Antra).",
+                        "Clear articulation of Gurmukhi grammar (Sihari, Aunkar, Bindi) is preserved so the congregation absorbs the philosophical message directly.",
+                      ],
+                    },
+                    {
+                      badge: "Pillar 2 · Ghar & Partaal",
+                      title: "17 Ghars & Partaal Rhythmic Architecture",
+                      summary:
+                        "Shabads in Sri Guru Granth Sahib Ji carry a header specifying 'Ghar 1' through 'Ghar 17' or 'Partaal'—instructing the Ragi on rhythmic cadence and multi-taal transitions.",
+                      details: [
+                        "Ghar (literally 'House') indicates the specific rhythmic meter, tempo, and vocal style in which a Shabad is to be rendered within its Raag.",
+                        "Partaal (introduced in Gurbani Kirtan by Guru Ram Das Ji and Guru Arjan Dev Ji) shifts dynamically between multiple Taals (e.g., Char Taal, Sultaal, Iktaal) within a single Shabad to mirror shifting poetic moods.",
+                      ],
+                    },
+                    {
+                      badge: "Pillar 3 · Pehar & Ras",
+                      title: "Time-of-Day Alignment (8 Pehars)",
+                      summary:
+                        "The 24-hour day is divided into 8 Pehars (3-hour windows). Singing a Raag in its natural Pehar harmonizes the listener's circadian rhythm with the Shabad's Ras.",
+                      details: [
+                        "Amrit Vela & Dawn Raags (such as Raag Asa and Raag Tukhari) awaken alertness, courage, and quiet gratitude.",
+                        "Evening & Night Raags (such as Raag Kalyan and Raag Kedar) gently release worldly anxiety and settle consciousness into Bairaag (longing) and Sehaj (peace).",
+                      ],
+                    },
+                    {
+                      badge: "Pillar 4 · Tanti Saaj",
+                      title: "Guru-Bestowed Stringed Instruments",
+                      summary:
+                        "The Gurus designed and patronized bowed and plucked string instruments (Rabab, Saranda, Taus, Dilruba) whose microtonal resonance naturally matches the human voice.",
+                      details: [
+                        "Guru Nanak Dev Ji commissioned the 6-stringed Dhrupadi Rabab for Bhai Mardana Ji.",
+                        "Guru Arjan Dev Ji designed the resonant Saranda, Guru Hargobind Sahib Ji created the peacock-shaped Taus, and Guru Gobind Singh Ji introduced the portable Dilruba for the Khalsa.",
+                      ],
+                    },
+                  ].map((pillar) => (
+                    <button
+                      key={pillar.title}
+                      type="button"
+                      onClick={() =>
+                        setSelectedRaagOrItem({
+                          title: pillar.title,
+                          badge: pillar.badge,
+                          subtitle: "Puratan Raag Kirtan Architecture",
+                          summary: pillar.summary,
+                          details: pillar.details,
+                          footer: "Click any of the 31 Raags below to explore individual Raag structures.",
+                        })
+                      }
+                      style={{
+                        backgroundColor: "var(--bg-tertiary)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                      className="text-left rounded-2xl border p-4 sm:p-5 space-y-2 hover:border-[var(--accent-primary)] transition-colors duration-150"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          style={{ color: "var(--accent-text)" }}
+                          className="text-[11px] font-bold uppercase tracking-wider"
+                        >
+                          {pillar.badge}
+                        </span>
+                        <span
+                          style={{ color: "var(--accent-text)" }}
+                          className="text-xs font-semibold"
+                        >
+                          Read Guide →
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-lg font-bold">
+                        {pillar.title}
+                      </h3>
+                      <p
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-xs sm:text-sm leading-relaxed"
+                      >
+                        {pillar.summary}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Clickable 31 Raags Architectural Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    { value: "31", label: "Main Classical Raags", sub: "Sri Raag to Jaijawanti" },
-                    { value: "14–1353", label: "Raag Ang Architecture", sub: "Structured by melody & Ras" },
-                    { value: "8 Pehars", label: "24-Hour Time Alignment", sub: "Amrit Vela through Night" },
-                    { value: "5 Saaj", label: "Traditional Tanti Saaj", sub: "Rabab, Saranda, Taus, Dilruba, Jori" },
+                    {
+                      value: "31",
+                      label: "Main Classical Raags",
+                      sub: "Sri Raag to Jaijawanti",
+                      details: [
+                        "Sri Guru Granth Sahib Ji contains 31 primary Raags (plus 31 mixed Raag-Prakaar forms such as Gauri Guareri, Asa Kafi, and Basant Hindol).",
+                        "Beginning with Sri Raag on Ang 14 and culminating with Raag Jaijawanti (composed by Guru Tegh Bahadur Sahib Ji) on Ang 1353.",
+                      ],
+                    },
+                    {
+                      value: "14–1353",
+                      label: "Raag Ang Architecture",
+                      sub: "Structured by melody & Ras",
+                      details: [
+                        "Within each Raag section, hymns are ordered strictly by structure: first Chaupadas, Astpadis, and Chhants by Guru Mahalla (M:1 to M:9), followed by Vars and Bhagat Bani.",
+                      ],
+                    },
+                    {
+                      value: "8 Pehars",
+                      label: "24-Hour Time Alignment",
+                      sub: "Amrit Vela through Night",
+                      details: [
+                        "Four day Pehars and four night Pehars (3 hours each) guide which Raags are sung at dawn, morning, afternoon, dusk, and night.",
+                      ],
+                    },
+                    {
+                      value: "5 Saaj",
+                      label: "Traditional Tanti Saaj",
+                      sub: "Rabab, Saranda, Taus, Dilruba, Jori",
+                      details: [
+                        "Bowed and plucked stringed instruments (Tanti Saaj) accompanied by the Jori-Pakhawaj produce continuous microtonal Meend (glides) that blend seamlessly with vocal Gurbani.",
+                      ],
+                    },
                   ].map((stat) => (
-                    <div
+                    <button
                       key={stat.label}
-                      className="rounded-2xl border border-[#C59B27]/35 bg-[#121C15] p-4 space-y-1"
+                      type="button"
+                      onClick={() =>
+                        setSelectedRaagOrItem({
+                          title: `${stat.value} — ${stat.label}`,
+                          badge: "Gurmat Sangeet Architecture",
+                          subtitle: stat.sub,
+                          summary: stat.details[0],
+                          details: stat.details,
+                        })
+                      }
+                      style={{
+                        backgroundColor: "var(--bg-tertiary)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                      className="text-left rounded-2xl border p-4 space-y-1 hover:border-[var(--accent-primary)] transition-colors duration-150"
                     >
-                      <p className="font-serif text-xl sm:text-2xl font-bold text-[#C59B27]">
+                      <p
+                        style={{ color: "var(--accent-text)" }}
+                        className="font-serif text-xl sm:text-2xl font-bold"
+                      >
                         {stat.value}
                       </p>
                       <p className="text-xs font-extrabold leading-snug">
@@ -2166,67 +2120,99 @@ export default function GranthsAndKirtanPage() {
                         style={{ color: "var(--theme-text-muted)" }}
                         className="text-[11px] leading-snug"
                       >
-                        {stat.sub}
+                        {stat.sub} · Click for details →
                       </p>
-                    </div>
+                    </button>
                   ))}
-                </div>
-
-                {/* Learn Sikhi Lifelong-Learning Mission Banner */}
-                <div className="rounded-2xl border border-[#C59B27]/45 border-l-4 border-l-[#C59B27] bg-[#121C15] p-5 space-y-2">
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#C59B27]">
-                    ✦ Learn Sikhi — A Lifelong Learning Sanctuary
-                  </p>
-                  <p className="font-serif text-lg sm:text-xl font-bold leading-snug">
-                    Sikhi is not a destination to rush through—it is a lifelong path of curiosity, humility, and Shabad Vichaar.
-                  </p>
-                  <p
-                    style={{ color: "var(--theme-text-muted)" }}
-                    className="text-xs sm:text-sm leading-relaxed"
-                  >
-                    Whether you are discovering your first Raag, learning Gurmukhi alongside family,
-                    or studying classical Puratan chronicles like <em>Suraj Prakash</em> and{" "}
-                    <em>Sri Gur Panth Prakash</em>, Learn Sikhi is built to keep primary Gurbani,
-                    authentic Kirtan, and verified Sikh scholarship open and welcoming for every
-                    generation.
-                  </p>
                 </div>
               </section>
 
               {/* ============================================================
-                  INTERACTIVE "WHAT IS GURMAT SANGEET & THE 31 RAGAS?" GUIDE
+                  INTERACTIVE "TANTI SAAJ & THE 31 RAGAS" EXPLORER
               ============================================================ */}
-              <div className="rounded-3xl border border-[#C59B27]/45 bg-[#1B2A20] text-[#FAF6EE] p-6 sm:p-7 space-y-6 w-full min-w-0">
+              <div
+                id="granths-31-raags-section"
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className="rounded-3xl border p-6 sm:p-7 space-y-6 w-full min-w-0 scroll-mt-24"
+              >
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
-                    EDUCATIONAL GUIDE • GURMAT SANGEET &amp; 31 RAAG-PRAKAAR
+                  <span
+                    style={{ color: "var(--accent-text)" }}
+                    className="text-[11px] font-bold uppercase tracking-[0.2em]"
+                  >
+                    INTERACTIVE DIRECTORY • TANTI SAAJ &amp; 31 RAAG-PRAKAAR
                   </span>
-                  <h3 className="text-2xl font-serif font-bold text-[#FAF6EE]">
-                    What is Puratan Gurmat Sangeet &amp; The 31 Classical Ragas?
+                  <h3 className="text-2xl font-serif font-bold">
+                    Explore the 5 Tanti Saaj &amp; 31 Classical Raags (Click Any Card)
                   </h3>
-                  <p className="text-xs sm:text-sm text-[#E2E8F0] leading-relaxed">
-                    In Sri Guru Granth Sahib Ji (Ang 14–1353), Gurbani is arranged not by topic or
-                    chronology, but by <strong className="text-[#E5C158]">31 Main Classical Raags</strong>,
-                    each specifying the exact <strong className="text-[#E5C158]">Raag, Taal, and Ghar</strong>{" "}
-                    so melody elevates the Shabad&apos;s emotional truth (<em>Ras</em>) into spiritual equipoise.
+                  <p
+                    style={{ color: "var(--theme-text-muted)" }}
+                    className="text-xs sm:text-sm leading-relaxed"
+                  >
+                    Click any Tanti Saaj instrument or any of the 31 Classical Raags below
+                    to open its dedicated study card with historical origin, emotional{" "}
+                    <em>Ras</em>, time window (<em>Pehar</em>), and Gurbani Ang range.
                   </p>
                 </div>
 
-                {/* 5 Tanti Saaj String Instruments */}
+                {/* 5 Clickable Tanti Saaj String Instruments */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {TANTI_SAAJ_LIST.map((inst) => (
-                    <div
+                    <button
                       key={inst.name}
-                      className="p-3.5 rounded-2xl bg-[#121C15] border border-[#C59B27]/30 space-y-1"
+                      type="button"
+                      onClick={() =>
+                        setSelectedRaagOrItem({
+                          title: inst.name,
+                          badge: "Traditional Tanti Saaj (Stringed Instrument)",
+                          subtitle: "Sacred Instrument of the Guru's Darbar",
+                          summary: inst.note,
+                          details: [
+                            inst.note,
+                            "In Puratan Kirtan, Tanti Saaj strings are tuned to the drone (Kharaj / Shadaj) of the Raag, producing natural overtones that support effortless vocal contemplation of the Shabad.",
+                          ],
+                        })
+                      }
+                      style={{
+                        backgroundColor: "var(--bg-tertiary)",
+                        borderColor: "var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                      className="text-left p-4 rounded-2xl border space-y-1.5 hover:border-[var(--accent-primary)] transition-colors duration-150"
                     >
-                      <p className="text-xs font-bold text-[#E5C158]">{inst.name}</p>
-                      <p className="text-xs text-[#E2E8F0] leading-relaxed">{inst.note}</p>
-                    </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p
+                          style={{ color: "var(--accent-text)" }}
+                          className="text-xs font-bold"
+                        >
+                          {inst.name}
+                        </p>
+                        <span
+                          style={{ color: "var(--theme-text-muted)" }}
+                          className="text-[11px] font-semibold"
+                        >
+                          Open →
+                        </span>
+                      </div>
+                      <p
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-xs leading-relaxed"
+                      >
+                        {inst.note}
+                      </p>
+                    </button>
                   ))}
                 </div>
 
                 {/* Search & Pehar Filter for the 31 Ragas */}
-                <div className="space-y-3 pt-2 border-t border-[#C59B27]/25">
+                <div
+                  style={{ borderColor: "var(--border-subtle)" }}
+                  className="space-y-4 pt-4 border-t"
+                >
                   <GodModeBox id="granths-raag-search-box" pageKey="granths" label="31 Ragas Section & Search">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
@@ -2235,14 +2221,15 @@ export default function GranthsAndKirtanPage() {
                         pageKey="granths"
                         tag="h4"
                         defaultText="All 31 Main Ragas of Sri Guru Granth Sahib Ji"
-                        className="text-lg font-serif font-bold text-[#FAF6EE]"
+                        className="text-lg font-serif font-bold"
                       />
                       <GodModeText
                         id="granths-ragas-subheading"
                         pageKey="granths"
                         tag="p"
-                        defaultText={`Showing ${filteredRaags.length} of 31 Raags • Ang 14 (Sri Raag) to Ang 1353 (Jaijawanti)`}
-                        className="text-xs text-[#E2E8F0]"
+                        defaultText={`Showing ${filteredRaags.length} of 31 Raags • Click any Raag card for full musicology & Ang details`}
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-xs"
                       />
                     </div>
                     <div className="w-full sm:w-64">
@@ -2260,7 +2247,12 @@ export default function GranthsAndKirtanPage() {
                         onChange={(e) => setRaagSearch(e.target.value)}
                         placeholder={raagSearchPlaceholder}
                         aria-label="Search 31 classical Ragas"
-                        className="dark-input w-full rounded-xl border border-[#C59B27]/45 bg-[#121C15] px-3.5 py-2 text-xs text-[#FAF6EE] placeholder:text-[#A1A1AA] focus:border-[#C59B27]"
+                        style={{
+                          backgroundColor: "var(--bg-tertiary)",
+                          borderColor: "var(--border-subtle)",
+                          color: "var(--text-primary)",
+                        }}
+                        className="w-full rounded-xl border px-3.5 py-2 text-xs focus:outline-none"
                       />
                     </div>
                   </div>
@@ -2277,71 +2269,122 @@ export default function GranthsAndKirtanPage() {
                             role="tab"
                             aria-selected={active}
                             onClick={() => setRaagFilterPehar(pehar)}
-                            className={`relative px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                            style={
                               active
-                                ? "text-[#18181B]"
-                                : "bg-[#121C15] border border-[#C59B27]/35 text-[#E2E8F0] hover:border-[#C59B27]"
-                            }`}
+                                ? {
+                                    backgroundColor: "var(--text-primary)",
+                                    color: "var(--bg-primary)",
+                                    borderColor: "var(--text-primary)",
+                                  }
+                                : {
+                                    backgroundColor: "var(--bg-tertiary)",
+                                    borderColor: "var(--border-subtle)",
+                                    color: "var(--text-primary)",
+                                  }
+                            }
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors"
                           >
-                            {active && (
-                              <motion.span
-                                layoutId="granths-pehar-pill"
-                                transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                                className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#C59B27] to-[#D97706]"
-                              />
-                            )}
-                            <span className="relative z-10">
-                              {pehar === "All" ? "All 31 Ragas" : pehar}
-                            </span>
+                            {pehar === "All" ? "All 31 Ragas" : pehar}
                           </button>
                         );
                       }
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch max-h-[30rem] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
                     {filteredRaags.map((raag) => {
                       const isCurrentPehar = raag.pehar === livePehar.pehar;
                       const isSpotlighted = shuffledRaag?.order === raag.order;
                       return (
-                        <article
+                        <button
                           key={raag.order}
-                          className={`h-full p-4 rounded-2xl bg-[#121C15] border space-y-1.5 flex flex-col justify-between transition ${
-                            isSpotlighted
-                              ? "border-2 border-amber-400 shadow-lg shadow-amber-500/15"
-                              : isCurrentPehar
-                                ? "border-amber-400/70 bg-[#18261D]"
-                                : "border-[#C59B27]/30"
-                          }`}
+                          type="button"
+                          onClick={() =>
+                            setSelectedRaagOrItem({
+                              title: `Raag ${raag.name}`,
+                              gurmukhi: raag.gurmukhi,
+                              badge: `Raag #${raag.order} of 31 • Ang ${raag.angRange}`,
+                              subtitle: `Prescribed Pehar: ${raag.pehar} (${raag.timeWindow})`,
+                              summary: `Emotional Atmosphere (Ras): ${raag.ras}`,
+                              details: [
+                                `Composing Voices in Sri Guru Granth Sahib Ji: ${raag.gurus}.`,
+                                `Canonical Placement: Ang ${raag.angRange} (Raag #${raag.order} in the 31-Raag sequence).`,
+                                `Time of Day (Pehar): Sung during ${raag.pehar} (${raag.timeWindow}) to attune the mind to ${raag.ras.toLowerCase()}.`,
+                              ],
+                              footer:
+                                "Switch to the Granth BookReader tab above to read Gurbani Angs directly inside this Raag.",
+                            })
+                          }
+                          style={{
+                            backgroundColor: "var(--bg-tertiary)",
+                            borderColor:
+                              isSpotlighted || isCurrentPehar
+                                ? "var(--accent-primary)"
+                                : "var(--border-subtle)",
+                            color: "var(--text-primary)",
+                          }}
+                          className="text-left h-full p-4 rounded-2xl border space-y-2 flex flex-col justify-between hover:border-[var(--accent-primary)] transition-colors duration-150"
                         >
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 w-full">
                             <div className="flex items-baseline justify-between gap-2">
-                              <h5 className="text-base font-serif font-bold text-[#FAF6EE]">
-                                {raag.name}
+                              <h5 className="text-base font-serif font-bold">
+                                Raag {raag.name}
                               </h5>
-                              <span lang="pa" className="font-gurmukhi text-sm font-semibold text-[#E5C158]">
+                              <span
+                                lang="pa"
+                                style={{ color: "var(--accent-text)" }}
+                                className="font-gurmukhi text-sm font-semibold"
+                              >
                                 {raag.gurmukhi}
                               </span>
                             </div>
-                            {/* Structured Icon Subtitle Row underneath Raag title */}
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#CBD5E1]">
-                              <span className="font-bold text-[#E5C158]">
+                            <div
+                              style={{ color: "var(--theme-text-muted)" }}
+                              className="flex flex-wrap items-center gap-2 text-[11px] font-medium"
+                            >
+                              <span
+                                style={{ color: "var(--accent-text)" }}
+                                className="font-bold"
+                              >
                                 🎼 #{raag.order} • Ang {raag.angRange}
                               </span>
-                              <span className="opacity-40">•</span>
+                              <span>•</span>
                               <span>
-                                {isCurrentPehar ? `${livePehar.icon} LIVE NOW · ` : "🕰️ "}
+                                {isCurrentPehar ? `${livePehar.icon} Current Pehar · ` : "🕰️ "}
                                 {raag.pehar} ({raag.timeWindow})
                               </span>
                             </div>
-                            <p className="text-xs text-[#E2E8F0] leading-relaxed">
-                              <strong className="text-[#C59B27]">Ras / Mood:</strong> {raag.ras}
+                            <p
+                              style={{ color: "var(--theme-text-muted)" }}
+                              className="text-xs leading-relaxed"
+                            >
+                              <strong style={{ color: "var(--text-primary)" }}>
+                                Ras / Mood:
+                              </strong>{" "}
+                              {raag.ras}
                             </p>
                           </div>
-                          <p className="text-[11px] text-[#E2E8F0]/90 pt-1.5 border-t border-[#C59B27]/20">
-                            <strong className="text-[#C59B27]">Voices:</strong> {raag.gurus}
-                          </p>
-                        </article>
+                          <div
+                            style={{
+                              borderColor: "var(--border-subtle)",
+                              color: "var(--theme-text-muted)",
+                            }}
+                            className="flex items-center justify-between gap-2 text-[11px] pt-2 border-t w-full"
+                          >
+                            <span className="truncate">
+                              <strong style={{ color: "var(--text-primary)" }}>
+                                Voices:
+                              </strong>{" "}
+                              {raag.gurus}
+                            </span>
+                            <span
+                              style={{ color: "var(--accent-text)" }}
+                              className="font-semibold shrink-0"
+                            >
+                              Read Article →
+                            </span>
+                          </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -3083,6 +3126,109 @@ export default function GranthsAndKirtanPage() {
             </div>
           </div>
         )}
+        {/* Dedicated In-Page Raag / Tanti Saaj / Puratan Kirtan Study Article Modal */}
+        <AnimatedModal open={!!selectedRaagOrItem}>
+          {selectedRaagOrItem && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={selectedRaagOrItem.title}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setSelectedRaagOrItem(null);
+                }
+              }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-y-auto"
+            >
+              <div
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--text-primary)",
+                }}
+                className="w-full max-w-2xl rounded-2xl border p-6 sm:p-8 shadow-2xl space-y-5"
+              >
+                <div
+                  style={{ borderColor: "var(--border-subtle)" }}
+                  className="flex items-start justify-between gap-4 border-b pb-4"
+                >
+                  <div className="space-y-1">
+                    <span
+                      style={{ color: "var(--accent-text)" }}
+                      className="text-xs font-bold uppercase tracking-wider"
+                    >
+                      {selectedRaagOrItem.badge}
+                    </span>
+                    <div className="flex flex-wrap items-baseline gap-2.5">
+                      <h2 className="font-serif text-2xl sm:text-3xl font-bold">
+                        {selectedRaagOrItem.title}
+                      </h2>
+                      {selectedRaagOrItem.gurmukhi && (
+                        <span
+                          lang="pa"
+                          style={{ color: "var(--accent-text)" }}
+                          className="font-gurmukhi text-xl font-semibold"
+                        >
+                          {selectedRaagOrItem.gurmukhi}
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      style={{ color: "var(--theme-text-muted)" }}
+                      className="text-xs sm:text-sm font-medium"
+                    >
+                      {selectedRaagOrItem.subtitle}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRaagOrItem(null)}
+                    style={{ borderColor: "var(--border-subtle)" }}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:border-[var(--accent-primary)] shrink-0"
+                  >
+                    Close ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4 text-sm sm:text-base leading-relaxed">
+                  <div
+                    style={{
+                      backgroundColor: "var(--bg-tertiary)",
+                      borderColor: "var(--border-subtle)",
+                    }}
+                    className="rounded-xl border p-4 font-medium"
+                  >
+                    {selectedRaagOrItem.summary}
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {selectedRaagOrItem.details.map((para, idx) => (
+                      <p
+                        key={idx}
+                        style={{ color: "var(--theme-text-muted)" }}
+                        className="text-sm leading-relaxed"
+                      >
+                        • {para}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedRaagOrItem.footer && (
+                  <p
+                    style={{
+                      borderColor: "var(--border-subtle)",
+                      color: "var(--theme-text-muted)",
+                    }}
+                    className="border-t pt-3 text-xs"
+                  >
+                    {selectedRaagOrItem.footer}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </AnimatedModal>
       </main>
 
       <GodModeBox id="granths-footer-box" pageKey="granths" label="Page Footer">

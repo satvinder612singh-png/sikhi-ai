@@ -623,32 +623,90 @@ function SangatHubContent() {
       // Ignore storage read errors
     }
 
-    // Fetch shared global posts and deleted IDs directly from Supabase (/api/site-frames)
-    void fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data || typeof data !== "object") return;
-        if (typeof data.heroBannerUrl === "string" && data.heroBannerUrl.trim()) {
-          setHeroBannerUrl(data.heroBannerUrl);
-        }
-        const serverDeleted: string[] = Array.isArray(data.deletedIds)
-          ? data.deletedIds
+    // Fetch shared global posts from /api/sikhinterest and /api/site-frames
+    void Promise.all([
+      fetch(`/api/sikhinterest?t=${Date.now()}`, { cache: "no-store" }).then((r) =>
+        r.ok ? r.json() : null
+      ),
+      fetch(`/api/site-frames?t=${Date.now()}`, { cache: "no-store" }).then((r) =>
+        r.ok ? r.json() : null
+      ),
+    ])
+      .then(([sikhInterestData, data]) => {
+        const dbPins: SangatVisualPin[] = Array.isArray(sikhInterestData?.posts)
+          ? (
+              sikhInterestData.posts as {
+                id: string;
+                author_name?: string;
+                author_handle?: string;
+                title: string;
+                description: string;
+                category?: string;
+                gurmukhi_calligraphy?: string | null;
+                image_url?: string | null;
+                likes_count?: number;
+                created_at?: string;
+              }[]
+            ).map((row) => ({
+              id: row.id,
+              authorName: row.author_name || "Sangat Artist",
+              authorHandle: row.author_handle || "sangat_artist",
+              authorRole: "Sangat Member",
+              authorBio: "",
+              authorInterests: [],
+              authorAvatarPreset: "lotus-amritsar",
+              title: row.title,
+              description: row.description,
+              category:
+                (row.category as SangatVisualPin["category"]) ||
+                "Sikh Art & Miniature",
+              gurmukhiCalligraphy: row.gurmukhi_calligraphy || "ੴ",
+              visualPalette: "darbar-gold",
+              imageDataUrl: row.image_url || null,
+              availableToCoordinate: false,
+              artistContactNote: "",
+              savesCount: Number(row.likes_count || 0),
+              createdAt: row.created_at
+                ? new Date(row.created_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Recent",
+              isUserCreated: true,
+            }))
           : [];
-        setDeletedIds(serverDeleted);
 
-        if (data.customPosts && typeof data.customPosts === "object") {
-          const cp = data.customPosts as {
-            links?: CuratedLink[];
-            blogs?: SangatBlogArticle[];
-            pins?: SangatVisualPin[];
-          };
+        if (data && typeof data === "object") {
+          if (
+            typeof data.heroBannerUrl === "string" &&
+            data.heroBannerUrl.trim()
+          ) {
+            setHeroBannerUrl(data.heroBannerUrl);
+          }
+          const serverDeleted: string[] = Array.isArray(data.deletedIds)
+            ? data.deletedIds
+            : [];
+          setDeletedIds(serverDeleted);
+
+          const cp =
+            data.customPosts && typeof data.customPosts === "object"
+              ? (data.customPosts as {
+                  links?: CuratedLink[];
+                  blogs?: SangatBlogArticle[];
+                  pins?: SangatVisualPin[];
+                })
+              : {};
           setCuratedLinks(Array.isArray(cp.links) ? cp.links : []);
           setBlogs(Array.isArray(cp.blogs) ? cp.blogs : []);
-          setPins(Array.isArray(cp.pins) ? cp.pins : []);
+          const legacyPins = Array.isArray(cp.pins) ? cp.pins : [];
+          const seenPinIds = new Set(dbPins.map((p) => p.id));
+          setPins([
+            ...dbPins,
+            ...legacyPins.filter((p) => p && !seenPinIds.has(p.id)),
+          ]);
         } else {
-          setCuratedLinks([]);
-          setBlogs([]);
-          setPins([]);
+          setPins(dbPins);
         }
       })
       .catch(() => {
@@ -961,9 +1019,96 @@ function SangatHubContent() {
 
     const authorDisplay = isIdentityHidden
       ? "Sangat Contributor"
-      : profile.displayName || "Sangat Member";
+      : user?.email?.split("@")[0] || profile.displayName || "Sangat Member";
     const authorSlug = slugifyName(authorDisplay);
     const cleanImage = shareImageUrl?.trim() || null;
+
+    // Direct SikhInterest Artwork Upload Flow -> POST /api/sikhinterest
+    if (shareTab === "write" && writeKind === "pin") {
+      if (!writeTitle.trim() || !writeBody.trim()) {
+        setShareError("Please add an artwork title and description.");
+        return;
+      }
+      try {
+        const res = await fetch("/api/sikhinterest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: writeTitle.trim(),
+            description: writeBody.trim(),
+            category: "Sikh Art & Miniature",
+            gurmukhi_calligraphy: writeGurmukhi.trim() || "ੴ",
+            image_url: cleanImage,
+            author_name: authorDisplay,
+            author_handle: authorSlug,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok || !data.post) {
+          setShareError(
+            data?.error ||
+              "Could not save artwork. Please make sure you are signed in."
+          );
+          return;
+        }
+        const savedPost = data.post as {
+          id: string;
+          title: string;
+          description: string;
+          category?: string;
+          gurmukhi_calligraphy?: string | null;
+          image_url?: string | null;
+        };
+        const created: SangatVisualPin = {
+          id: savedPost.id,
+          authorName: authorDisplay,
+          authorHandle: authorSlug,
+          authorRole: profile.roleBadge,
+          authorBio: profile.bio,
+          authorInterests: profile.interests,
+          authorAvatarPreset: profile.avatarPreset,
+          authorCustomAvatar: profile.customAvatarDataUrl,
+          title: savedPost.title,
+          description: savedPost.description,
+          category: "Sikh Art & Miniature",
+          gurmukhiCalligraphy: savedPost.gurmukhi_calligraphy || "ੴ",
+          visualPalette: "darbar-gold",
+          imageDataUrl: savedPost.image_url || cleanImage,
+          focalPoint: shareFocalPoint,
+          availableToCoordinate: false,
+          artistContactNote: "",
+          savesCount: 0,
+          createdAt: "Just now",
+          isUserCreated: true,
+        };
+        if (created.imageDataUrl) {
+          saveAndSyncFrame(`sangat-feed-visual-${created.id}`, {
+            src: created.imageDataUrl,
+            orientation: shareOrientation,
+            fitMode: shareFitMode,
+            posX: sharePosX,
+            posY: sharePosY,
+            zoom: shareZoom,
+            hidden: false,
+          });
+        }
+        setPins((prev) => [created, ...prev]);
+        setHomeBubble("sikhinterest");
+        setFeedTab("visuals");
+        setShareToast(`✓ Published your SikhInterest artwork "${created.title}".`);
+        window.setTimeout(() => setShareToast(null), 3500);
+        resetShareForm();
+        setConfirmOriginalArt(false);
+        setIsShareOpen(false);
+        return;
+      } catch (err) {
+        setShareError(
+          err instanceof Error ? err.message : "Network error while uploading artwork."
+        );
+        return;
+      }
+    }
+
     const requiresApproval = !isStealthAdmin && secCfg.requireAdminApproval !== false;
 
     if (requiresApproval) {
@@ -1303,13 +1448,29 @@ function SangatHubContent() {
   const handleShareImageFile = async (file: File | undefined) => {
     if (!file) return;
     setShareUploadStatus("uploading");
-    setShareUploadMsg("Uploading & syncing image...");
+    setShareUploadMsg("Uploading image to Supabase Storage...");
     try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "sikhinterest");
+      const res = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.url) {
+        setShareImageUrl(data.url);
+        setSharePreviewRatio(null);
+        setShareUploadStatus("synced");
+        setShareUploadMsg("✓ Image uploaded to Supabase Storage");
+        return;
+      }
+      // Graceful compressed fallback if storage bucket is not yet created
       const compressed = await compressImageFile(file, 1000, 0.72);
       setShareImageUrl(compressed);
       setSharePreviewRatio(null);
       setShareUploadStatus("synced");
-      setShareUploadMsg("✓ Image saved & synced globally");
+      setShareUploadMsg("✓ Image prepared and ready to publish");
     } catch (err) {
       setShareUploadStatus("error");
       setShareUploadMsg(
@@ -3164,7 +3325,7 @@ function SangatHubContent() {
                 </>
               )}
 
-              {/* Unified Artwork / Visual Attachment (Works for Articles, Visuals, and Curated Links) */}
+              {/* Unified Artwork / Visual Attachment (Works for sikhstacks, Visuals, and Curated Links) */}
               <div className="rounded-xl border border-[#C59B27]/25 p-3.5 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-xs font-bold">
@@ -3501,7 +3662,7 @@ function SangatHubContent() {
                 className="text-xs sm:text-sm leading-relaxed"
               >
                 Anyone can read research essays, explore SikhInterest pins, and read Dil Di
-                Baat reflections publicly. To publish articles, create pins, or post
+                Baat reflections publicly. To publish sikhstacks, create pins, or post
                 comments, please sign in with your Learn Sikhi account.
               </p>
             </div>

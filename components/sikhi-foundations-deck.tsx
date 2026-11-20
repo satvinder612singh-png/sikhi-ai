@@ -203,25 +203,45 @@ function FoundationDetailModal({
       }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 overflow-hidden"
     >
-      <div className="w-full max-w-2xl max-h-[82vh] flex flex-col rounded-2xl bg-[#FAF7F0] text-[#18181B] shadow-2xl overflow-hidden border border-[#C59B27]/50">
+      <div
+        className="w-full max-w-2xl max-h-[82vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border"
+        style={{
+          backgroundColor: "var(--bg-surface)",
+          color: "var(--text-primary)",
+          borderColor: "var(--border-subtle)",
+        }}
+      >
         {/* Sticky Top Header */}
-        <div className="shrink-0 px-6 py-4 border-b border-amber-700/20 flex justify-between items-center gap-4 bg-[#FAF7F0]">
+        <div
+          className="shrink-0 px-6 py-4 border-b flex justify-between items-center gap-4"
+          style={{
+            backgroundColor: "var(--bg-surface)",
+            borderColor: "var(--border-subtle)",
+          }}
+        >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-800 px-2.5 py-0.5 rounded bg-amber-100 border border-amber-600/30">
+              <span
+                className="text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-0.5 rounded border"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                  color: "var(--accent-text)",
+                }}
+              >
                 {item.category}
               </span>
-              <span className="text-xs text-zinc-600 truncate">
+              <span className="text-xs truncate" style={muted}>
                 {item.datesAndPlace}
               </span>
             </div>
-            <p lang="pa" className="font-gurmukhi text-lg font-semibold text-amber-700">
+            <p lang="pa" className="font-gurmukhi text-lg font-semibold text-[#C59B27]">
               {item.gurmukhi}
             </p>
-            <h3 className="text-xl sm:text-2xl font-serif font-bold text-zinc-900 truncate">
+            <h3 className="text-xl sm:text-2xl font-serif font-bold truncate" style={{ color: "var(--text-primary)" }}>
               {item.title}
             </h3>
-            <p className="text-xs sm:text-sm font-semibold text-amber-800">
+            <p className="text-xs sm:text-sm font-semibold" style={{ color: "var(--accent-text)" }}>
               {item.subtitle}
             </p>
           </div>
@@ -229,7 +249,12 @@ function FoundationDetailModal({
             type="button"
             onClick={onClose}
             aria-label="Close historical modal"
-            className="shrink-0 px-3.5 py-2 rounded-xl border border-amber-700/35 bg-white text-zinc-900 text-xs font-bold hover:border-amber-700 transition"
+            className="shrink-0 px-3.5 py-2 rounded-xl border text-xs font-bold hover:border-[#C59B27] transition"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              borderColor: "var(--border-subtle)",
+              color: "var(--text-primary)",
+            }}
           >
             ✕ Close
           </button>
@@ -243,37 +268,56 @@ function FoundationDetailModal({
             title={item.title}
           />
 
-          <div className="p-5 rounded-2xl bg-[#F2E9D8] border border-amber-700/25 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">
+          <div
+            className="p-5 rounded-2xl border space-y-2"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              borderColor: "var(--border-subtle)",
+            }}
+          >
+            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
               ੧ · Historical Sakhi &amp; Biography
             </h4>
-            <p className="text-sm sm:text-base leading-relaxed text-zinc-900">
+            <p className="text-sm sm:text-base leading-relaxed" style={{ color: "var(--text-primary)" }}>
               {item.biography}
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#F2E9D8] border border-amber-700/25 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-amber-800">
+          <div
+            className="p-5 rounded-2xl border space-y-2"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              borderColor: "var(--border-subtle)",
+            }}
+          >
+            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
               ੨ · Puratan Granth Citations ({item.puratanSource})
             </h4>
-            <p className="text-sm leading-relaxed text-zinc-800">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
               {item.puratanCitation}
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-amber-50 border border-amber-700/30 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-amber-900">
+          <div
+            className="p-5 rounded-2xl border space-y-2"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              borderColor: "var(--border-subtle)",
+            }}
+          >
+            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-[#C59B27]">
               ੩ · Gurmat Significance
             </h4>
-            <p className="text-sm leading-relaxed text-zinc-900">
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
               {item.gurmatSignificance}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-amber-700/20">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
             <Link
               href="/granths"
-              className="text-xs font-bold text-amber-800 hover:underline"
+              className="text-xs font-bold hover:underline"
+              style={{ color: "var(--accent-text)" }}
             >
               Explore Primary Puratan Granths →
             </Link>
@@ -426,6 +470,7 @@ const PURATAN_SCHOLARS: PuratanScholar[] = [
 /* ----------------------------- SLIDE 1 ----------------------------------- */
 function SlideWho() {
   const [expandedScholarIds, setExpandedScholarIds] = useState<string[]>([]);
+  const [activePillarIdx, setActivePillarIdx] = useState<number>(0);
 
   const toggleScholar = (id: string) => {
     setExpandedScholarIds((prev) =>
@@ -433,49 +478,130 @@ function SlideWho() {
     );
   };
 
+  const whoDimensions = [
+    {
+      badge: "੧ · Etymology & Gurbani Definition",
+      title: "Sikh (ਸਿੱਖ) — The Lifelong Learner & Disciple of Truth",
+      gurmukhi: "ਸੋ ਸਿਖੁ ਸਖਾ ਬੰਧਪੁ ਹੈ ਭਾਈ ਜਿ ਗੁਰ ਕੇ ਭਾਣੇ ਵਿਚਿ ਆਵੈ ॥ (ਅੰਗ ੬੦੧)",
+      body:
+        "Derived from the Sanskrit 'Śiṣya' (disciple/student) and Punjabi verb 'Sikhna' (to learn), a Sikh is defined in Sri Guru Granth Sahib Ji not by birth, caste, or ritual priesthood, but by an active, lifelong commitment to learning from the Shabad Guru and walking in Hukam (Divine Will).",
+    },
+    {
+      badge: "੨ · Metaphysical Foundation",
+      title: "Ik Onkar (ੴ) — Radical Oneness & Fearless Dignity",
+      gurmukhi: "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ ਨਿਰਵੈਰੁ ਅਕਾਲ ਮੂਰਤਿ ਅਜੂਨੀ ਸੈਭੰ ਗੁਰ ਪ੍ਰਸਾਦਿ ॥",
+      body:
+        "Guru Nanak Dev Ji opened Sri Guru Granth Sahib Ji with the Mool Mantar: there is One all-pervading Creator (Ik Onkar) whose light dwells equally within every being (Sabudh Meh Jot). Because the One is Nirbhau (without fear) and Nirvair (without enmity), a Sikh refuses both to intimidate anyone and to bow before tyranny.",
+    },
+    {
+      badge: "੩ · Grihasth Marg & Sant-Sipahi",
+      title: "The Householder's Path & Saint-Soldier Balance",
+      gurmukhi: "ਅੰਜਨ ਮਾਹਿ ਨਿਰੰਜਨਿ ਰਹੀਐ ਜੋਗ ਜੁਗਤਿ ਇਵ ਪਾਈਐ ॥ (ਅੰਗ ੭੩੦)",
+      body:
+        "Sikhi rejects ascetic withdrawal into caves or forests. Instead, the Gurus taught Grihasth Marg—living purely amid family and civic duties like a lotus flower untouched by muddy water—culminating in the Sant-Sipahi (Saint-Soldier) ideal of Guru Hargobind Sahib Ji (Miri-Piri) and Guru Gobind Singh Ji's Khalsa.",
+    },
+    {
+      badge: "੪ · Shabad Guru & Sadh Sangat",
+      title: "Guided by the Eternal Living Guru in Community",
+      gurmukhi: "ਬਾਣੀ ਗੁਰੂ ਗੁਰੂ ਹੈ ਬਾਣੀ ਵਿਚਿ ਬਾਣੀ ਅੰਮ੍ਰਿਤੁ ਸਾਰੇ ॥ (ਅੰਗ ੯੮੨)",
+      body:
+        "In 1708 at Sri Hazoor Sahib, Guru Gobind Singh Ji vested eternal Guruship in Sri Guru Granth Sahib Ji. A Sikh's spiritual growth unfolds in Sadh Sangat (the fellowship of seekers) and Pangat (sitting together as equals in Guru Ka Langar), honoring the full continuum from new learners (Sehajdhari) to initiated Amritdhari Khalsa.",
+    },
+  ];
+
   const pillars: {
     icon: SikhiIconName;
     name: string;
     gurmukhi: string;
+    subtitle: string;
     citation: string;
     pangti: string;
     translation: string;
     commentary: string;
+    philosophy: string;
+    historicalSakhi: string;
+    dailyPractice: string[];
+    secondaryQuoteGurmukhi: string;
+    secondaryQuoteTranslation: string;
   }[] = [
     {
       icon: "ikonkar",
       name: "Naam Japna",
       gurmukhi: "ਨਾਮ ਜਪਣਾ",
+      subtitle: "Contemplative Remembrance & Inner Alignment with Ik Onkar",
       citation: "SGGS Ang 266 (Sukhmani Sahib) • Bhai Gurdas Ji, Vaar 12",
       pangti: "ਪ੍ਰਭ ਕੈ ਸਿਮਰਨਿ ਗਰਭਿ ਨ ਬਸੈ ॥ ਪ੍ਰਭ ਕੈ ਸਿਮਰਨਿ ਦੂਖੁ ਜਮੁ ਨਸੈ ॥",
       translation:
         "In mindful remembrance of the One, one transcends fear and sorrow; inner awakening dawns.",
       commentary:
-        "Not mechanical repetition, but continuous loving awareness of Ik Onkar through Amrit Vela Simran, Kirtan, and Gurbani contemplation.",
+        "Not mechanical repetition, but continuous loving awareness of Ik Onkar through Amrit Vela Simran, Kirtan, and Gurbani contemplation that dissolves Haumai (ego).",
+      philosophy:
+        "In Gurmat, 'Naam' is not merely a noun or verbal formula—it is the total creative presence, Hukam, and virtuous energy of Akal Purakh pervading the cosmos ('Naam Ke Dhare Sagale Jant'). Naam Japna cleanses the mind (Man) of the Five Thieves—Kaam (lust), Krodh (wrath), Lobh (greed), Moh (attachment), and Ahankar (pride)—awakening the innate divine virtues of Sat (truth), Santokh (contentment), Daya (compassion), Dharam (righteousness), and Dheeraj (patience).",
+      historicalSakhi:
+        "At Kartarpur Sahib (1521–1539), Guru Nanak Dev Ji established the daily rhythm that Bhai Gurdas Ji chronicles in Vaar 1, Pauri 38: rising during Amrit Vela (the ambrosial hours before dawn) to recite Japji Sahib, singing Asa Ki Vaar in congregation, and concluding the day's labor with Sodar Rehras and Sohila.",
+      dailyPractice: [
+        "Amrit Vela & Nitnem: Rising in the quiet early morning hours to reflect on the Guru's Bani (Japji Sahib, Jaap Sahib, Tav-Prasad Savaiye, Chaupai Sahib, Anand Sahib).",
+        "Shabad Vichaar & Santhiya: Reading and understanding the meaning of Gurbani rather than performing ritual recitation without comprehension.",
+        "Shabad Kirtan & Sadh Sangat: Singing and listening to Gurbani in the classical Raags within the fellowship of the Sangat.",
+        "Swas-Giras Simran: Carrying mindful awareness of Vaheguru into every breath and ethical decision throughout the workday.",
+      ],
+      secondaryQuoteGurmukhi: "ਗੁਰ ਸਤਿਗੁਰ ਕਾ ਜੋ ਸਿਖੁ ਅਖਾਏ ਸੁ ਭਲਕੇ ਉਠਿ ਹਰਿ ਨਾਮੁ ਧਿਆਵੈ ॥ (ਅੰਗ ੩੦੫)",
+      secondaryQuoteTranslation:
+        "One who calls themselves a Sikh of the True Guru shall rise in the early morning hours and meditate on the Divine Name (Guru Ram Das Ji, SGGS Ang 305).",
     },
     {
       icon: "dhaal",
       name: "Kirat Karni",
       gurmukhi: "ਕਿਰਤ ਕਰਨੀ",
+      subtitle: "Honest, Ethical Labor & Upright Civic Responsibility",
       citation: "SGGS Ang 1245 (Sarang Ki Vaar) • Bhai Lalo Ji Sakhi",
       pangti: "ਘਾਲਿ ਖਾਇ ਕਿਛੁ ਹਥਹੁ ਦੇਇ ॥ ਨਾਨਕ ਰਾਹੁ ਪਛਾਣਹਿ ਸੇਇ ॥",
       translation:
         "One who works earnestly with their own hands and gives in charity—O Nanak, they alone recognize the true Way.",
       commentary:
-        "Guru Nanak Dev Ji chose Bhai Lalo's coarse honest bread over Malik Bhago's exploited feast, sanctifying ethical labour in society.",
+        "Guru Nanak Dev Ji chose Bhai Lalo's coarse honest bread over Malik Bhago's exploited feast, sanctifying ethical labour and rejecting both parasitism and exploitation.",
+      philosophy:
+        "Kirat Karni elevates everyday work into sacred worship. Sikhi rejects two extremes: the ascetic who begs from householders while claiming spiritual superiority, and the exploiter who amasses wealth through corruption, coercion, or deceit ('Hakam'). Honest labor performed with integrity, skill, and truthfulness keeps a person humble, self-reliant, and actively useful to society.",
+      historicalSakhi:
+        "At Eminabad, Guru Nanak Dev Ji declined the lavish state banquet of Malik Bhago—a corrupt official whose wealth was wrung from poor farmers—and stayed instead in the mud home of Bhai Lalo Ji, a humble carpenter. When challenged, Guru Sahib symbolically showed that Bhai Lalo's millet roti held the milk of honest sweat, whereas Malik Bhago's delicacies dripped with the blood of the oppressed. Later, in his final years at Kartarpur, Guru Nanak Dev Ji himself tilled the fields with his own hands.",
+      dailyPractice: [
+        "Dharam Di Kirat: Earning one's livelihood through transparent, lawful, and ethical work without cheating, bribery, or exploiting vulnerable workers.",
+        "Rejection of Entitlement & Superstition: Refusing unearned privileges, caste hierarchies of labor, or fatalistic idleness.",
+        "Excellence & Stewardship: Treating one's craft, studies, profession, or caregiving as a direct offering of truth before the Guru.",
+        "Environmental & Social Integrity: Ensuring our economic actions respect Sarbat Da Bhala (the well-being of all creation) rather than short-term greed.",
+      ],
+      secondaryQuoteGurmukhi: "ਹقੁ ਪਰਾਇਆ ਨਾਨਕਾ ਉਸੁ ਸੂਅਰ ਉਸੁ ਗਾਇ ॥ ਗੁਰੁ ਪੀਰੁ ਹਾਮਾ ਤਾ ਭਰੇ ਜਾ ਮੁਰਦਾਰੁ ਨ ਖਾਇ ॥ (ਅੰਗ ੧੪੧)",
+      secondaryQuoteTranslation:
+        "To usurp what rightfully belongs to another, O Nanak, is like forbidden meat; the Guru stands by one only when they do not consume the proceeds of exploitation (SGGS Ang 141).",
     },
     {
       icon: "lotus-dome",
       name: "Vand Chhakna",
       gurmukhi: "ਵੰਡ ਛਕਣਾ",
+      subtitle: "Generous Sharing, Dasvandh & Selfless Seva for All Humanity",
       citation: "Bhai Gurdas Ji, Vaar 12, Pauri 2 • Guru Ka Langar",
       pangti: "ਸਭੈ ਸਾਂਝੀਵਾਲ ਸਦਾਇਨਿ ਤੂੰ ਕਿਸੈ ਨ ਦਿਸਹਿ ਬਾਹਰਾ ਜੀਉ ॥",
       translation:
         "All are called equal partners in Your grace; none appears as an outsider to You (Ang 97).",
       commentary:
-        "Sharing one's earnings, time (Seva), and table (Langar & Dasvandh) freely with all humanity regardless of caste, creed, or status.",
+        "Sharing one's earnings, time (Seva), and table (Langar & Dasvandh) freely with all humanity regardless of caste, creed, gender, or status.",
+      philosophy:
+        "If Naam Japna aligns the inner consciousness and Kirat Karni purifies how we act in the world, Vand Chhakna is the outward flowering of Divine Love. Because everything we possess is a trust (Amanat) from the One Creator, hoarding wealth while neighbors suffer is spiritual blindness. Sharing breaks the walls of ego and transforms resources into healing for the world.",
+      historicalSakhi:
+        "When young Guru Nanak Dev Ji was given twenty rupees by his father Mehta Kalu Ji to conduct a 'Sacha Sauda' (True Bargain), he used the entire sum to feed and clothe starving mendicants in the forest of Chuharkana—founding the eternal institution of Guru Ka Langar. Guru Amar Das Ji expanded this with the rule 'Pehle Pangat Pachhe Sangat' (even Emperor Akbar sat on the floor in the common kitchen row before meeting the Guru), and Guru Arjan Dev Ji institutionalized Dasvandh (contributing one-tenth of one's earnings and time to the common good).",
+      dailyPractice: [
+        "Dasvandh (The Sacred Tenth): Dedicating at least 10% of one's honest income and time toward charitable causes, education, relief efforts, and community upkeep.",
+        "Tan, Man, Dhan Seva: Serving humanity physically (Tan—cooking, cleaning, defending the weak), mentally/intellectually (Man—teaching, counseling, creating), and financially (Dhan).",
+        "Guru Ka Langar: Upholding radical hospitality where every human being sits at the same level and is nourished without distinction.",
+        "Sarbat Da Bhala: Active solidarity with oppressed and marginalized people everywhere, remembering Bhai Ghanaiya Ji who served water and ointment even to wounded enemy soldiers on the battlefield of Anandpur.",
+      ],
+      secondaryQuoteGurmukhi: "ਵਿਚਿ ਦੁਨੀਆ ਸੇਵ ਕਮਾਈਐ ॥ ਤਾ ਦਰਗਹ ਬੈਸਣੁ ਪਾਈਐ ॥ (ਅੰਗ ੨੬)",
+      secondaryQuoteTranslation:
+        "In the midst of this world, dedicate yourself to selfless service (Seva); thus shall you find a seat of honor in the Divine Court (Guru Nanak Dev Ji, SGGS Ang 26).",
     },
   ];
+
+  const activePillar = pillars[activePillarIdx] || pillars[0];
 
   return (
     <div className="space-y-6">
@@ -486,72 +612,272 @@ function SlideWho() {
       />
 
       <GodModeBox id="foundations-who-intro" pageKey="foundations" label="Who is a Sikh Intro">
-      <div className="rounded-3xl border border-[#d4af37]/30 p-6 sm:p-8 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30" style={card}>
-        <GodModeText
-          id="foundations-who-eyebrow"
-          pageKey="foundations"
-          tag="p"
-          defaultText="Puratan Foundations • Who is a Sikh?"
-          className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
-        />
-        <GodModeText
-          id="foundations-who-quote"
-          pageKey="foundations"
-          tag="div"
-          defaultText="“A Sikh (Sishya / Seeker-Disciple) is any human being who turns toward the Light of Ik Onkar revealed in the Ten Guru Sahibs and enshrined eternally in Sri Guru Granth Sahib Ji—growing daily through Truthful Living, Seva, and Love.”"
-          className="font-serif text-xl sm:text-2xl leading-relaxed"
-        />
-        <GodModeText
-          id="foundations-who-sub"
-          pageKey="foundations"
-          tag="p"
-          defaultText="Classical 17th–19th century Puratan Granths honour the full continuum of Guru Nanak's Sangat: from seekers taking their first steps in Gurbani (Sehajdhari) to those who embrace the Khalsa covenant of Amrit and the Panj Kakaar."
-          className="text-sm leading-relaxed"
-          style={muted}
-        />
-      </div>
-      </GodModeBox>
+        <div className="rounded-3xl border border-[#d4af37]/30 p-6 sm:p-8 space-y-5 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30" style={card}>
+          <div className="space-y-3">
+            <GodModeText
+              id="foundations-who-eyebrow"
+              pageKey="foundations"
+              tag="p"
+              defaultText="Puratan Foundations • What is a Sikh?"
+              className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+            />
+            <GodModeText
+              id="foundations-who-quote"
+              pageKey="foundations"
+              tag="div"
+              defaultText="“A Sikh (Śiṣya / Lifelong Seeker-Disciple) is any human being who turns toward the Light of Ik Onkar revealed through the Ten Guru Sahibs and enshrined eternally in Sri Guru Granth Sahib Ji—striving daily to unite inner contemplation (Naam), ethical labor (Kirat), and compassionate service to all creation (Vand Chhakna & Seva).”"
+              className="font-serif text-xl sm:text-2xl leading-relaxed"
+            />
+            <GodModeText
+              id="foundations-who-sub"
+              pageKey="foundations"
+              tag="p"
+              defaultText="Classical 17th–19th century Puratan Granths and the Sikh Rehat Maryada define Sikhi both spiritually and practically: a learner who places faith in One Akal Purakh, the Ten Guru Sahibs (from Guru Nanak Dev Ji to Guru Gobind Singh Ji), and the eternal living Word of Sri Guru Granth Sahib Ji—rejecting caste hierarchies, empty ritualism, and tyranny while walking the householder's path of Sant-Sipahi (Saint-Soldier)."
+              className="text-sm leading-relaxed"
+              style={muted}
+            />
+          </div>
 
-      {/* Enriched 3 Pillars */}
-      <GodModeBox id="foundations-pillars-box" pageKey="foundations" label="Three Pillars Section">
-      <div className="space-y-3">
-        <GodModeText
-          id="foundations-pillars-eyebrow"
-          pageKey="foundations"
-          tag="p"
-          defaultText="Guru Nanak Dev Ji's Three Pillars (Gurbani & Varaan Citations)"
-          className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
-        />
-        <div className="grid gap-5 md:grid-cols-3">
-          {pillars.map((p) => (
-            <div key={p.name} className="rounded-2xl border p-5 space-y-3 flex flex-col justify-between" style={card}>
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-3">
-                  <SikhiIcon name={p.icon} size={38} />
-                  <div>
-                    <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">
-                      {p.gurmukhi}
-                    </p>
-                    <h4 className="font-serif text-lg font-bold">{p.name}</h4>
-                  </div>
-                </div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[#D97706]">
-                  {p.citation}
+          {/* 4 Foundational Dimensions of Sikh Identity */}
+          <div className="grid gap-4 md:grid-cols-2 pt-3 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+            {whoDimensions.map((dim) => (
+              <div
+                key={dim.title}
+                className="rounded-2xl border p-4 space-y-2"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  {dim.badge}
+                </span>
+                <h4 className="font-serif text-base font-bold" style={{ color: "var(--text-primary)" }}>
+                  {dim.title}
+                </h4>
+                <p lang="pa" className="font-gurmukhi text-xs leading-relaxed text-[#C59B27]">
+                  {dim.gurmukhi}
                 </p>
-                <p lang="pa" className="font-gurmukhi text-sm leading-relaxed text-[#C59B27] pt-1 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-                  {p.pangti}
-                </p>
-                <p className="text-xs italic leading-relaxed" style={muted}>
-                  &ldquo;{p.translation}&rdquo;
+                <p className="text-xs leading-relaxed" style={muted}>
+                  {dim.body}
                 </p>
               </div>
-              <p className="text-xs leading-relaxed pt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
-                {p.commentary}
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      </GodModeBox>
+
+      {/* Enriched 3 Pillars + Interactive Deep-Dive Study */}
+      <GodModeBox id="foundations-pillars-box" pageKey="foundations" label="Three Pillars Section">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <GodModeText
+              id="foundations-pillars-eyebrow"
+              pageKey="foundations"
+              tag="p"
+              defaultText="Guru Nanak Dev Ji's Three Golden Pillars (Naam Japna • Kirat Karni • Vand Chhakna)"
+              className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#C59B27]"
+            />
+            <span className="text-xs font-medium" style={muted}>
+              Click any pillar card below to inspect its full philosophical &amp; historical study
+            </span>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-3 items-stretch">
+            {pillars.map((p, idx) => {
+              const isSelected = activePillarIdx === idx;
+              return (
+                <div
+                  key={p.name}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setActivePillarIdx(idx)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActivePillarIdx(idx);
+                    }
+                  }}
+                  className="rounded-2xl border p-5 space-y-3 flex flex-col justify-between cursor-pointer transition-all"
+                  style={{
+                    ...card,
+                    borderColor: isSelected ? "#C59B27" : "var(--border-subtle)",
+                    boxShadow: isSelected ? "0 0 0 1px rgba(197, 155, 39, 0.35)" : undefined,
+                  }}
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <SikhiIcon name={p.icon} size={38} />
+                        <div>
+                          <p lang="pa" className="font-gurmukhi text-sm font-semibold text-[#C59B27]">
+                            {p.gurmukhi}
+                          </p>
+                          <h4 className="font-serif text-lg font-bold">{p.name}</h4>
+                        </div>
+                      </div>
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border"
+                        style={{
+                          backgroundColor: isSelected ? "rgba(197, 155, 39, 0.16)" : "var(--bg-tertiary)",
+                          borderColor: isSelected ? "#C59B27" : "var(--border-subtle)",
+                          color: isSelected ? "#C59B27" : "var(--theme-text-muted)",
+                        }}
+                      >
+                        {isSelected ? "Active Study" : `Pillar ${idx + 1}`}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {p.subtitle}
+                    </p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#D97706]">
+                      {p.citation}
+                    </p>
+                    <p lang="pa" className="font-gurmukhi text-sm leading-relaxed text-[#C59B27] pt-2 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+                      {p.pangti}
+                    </p>
+                    <p className="text-xs italic leading-relaxed" style={muted}>
+                      &ldquo;{p.translation}&rdquo;
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t space-y-2" style={{ borderColor: "var(--border-subtle)" }}>
+                    <p className="text-xs leading-relaxed">
+                      {p.commentary}
+                    </p>
+                    <span className="inline-block text-[11px] font-bold text-[#C59B27]">
+                      {isSelected ? "Viewing Deep Study Below ↓" : "Inspect Deep Study →"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Expanded Deep-Dive Workbench for the Active Pillar */}
+          <div
+            className="rounded-3xl border p-6 sm:p-7 space-y-5 transition-all"
+            style={{
+              ...card,
+              borderColor: "rgba(197, 155, 39, 0.4)",
+            }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: "var(--border-subtle)" }}>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C59B27]">
+                  In-Depth Pillar Study • Pillar {activePillarIdx + 1} of 3
+                </span>
+                <h3 className="font-serif text-xl sm:text-2xl font-bold mt-0.5">
+                  <span lang="pa" className="font-gurmukhi text-[#C59B27] mr-2">
+                    {activePillar.gurmukhi}
+                  </span>
+                  {activePillar.name} — {activePillar.subtitle}
+                </h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {pillars.map((p, idx) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => setActivePillarIdx(idx)}
+                    className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition ${
+                      activePillarIdx === idx
+                        ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B] border-transparent"
+                        : ""
+                    }`}
+                    style={
+                      activePillarIdx === idx
+                        ? undefined
+                        : {
+                            backgroundColor: "var(--bg-tertiary)",
+                            borderColor: "var(--border-subtle)",
+                            color: "var(--text-primary)",
+                          }
+                    }
+                  >
+                    {idx + 1}. {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div
+                className="rounded-2xl border p-5 space-y-2.5"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  ੧ · Theological &amp; Philosophical Depth (Gurmat Siddhant)
+                </span>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                  {activePillar.philosophy}
+                </p>
+              </div>
+
+              <div
+                className="rounded-2xl border p-5 space-y-2.5"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  ੨ · Historical Sakhi &amp; Guru-Period Institution
+                </span>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                  {activePillar.historicalSakhi}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-12 items-stretch">
+              <div
+                className="lg:col-span-7 rounded-2xl border p-5 space-y-3"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  ੩ · Daily Practical Abhiyaas (How Sikhs Live {activePillar.name} Today)
+                </span>
+                <ul className="space-y-2 text-xs sm:text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                  {activePillar.dailyPractice.map((step) => (
+                    <li key={step} className="flex items-start gap-2.5">
+                      <span className="text-[#C59B27] font-bold mt-0.5">•</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div
+                className="lg:col-span-5 rounded-2xl border p-5 flex flex-col justify-between space-y-3"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                    ੪ · Primary Scriptural Anchor
+                  </span>
+                  <p lang="pa" className="font-gurmukhi text-base leading-relaxed text-[#C59B27]">
+                    {activePillar.secondaryQuoteGurmukhi}
+                  </p>
+                  <p className="text-xs sm:text-sm italic leading-relaxed" style={muted}>
+                    &ldquo;{activePillar.secondaryQuoteTranslation}&rdquo;
+                  </p>
+                </div>
+                <p className="text-[11px] leading-relaxed pt-2 border-t" style={{ borderColor: "var(--border-subtle)", ...muted }}>
+                  In Sikh thought, all three pillars are inseparable: Naam without honest Kirat becomes hollow mysticism, and Kirat without Vand Chhakna becomes selfish accumulation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </GodModeBox>
 
       {/* 17th–19th Century Puratan Scholars Accordion Grid (items-start prevents sibling stretch!) */}
@@ -619,6 +945,97 @@ function SlideWho() {
 }
 
 /* ----------------------------- SLIDE 2 ----------------------------------- */
+const KAKAAR_DEEP_STUDY: Record<
+  string,
+  {
+    pronunciation: string;
+    coreVirtue: string;
+    etymology: string;
+    gurmatPhilosophy: string;
+    vaisakhiContext: string;
+    dailyDiscipline: string;
+    puratanQuoteGurmukhi: string;
+    puratanQuoteTranslation: string;
+    puratanSource: string;
+  }
+> = {
+  kesh: {
+    pronunciation: "Kesh (ਕੇਸ)",
+    coreVirtue: "Hukam & Natural Sovereignty",
+    etymology: "Sanskrit/Punjabi 'Keśa' — Sacred, unshorn hair preserved in its natural Creator-given form.",
+    gurmatPhilosophy:
+      "Kesh is the living seal of acceptance of Akal Purakh's Hukam (Divine Will). Rather than altering or renouncing the natural human form out of vanity or ascetic shaving practices (Mundan), a Sikh honors the body as a temple of Divine Light, crowning the Kesh with a Dastaar (turban) of equality and sovereign responsibility.",
+    vaisakhiContext:
+      "At Vaisakhi 1699 at Takht Sri Kesgarh Sahib, Guru Gobind Singh Ji made uncut Kesh crowned with a Dastaar the unmistakable visual identity of the Khalsa—ensuring that a Sikh could never hide in a crowd when called upon to defend the vulnerable.",
+    dailyDiscipline:
+      "Combing the Kesh twice daily with the Kanga, washing and caring for it with gratitude, and tying a clean Dastaar or Keski as a daily crown of humility and accountability.",
+    puratanQuoteGurmukhi: "ਨਿਸ਼ਾਨਿ ਸਿੱਖੀ ਈਂ ਪੰਜ ਹਰਫ਼ ਕਾਫ਼ ॥ ਹਰਗਿਜ਼ ਨ ਬਾਸ਼ਦ ਈਂ ਪੰਜ ਮੁਆਫ਼ ॥",
+    puratanQuoteTranslation:
+      "These Five Ks are the sacred insignia of Sikhi; never are these five to be forsaken.",
+    puratanSource: "Puratan Rehatnama Tradition & Sri Gur Sobha (1701)",
+  },
+  kara: {
+    pronunciation: "Karā (ਕੜਾ)",
+    coreVirtue: "Eternal Oneness & Ethical Restraint",
+    etymology: "Punjabi 'Karā' — An unbroken circular band forged of Sarbloh (pure iron or steel) worn on the wrist.",
+    gurmatPhilosophy:
+      "Like a circle with no beginning and no end, the Kara symbolizes the timeless, unbroken nature of Ik Onkar. Worn on the working hand, it serves as a constant physical conscience ('Hathkadi' to the Guru): before the hand reaches out to act, strike, sign, or take, the Sikh sees the Kara and asks whether the action aligns with truth and compassion.",
+    vaisakhiContext:
+      "Forged in Sarbloh (all-iron), the Kara rejected both ornamental gold jewelry of royalty and superstitious charm threads (Rakhris/Taweez), uniting spiritual remembrance with martial strength.",
+    dailyDiscipline:
+      "Wearing the iron/steel Kara continuously on the wrist as a tactile reminder to use one's hands only for Kirat (honest work), Seva (service), and defense of righteousness.",
+    puratanQuoteGurmukhi: "ਕੜਾ ਕ੍ਰਿਪਾਨ ਕਛਹਿਰਾ ਕੰਘਾ ॥ ਕੇਸ ਬਿਨਾ ਨਹੀਂ ਸਿੱਖੀ ਚੰਗਾ ॥",
+    puratanQuoteTranslation:
+      "Kara, Kirpan, Kachera, Kanga, and Kesh—together they form the complete discipline of the Khalsa.",
+    puratanSource: "Bhai Nand Lal Ji & Bhai Prahlad Singh Rehatnama",
+  },
+  kanga: {
+    pronunciation: "Kanghā (ਕੰਘਾ)",
+    coreVirtue: "Order, Clarity & Daily Renewal",
+    etymology: "Punjabi 'Kanghā' — A simple wooden comb tucked neatly within the knotted Kesh.",
+    gurmatPhilosophy:
+      "When renunciate yogis of the medieval era kept long hair, they matted it with ashes (Jata) as a sign of rejecting the world. Guru Gobind Singh Ji paired Kesh with the Kanga to proclaim the opposite: a Sikh lives in the world with dignity, cleanliness, and order. Just as the Kanga untangles knots from the hair twice a day, Naam and Vichaar untangle knots of confusion and ego from the mind.",
+    vaisakhiContext:
+      "Bestowed alongside Kesh in 1699, the Kanga established that Khalsa spirituality is disciplined, hygienic, and householder-centered rather than unkempt asceticism.",
+    dailyDiscipline:
+      "Combing the Kesh morning and evening while reflecting on Gurbani, maintaining bodily cleanliness (Ishnaan), and keeping the Kanga tucked securely inside the Jura (topknot).",
+    puratanQuoteGurmukhi: "ਕੰਘਾ ਦੋਨੋਂ ਵਕਤ ਕਰ, ਪਾਗ ਚੁਨੈ ਕਰ ਬਾਂਧਈ ॥",
+    puratanQuoteTranslation:
+      "Comb the hair at both times of day (morning and evening), and tie the turban neatly block by fold.",
+    puratanSource: "Tankahnama Bhai Nand Lal Ji",
+  },
+  kachera: {
+    pronunciation: "Kachherā (ਕਛਹਿਰਾ)",
+    coreVirtue: "Moral Restraint, Fidelity & Agile Readiness",
+    etymology: "Punjabi 'Kachherā' — Tailored cotton drawstring breeches worn as an inner garment.",
+    gurmatPhilosophy:
+      "The Kachera represents Seel (moral restraint, marital fidelity, and mastery over lust/Kaam) combined with constant physical readiness. Unlike the loose unstitched dhotis worn in medieval South Asia that hindered swift movement, the Kachera allowed both male and female Khalsa warriors to mount a horse, serve in Langar, or defend the oppressed at a moment's notice.",
+    vaisakhiContext:
+      "Even during the fiercest 18th-century battles, Khalsa warriors were renowned by friend and foe alike for their unimpeachable moral character and honor toward all women—an ethic anchored in the vow of the Kachera.",
+    dailyDiscipline:
+      "Upholding personal modesty, self-control over sensory impulses, and lifelong respect for the dignity and safety of every human being.",
+    puratanQuoteGurmukhi: "ਪਰ ਨਾਰੀ ਕੀ ਸੇਜ ਸੁਪਨੇ ਹੂੰ ਮਤ ਜਾਨਿਯੋ ॥",
+    puratanQuoteTranslation:
+      "Never harbor dishonorable desire even in thought or dream; uphold sacred fidelity and restraint.",
+    puratanSource: "Charitropakhyan & Puratan Rehatnama Corpus",
+  },
+  kirpan: {
+    pronunciation: "Kirpān (ਕਿਰਪਾਨ)",
+    coreVirtue: "Mercy (Kirpa) & Honor (Aan)",
+    etymology: "Compound of 'Kirpā' (Grace/Mercy/Compassion) + 'Ān' (Honor/Dignity/Sovereignty).",
+    gurmatPhilosophy:
+      "The Guru deliberately named the Sikh blade 'Kirpan' rather than 'Talwar' (weapon of aggression). A Kirpan is never drawn out of personal anger, revenge, or conquest; its sole mandate is 'Kirpa' (protecting the defenseless) and 'Aan' (upholding human dignity and freedom of conscience when all peaceful means have failed, as articulated in Guru Gobind Singh Ji's Zafarnama).",
+    vaisakhiContext:
+      "After the martyrdoms of Guru Arjan Dev Ji (1606) and Guru Tegh Bahadur Ji (1675), Guru Gobind Singh Ji armed the saints with the Kirpan so that compassion would never be helpless before tyranny.",
+    dailyDiscipline:
+      "Carrying the Kirpan in a Gatra (baldric) with deep humility, remembering that true strength belongs only to those who stand as a shield for the powerless.",
+    puratanQuoteGurmukhi: "ਚੁ ਕਾਰ ਅਜ਼ ਹਮਹ ਹੀਲਤੇ ਦਰ ਗੁਜ਼ਸ਼ਤ ॥ ਹਲਾਲ ਅਸਤ ਬੁਰਦਨ ਬ ਸ਼ਮਸ਼ੀਰ ਦਸਤ ॥",
+    puratanQuoteTranslation:
+      "When all peaceful remedies have been exhausted, it is righteous to place the hand upon the hilt of the sword of justice.",
+    puratanSource: "Zafarnama (Verse 22) — Guru Gobind Singh Ji",
+  },
+};
+
 function SlideFiveKs({
   onOpenModal,
   cms,
@@ -639,23 +1056,24 @@ function SlideFiveKs({
     meaning: kEdit?.subtitle || rawK.meaning,
     symbolism: kEdit?.description || rawK.symbolism,
   };
+  const deepStudy = KAKAAR_DEEP_STUDY[k.id] || KAKAAR_DEEP_STUDY.kesh;
   const layoutCfg = cms.layoutConfig || {};
   const gurmukhiCls = resolveCmsGurmukhiClass(layoutCfg.gurmukhiScale);
   const headingCls = resolveCmsHeadingClass(layoutCfg.headingScale);
   const bodyCls = resolveCmsBodyClass(layoutCfg.bodyScale);
 
   const openKakaarModal = (item: (typeof FIVE_KS)[number]) => {
+    const info = KAKAAR_DEEP_STUDY[item.id] || KAKAAR_DEEP_STUDY.kesh;
     onOpenModal({
       title: `${item.name} — ${item.meaning}`,
       gurmukhi: item.gurmukhi,
-      subtitle: "Panj Kakaar (Gift of Vaisakhi 1699)",
+      subtitle: `Panj Kakaar (Vaisakhi 1699) • Core Virtue: ${info.coreVirtue}`,
       category: "The 5 Ks (Panj Kakaar)",
-      datesAndPlace: "Vaisakhi 1699 • Takht Sri Kesgarh Sahib, Anandpur Sahib",
-      biography: item.symbolism,
-      puratanSource: "Sri Gur Sobha (1701) & Bhai Nand Lal Ji Rehatnama",
-      puratanCitation:
-        "Kavi Sainapati in Sri Gur Sobha (Adhyay 5) and Bhai Nand Lal Ji record how Guru Gobind Singh Ji bestowed the Five Ks as the outward emblem of inner Fearlessness (Nirbhau) and Equality across all castes.",
-      gurmatSignificance: `${item.name} anchors a Sikh's daily consciousness in Guru Gobind Singh Ji's discipline—uniting spiritual remembrance with moral courage and service to humanity.`,
+      datesAndPlace: "Vaisakhi 1699 • Takht Sri Kesgarh Sahib, Sri Anandpur Sahib",
+      biography: `${item.symbolism}\n\n${info.gurmatPhilosophy}\n\nHistorical Context: ${info.vaisakhiContext}`,
+      puratanSource: info.puratanSource,
+      puratanCitation: `${info.puratanQuoteGurmukhi} — "${info.puratanQuoteTranslation}" (${info.puratanSource}).`,
+      gurmatSignificance: `Daily Practice: ${info.dailyDiscipline}`,
       artKey: item.art.artKey,
       artVariant: item.art.variant,
     });
@@ -664,152 +1082,448 @@ function SlideFiveKs({
   return (
     <div className="space-y-6">
       <SlideBannerArtwork artKey="fiveks-hero" variant="khanda" title="The Five Ks (Panj Kakaar)" />
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="The five Ks">
-        {orderedKs.map((x, i) => {
-          const ov = cms.topicEdits?.[x.art.artKey];
-          return (
-            <button
-              key={x.id}
-              role="tab"
-              aria-selected={i === sel}
-              type="button"
-              onClick={() => setSel(i)}
-              className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${i === sel ? "bg-gradient-to-r from-[#C59B27] to-[#D97706] text-[#18181B]" : ""}`}
-              style={i === sel ? undefined : { ...card, color: "var(--text-primary)" }}
-            >
-              <span lang="pa" className="font-gurmukhi mr-1.5">{ov?.gurmukhi || x.gurmukhi}</span>
-              {ov?.title || x.name}
-            </button>
-          );
-        })}
+
+      {/* Introduction Banner explaining Panj Kakaar */}
+      <div className="rounded-3xl border border-[#d4af37]/30 p-6 sm:p-7 space-y-3 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30" style={card}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Eyebrow>Vaisakhi 1699 • Takht Sri Kesgarh Sahib • The Panj Kakaar Covenant</Eyebrow>
+          <span
+            className="text-[11px] font-bold px-3 py-1 rounded-full border"
+            style={{
+              backgroundColor: "var(--bg-tertiary)",
+              borderColor: "var(--border-subtle)",
+              color: "var(--accent-text)",
+            }}
+          >
+            5 Articles of Faith • Sant-Sipahi Discipline
+          </span>
+        </div>
+        <h3 className="font-serif text-xl sm:text-2xl font-bold">
+          More Than Symbols: Living Instruments of Spiritual Consciousness &amp; Moral Courage
+        </h3>
+        <p className="text-sm leading-relaxed" style={muted}>
+          Bestowed by Guru Gobind Singh Ji upon the Khalsa on Vaisakhi 1699 at Sri Anandpur Sahib, the <strong style={{ color: "var(--text-primary)" }}>Panj Kakaar (Five Ks)</strong> are not passive ornaments or charms. Together they form an integrated spiritual and ethical uniform—binding inner remembrance of Ik Onkar with outer accountability, cleanliness, self-restraint, and the solemn duty to protect human dignity.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-start">
-        {orderedKs.length > 0 && (
-        <article
-          key={k.id}
-          role="button"
-          tabIndex={0}
-          onClick={() => openKakaarModal(k)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              openKakaarModal(k);
-            }
-          }}
-          className={`rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
-            liveEditMode ? "overflow-visible" : ""
-          } ${
-            (cms.archivedIds || []).includes(rawK.art.artKey)
-              ? "opacity-55 ring-2 ring-amber-400/70"
-              : ""
-          } ${resolveCmsCardLayoutClass(kEdit, "grid-2")}`}
-          style={{
-            ...card,
-            backgroundColor: kEdit?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
-            borderColor: kEdit?.borderColor || layoutCfg.accentColor || card.borderColor,
-            color: kEdit?.textColor || layoutCfg.bodyTextColor || card.color,
-            fontFamily: (kEdit as InlineTopicEditData | undefined)?.fontFamily
-              ? resolveCmsFontFamily((kEdit as InlineTopicEditData).fontFamily)
-              : undefined,
-          }}
-        >
-          <div className="space-y-4">
-            <HiddenItemBadgeBar itemId={rawK.art.artKey} />
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
-              <InlineOrderControls
-                pageKey="foundations"
-                itemId={rawK.art.artKey}
-                allIds={orderedKs.map((x) => x.art.artKey)}
-              />
-              <InlineTopicEditor
-                itemId={rawK.art.artKey}
-                defaults={{
-                  title: k.name,
-                  gurmukhi: k.gurmukhi,
-                  subtitle: k.meaning,
-                  description: k.symbolism,
-                }}
-              />
-            </div>
-            <FoundationCardArtwork artKey={k.art.artKey} variant={k.art.variant} title={k.name} heightClass="h-32" compact />
-            <div className="space-y-1">
-              <SlidePresentationCanvas
-                id={`fiveks-pa-${rawK.art.artKey}`}
-                pageKey="foundations"
-                label="Gurmukhi"
-                elementType="Text"
-                isMicroElement={true}
-              >
-                <p lang="pa" className={`font-gurmukhi ${gurmukhiCls} font-bold text-[#C59B27]`}>{k.gurmukhi}</p>
-              </SlidePresentationCanvas>
-              <SlidePresentationCanvas
-                id={`fiveks-title-${rawK.art.artKey}`}
-                pageKey="foundations"
-                label="Title"
-                elementType="Text"
-                isMicroElement={true}
-              >
-                <h3 style={{ color: kEdit?.textColor || layoutCfg.headingTextColor || undefined }} className={`font-serif ${headingCls} font-bold`}>{k.name} — {k.meaning}</h3>
-              </SlidePresentationCanvas>
-            </div>
-            <SlidePresentationCanvas
-              id={`fiveks-desc-${rawK.art.artKey}`}
-              pageKey="foundations"
-              label="Description"
-              elementType="Text"
-              isMicroElement={true}
+      {/* Interactive 5-K Selector Tabs */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#C59B27]">
+            Interactive Kakaar Explorer — Select Any Article of Faith ({sel + 1} of {orderedKs.length})
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSel((prev) => (prev - 1 + orderedKs.length) % orderedKs.length)}
+              className="px-3 py-1 rounded-lg border text-xs font-bold hover:border-[#C59B27] transition"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-subtle)",
+                color: "var(--text-primary)",
+              }}
             >
-              <p className={`${bodyCls} leading-relaxed`} style={muted}>{k.symbolism}</p>
-            </SlidePresentationCanvas>
+              ← Prev Kakaar
+            </button>
+            <button
+              type="button"
+              onClick={() => setSel((prev) => (prev + 1) % orderedKs.length)}
+              className="px-3 py-1 rounded-lg border text-xs font-bold hover:border-[#C59B27] transition"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border-subtle)",
+                color: "var(--text-primary)",
+              }}
+            >
+              Next Kakaar →
+            </button>
           </div>
-          <SlidePresentationCanvas
-            id={`fiveks-cta-${rawK.art.artKey}`}
-            pageKey="foundations"
-            label="Sakhi CTA"
-            elementType="Badge"
-            isMicroElement={true}
-            className="inline-block w-fit"
-          >
-            <span className="inline-block text-xs font-bold text-[#C59B27] pt-2">
-              Read Historical Sakhi &amp; Citations →
-            </span>
-          </SlidePresentationCanvas>
-        </article>
-        )}
+        </div>
 
-        <div className="md:col-span-3 rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out" style={card}>
-          <Eyebrow>All 5 Articles • Click Any Card for Sakhi</Eyebrow>
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            {orderedKs.map((item) => {
-              const ov = cms.topicEdits?.[item.art.artKey];
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() =>
-                    openKakaarModal({
-                      ...item,
-                      name: ov?.title || item.name,
-                      gurmukhi: ov?.gurmukhi || item.gurmukhi,
-                      meaning: ov?.subtitle || item.meaning,
-                      symbolism: ov?.description || item.symbolism,
-                    })
-                  }
-                  className="rounded-2xl border p-3.5 text-left cursor-pointer hover:border-[#C59B27] transition-all space-y-1"
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5" role="tablist" aria-label="The five Ks">
+          {orderedKs.map((x, i) => {
+            const ov = cms.topicEdits?.[x.art.artKey];
+            const isSelected = i === sel;
+            const info = KAKAAR_DEEP_STUDY[x.id];
+            return (
+              <button
+                key={x.id}
+                role="tab"
+                aria-selected={isSelected}
+                type="button"
+                onClick={() => setSel(i)}
+                className={`rounded-2xl border p-3.5 text-left transition-all ${
+                  isSelected
+                    ? "bg-gradient-to-br from-[#C59B27] to-[#D97706] text-[#18181B] border-transparent shadow-lg"
+                    : "hover:border-[#C59B27]"
+                }`}
+                style={
+                  isSelected
+                    ? undefined
+                    : {
+                        ...card,
+                        color: "var(--text-primary)",
+                      }
+                }
+              >
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span
+                    lang="pa"
+                    className={`font-gurmukhi text-base font-bold ${
+                      isSelected ? "text-[#18181B]" : "text-[#C59B27]"
+                    }`}
+                  >
+                    {ov?.gurmukhi || x.gurmukhi}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      isSelected ? "bg-black/15 text-[#18181B]" : "text-[#C59B27]"
+                    }`}
+                  >
+                    K{i + 1}
+                  </span>
+                </div>
+                <p className="font-serif text-base font-bold leading-snug">
+                  {ov?.title || x.name}
+                </p>
+                <p
+                  className={`text-[11px] line-clamp-1 mt-0.5 ${
+                    isSelected ? "text-[#18181B]/85 font-medium" : ""
+                  }`}
+                  style={isSelected ? undefined : muted}
+                >
+                  {ov?.subtitle || x.meaning}
+                </p>
+                {info && (
+                  <p
+                    className={`text-[10px] font-semibold mt-1.5 truncate ${
+                      isSelected ? "text-[#18181B]" : "text-[#D97706]"
+                    }`}
+                  >
+                    {info.coreVirtue}
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Split Interactive Workbench for Selected Kakaar */}
+      {orderedKs.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Left Featured Artwork & Identity Card */}
+          <article
+            key={k.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => openKakaarModal(k)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openKakaarModal(k);
+              }
+            }}
+            className={`lg:col-span-5 rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 animate-fade-in-up cursor-pointer hover:border-[#d4af37] shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 transition-all duration-300 ease-out flex flex-col justify-between ${
+              liveEditMode ? "overflow-visible" : ""
+            } ${
+              (cms.archivedIds || []).includes(rawK.art.artKey)
+                ? "opacity-55 ring-2 ring-amber-400/70"
+                : ""
+            }`}
+            style={{
+              ...card,
+              backgroundColor: kEdit?.bgColor || layoutCfg.cardBgColor || card.backgroundColor,
+              borderColor: kEdit?.borderColor || layoutCfg.accentColor || card.borderColor,
+              color: kEdit?.textColor || layoutCfg.bodyTextColor || card.color,
+              fontFamily: (kEdit as InlineTopicEditData | undefined)?.fontFamily
+                ? resolveCmsFontFamily((kEdit as InlineTopicEditData).fontFamily)
+                : undefined,
+            }}
+          >
+            <div className="space-y-4">
+              <HiddenItemBadgeBar itemId={rawK.art.artKey} />
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <InlineOrderControls
+                  pageKey="foundations"
+                  itemId={rawK.art.artKey}
+                  allIds={orderedKs.map((x) => x.art.artKey)}
+                />
+                <InlineTopicEditor
+                  itemId={rawK.art.artKey}
+                  defaults={{
+                    title: k.name,
+                    gurmukhi: k.gurmukhi,
+                    subtitle: k.meaning,
+                    description: k.symbolism,
+                  }}
+                />
+              </div>
+
+              <FoundationCardArtwork
+                artKey={k.art.artKey}
+                variant={k.art.variant}
+                title={k.name}
+                heightClass="h-44"
+                compact
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border"
                   style={{
-                    backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || undefined,
-                    borderColor: ov?.borderColor || "var(--border-subtle)",
-                    color: ov?.textColor || undefined,
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                    color: "#C59B27",
                   }}
                 >
-                  <p lang="pa" className="font-gurmukhi text-sm font-bold text-[#C59B27]">{ov?.gurmukhi || item.gurmukhi}</p>
-                  <p className="font-serif text-base font-bold">{ov?.title || item.name}</p>
-                  <p className="text-[11px] font-bold text-[#D97706]">Read Historical Sakhi &amp; Citations →</p>
+                  {deepStudy.coreVirtue}
+                </span>
+                <span className="text-xs" style={muted}>
+                  {deepStudy.pronunciation}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <SlidePresentationCanvas
+                  id={`fiveks-pa-${rawK.art.artKey}`}
+                  pageKey="foundations"
+                  label="Gurmukhi"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <p lang="pa" className={`font-gurmukhi ${gurmukhiCls} font-bold text-[#C59B27]`}>
+                    {k.gurmukhi}
+                  </p>
+                </SlidePresentationCanvas>
+                <SlidePresentationCanvas
+                  id={`fiveks-title-${rawK.art.artKey}`}
+                  pageKey="foundations"
+                  label="Title"
+                  elementType="Text"
+                  isMicroElement={true}
+                >
+                  <h3
+                    style={{ color: kEdit?.textColor || layoutCfg.headingTextColor || undefined }}
+                    className={`font-serif ${headingCls} font-bold`}
+                  >
+                    {k.name} — {k.meaning}
+                  </h3>
+                </SlidePresentationCanvas>
+              </div>
+
+              <SlidePresentationCanvas
+                id={`fiveks-desc-${rawK.art.artKey}`}
+                pageKey="foundations"
+                label="Description"
+                elementType="Text"
+                isMicroElement={true}
+              >
+                <p className={`${bodyCls} leading-relaxed`} style={muted}>
+                  {k.symbolism}
+                </p>
+              </SlidePresentationCanvas>
+
+              <div
+                className="rounded-2xl border p-3.5 space-y-1"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#C59B27]">
+                  Etymology &amp; Literal Meaning
+                </span>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                  {deepStudy.etymology}
+                </p>
+              </div>
+            </div>
+
+            <SlidePresentationCanvas
+              id={`fiveks-cta-${rawK.art.artKey}`}
+              pageKey="foundations"
+              label="Sakhi CTA"
+              elementType="Badge"
+              isMicroElement={true}
+              className="inline-block w-fit"
+            >
+              <span className="inline-block text-xs font-bold text-[#C59B27] pt-3">
+                Open Full Historical Sakhi Modal &amp; Citations →
+              </span>
+            </SlidePresentationCanvas>
+          </article>
+
+          {/* Right 4-Dimension Study Panel for the Selected Kakaar */}
+          <div
+            className="lg:col-span-7 rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30 flex flex-col justify-between"
+            style={card}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b" style={{ borderColor: "var(--border-subtle)" }}>
+                <div>
+                  <Eyebrow>Deep Study • {k.name} ({k.gurmukhi})</Eyebrow>
+                  <h4 className="font-serif text-xl font-bold mt-0.5">
+                    Philosophical, Historical &amp; Practical Dimensions
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openKakaarModal(k)}
+                  className="px-3.5 py-2 rounded-xl border text-xs font-bold text-[#C59B27] hover:border-[#C59B27] transition"
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                >
+                  Open Reader Modal ↗
                 </button>
-              );
-            })}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div
+                  className="rounded-2xl border p-4 space-y-2"
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                    ੧ · Spiritual &amp; Gurmat Philosophy
+                  </span>
+                  <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                    {deepStudy.gurmatPhilosophy}
+                  </p>
+                </div>
+
+                <div
+                  className="rounded-2xl border p-4 space-y-2"
+                  style={{
+                    backgroundColor: "var(--bg-tertiary)",
+                    borderColor: "var(--border-subtle)",
+                  }}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                    ੨ · Historical Context (Vaisakhi 1699)
+                  </span>
+                  <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                    {deepStudy.vaisakhiContext}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="rounded-2xl border p-4 space-y-2"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                  ੩ · Daily Practical Discipline (Rehat &amp; Living Conduct)
+                </span>
+                <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
+                  {deepStudy.dailyDiscipline}
+                </p>
+              </div>
+
+              <div
+                className="rounded-2xl border p-4 space-y-2"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border-subtle)",
+                }}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#C59B27]">
+                    ੪ · Puratan Scriptural &amp; Rehatnama Testimony
+                  </span>
+                  <span className="text-[11px] font-semibold text-[#D97706]">
+                    {deepStudy.puratanSource}
+                  </span>
+                </div>
+                <p lang="pa" className="font-gurmukhi text-sm sm:text-base leading-relaxed text-[#C59B27]">
+                  {deepStudy.puratanQuoteGurmukhi}
+                </p>
+                <p className="text-xs italic leading-relaxed" style={muted}>
+                  &ldquo;{deepStudy.puratanQuoteTranslation}&rdquo;
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Full 5-Card Comparison Matrix Below */}
+      <div className="rounded-3xl border border-[#d4af37]/30 p-6 space-y-4 shadow-xl shadow-black/10 dark:shadow-2xl dark:shadow-black/30" style={card}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Eyebrow>All 5 Panj Kakaar at a Glance • Click Any Card to Inspect or Open Full Study</Eyebrow>
+          <span className="text-xs" style={muted}>
+            Uniting inner Sant (Saint) devotion with outer Sipahi (Soldier) responsibility
+          </span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 items-stretch">
+          {orderedKs.map((item, idx) => {
+            const ov = cms.topicEdits?.[item.art.artKey];
+            const info = KAKAAR_DEEP_STUDY[item.id] || KAKAAR_DEEP_STUDY.kesh;
+            const isSelected = idx === sel;
+            return (
+              <div
+                key={item.id}
+                className="rounded-2xl border p-4 flex flex-col justify-between transition-all space-y-3"
+                style={{
+                  backgroundColor: ov?.bgColor || layoutCfg.cardBgColor || "var(--bg-tertiary)",
+                  borderColor: isSelected ? "#C59B27" : ov?.borderColor || "var(--border-subtle)",
+                  color: ov?.textColor || "var(--text-primary)",
+                }}
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p lang="pa" className="font-gurmukhi text-base font-bold text-[#C59B27]">
+                      {ov?.gurmukhi || item.gurmukhi}
+                    </p>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#D97706]">
+                      {info.coreVirtue}
+                    </span>
+                  </div>
+                  <p className="font-serif text-base font-bold">
+                    {ov?.title || item.name}
+                  </p>
+                  <p className="text-xs font-semibold" style={{ color: "var(--accent-text)" }}>
+                    {ov?.subtitle || item.meaning}
+                  </p>
+                  <p className="text-xs leading-relaxed line-clamp-3 pt-1" style={muted}>
+                    {ov?.description || item.symbolism}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t flex items-center justify-between gap-2" style={{ borderColor: "var(--border-subtle)" }}>
+                  <button
+                    type="button"
+                    onClick={() => setSel(idx)}
+                    className="text-[11px] font-bold text-[#C59B27] hover:underline"
+                  >
+                    {isSelected ? "Active Above" : "Select in Explorer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openKakaarModal({
+                        ...item,
+                        name: ov?.title || item.name,
+                        gurmukhi: ov?.gurmukhi || item.gurmukhi,
+                        meaning: ov?.subtitle || item.meaning,
+                        symbolism: ov?.description || item.symbolism,
+                      })
+                    }
+                    className="text-[11px] font-bold text-[#D97706] hover:underline"
+                  >
+                    Sakhi Modal →
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
