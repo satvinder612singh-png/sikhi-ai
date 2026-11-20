@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
 import { verifyFounderAdminHeader } from "@/lib/articles-store";
+import {
+  getSupabaseAdminClient,
+  getVerifiedSessionUser,
+} from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,20 +29,24 @@ function sanitizeSegment(raw: string, fallback: string): string {
 }
 
 export async function POST(req: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { user: currentUser } = await getVerifiedSessionUser();
+  const isFounderAdmin = verifyFounderAdminHeader(req);
 
-  if (!supabaseUrl || (!serviceKey && !anonKey)) {
+  if (!currentUser && !isFounderAdmin) {
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Supabase Storage is not configured. Verify NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
-      },
+      { ok: false, error: "Unauthorized: Sign in required to upload images." },
+      { status: 401 }
+    );
+  }
+
+  const admin = getSupabaseAdminClient();
+  if (!admin.client) {
+    return NextResponse.json(
+      { ok: false, error: admin.error },
       { status: 500 }
     );
   }
+  const supabase = admin.client;
 
   let formData: FormData;
   try {
@@ -88,42 +95,21 @@ export async function POST(req: Request) {
   const timestamp = Date.now();
   const storagePath = `${folder}/${recordId}-${timestamp}.${extFromMime}`;
 
-  // Use service role key if available; otherwise forward caller's Supabase bearer JWT if present
-  const authHeader = (req.headers.get("authorization") || "").trim();
-  const callerJwt = authHeader.toLowerCase().startsWith("bearer ")
-    ? authHeader.slice(7).trim()
-    : "";
-  const isFounderAdmin = verifyFounderAdminHeader(req);
-
-  const clientKey = serviceKey || anonKey!;
-  const supabase = createClient(supabaseUrl, clientKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-    ...(callerJwt && !serviceKey && !isFounderAdmin
-      ? { global: { headers: { Authorization: `Bearer ${callerJwt}` } } }
-      : {}),
-  });
-
-  // If service role is present, ensure bucket exists and is public
-  if (serviceKey) {
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const exists = Array.isArray(buckets)
-        ? buckets.some((b) => b.id === BUCKET_NAME)
-        : false;
-      if (!exists) {
-        await supabase.storage.createBucket(BUCKET_NAME, {
-          public: true,
-          fileSizeLimit: 10485760,
-          allowedMimeTypes: Object.keys(ALLOWED_MIME_MAP),
-        });
-      }
-    } catch {
-      // ignore bucket probe errors; upload below will report exact error
+  // Ensure bucket exists and is public using server-only service-role admin client
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = Array.isArray(buckets)
+      ? buckets.some((b) => b.id === BUCKET_NAME)
+      : false;
+    if (!exists) {
+      await supabase.storage.createBucket(BUCKET_NAME, {
+        public: true,
+        fileSizeLimit: 10485760,
+        allowedMimeTypes: Object.keys(ALLOWED_MIME_MAP),
+      });
     }
+  } catch {
+    // non-fatal
   }
 
   try {

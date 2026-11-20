@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getCurrentUser } from "@/lib/supabase/server";
+import {
+  getSupabaseAdminClient,
+  getVerifiedSessionUser,
+} from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,16 +22,17 @@ export interface UserProfileRecord {
   updated_at: string;
 }
 
-const FALLBACK_PROFILES_KEY = "learnsikhi_profiles_v1";
-
-function getSupabaseServerClient() {
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const key =
+function getReadClient() {
+  const url = (
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    ""
+  ).trim();
+  const key = (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    "";
+    ""
+  ).trim();
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 }
@@ -59,38 +63,9 @@ function sanitizeUsername(raw: unknown, fallbackId: string): string {
   return cleaned || `member_${fallbackId.slice(0, 8)}`;
 }
 
-async function readFallbackProfiles(): Promise<Record<string, UserProfileRecord>> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return {};
-  const { data } = await supabase
-    .from("site_state")
-    .select("value")
-    .eq("key", FALLBACK_PROFILES_KEY)
-    .maybeSingle();
-  const raw = data?.value;
-  return raw && typeof raw === "object"
-    ? (raw as Record<string, UserProfileRecord>)
-    : {};
-}
-
-async function writeFallbackProfiles(
-  map: Record<string, UserProfileRecord>
-): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return;
-  await supabase.from("site_state").upsert(
-    {
-      key: FALLBACK_PROFILES_KEY,
-      value: map,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "key" }
-  );
-}
-
 export async function GET(req: NextRequest) {
   const lookup = (req.nextUrl.searchParams.get("id") || "").trim();
-  const currentUser = await getCurrentUser().catch(() => null);
+  const { user: currentUser } = await getVerifiedSessionUser();
   const targetKey = lookup || currentUser?.id || "";
 
   if (!targetKey) {
@@ -100,9 +75,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getReadClient();
   if (supabase) {
-    // Try by id first, then by username
     const { data: byId, error: idErr } = await supabase
       .from("profiles")
       .select("*")
@@ -130,22 +104,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const fallbackMap = await readFallbackProfiles();
-  const foundFallback =
-    fallbackMap[targetKey] ||
-    Object.values(fallbackMap).find(
-      (p) => p.username.toLowerCase() === targetKey.toLowerCase()
-    ) ||
-    null;
-
-  if (foundFallback) {
-    return NextResponse.json(
-      { ok: true, profile: foundFallback },
-      { headers: { "Cache-Control": "no-store, max-age=0" } }
-    );
-  }
-
-  // Synthesize a clean default profile shell
   const isSelf = Boolean(currentUser && currentUser.id === targetKey);
   const defaultName =
     isSelf && currentUser?.email
@@ -173,11 +131,19 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const currentUser = await getCurrentUser().catch(() => null);
+  const { user: currentUser } = await getVerifiedSessionUser();
   if (!currentUser) {
     return NextResponse.json(
-      { ok: false, error: "Sign in required to update your profile." },
+      { ok: false, error: "Unauthorized: Sign in required to update your profile." },
       { status: 401 }
+    );
+  }
+
+  const admin = getSupabaseAdminClient();
+  if (!admin.client) {
+    return NextResponse.json(
+      { ok: false, error: admin.error },
+      { status: 500 }
     );
   }
 
@@ -204,28 +170,26 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     };
 
-    const supabase = getSupabaseServerClient();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .upsert(record, { onConflict: "id" })
-        .select("*")
-        .single();
+    const { data, error } = await admin.client
+      .from("profiles")
+      .upsert(record, { onConflict: "id" })
+      .select("*")
+      .single();
 
-      if (!error && data) {
-        return NextResponse.json(
-          { ok: true, profile: data as UserProfileRecord },
-          { headers: { "Cache-Control": "no-store, max-age=0" } }
-        );
-      }
+    if (error || !data) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            error?.message ||
+            "Could not save profile. Ensure public.profiles exists in Supabase.",
+        },
+        { status: 500 }
+      );
     }
 
-    const fallbackMap = await readFallbackProfiles();
-    fallbackMap[currentUser.id] = record;
-    await writeFallbackProfiles(fallbackMap);
-
     return NextResponse.json(
-      { ok: true, profile: record },
+      { ok: true, profile: data as UserProfileRecord },
       { headers: { "Cache-Control": "no-store, max-age=0" } }
     );
   } catch (err) {

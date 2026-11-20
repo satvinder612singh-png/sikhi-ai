@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
 import {
   deleteArticleBySlugOrId,
   getArticleBySlug,
@@ -8,36 +7,18 @@ import {
   verifyFounderAdminHeader,
   type ArticleStatus,
 } from "@/lib/articles-store";
-import { getCurrentUser } from "@/lib/supabase/server";
+import {
+  getSupabaseAdminClient,
+  getVerifiedSessionUser,
+} from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function isAdminEmail(email?: string | null): boolean {
-  const clean = (email || "").trim().toLowerCase();
-  if (!clean) return false;
-  const configured = (
-    process.env.FOUNDER_ADMIN_EMAIL ||
-    process.env.NEXT_PUBLIC_FOUNDER_ADMIN_EMAIL ||
-    "satvinder612singh@gmail.com"
-  )
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return configured.includes(clean);
-}
-
 async function tryDeleteStorageImage(imageUrl?: string | null) {
   if (!imageUrl || typeof imageUrl !== "string") return;
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "";
-  if (!url || !key) return;
-
-  // Match Supabase public storage URL: /storage/v1/object/public/<bucket>/<path>
+  const admin = getSupabaseAdminClient();
+  if (!admin.client) return;
   const match = imageUrl.match(
     /\/storage\/v1\/object\/public\/([^/]+)\/(.+?)(?:\?|$)/
   );
@@ -45,8 +26,7 @@ async function tryDeleteStorageImage(imageUrl?: string | null) {
   const bucket = decodeURIComponent(match[1]);
   const objectPath = decodeURIComponent(match[2]);
   try {
-    const supabase = createClient(url, key, { auth: { persistSession: false } });
-    await supabase.storage.from(bucket).remove([objectPath]);
+    await admin.client.storage.from(bucket).remove([objectPath]);
   } catch {
     // Non-fatal if storage object was already removed
   }
@@ -81,12 +61,35 @@ export async function PATCH(
   req: Request,
   context: { params: Promise<{ slug: string }> }
 ) {
+  const { user: currentUser, isAdmin: isSessionAdmin } =
+    await getVerifiedSessionUser();
+  const isHeaderAdmin = verifyFounderAdminHeader(req);
+
+  if (!currentUser && !isHeaderAdmin) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized: Sign in required to edit articles." },
+      { status: 401 }
+    );
+  }
+
   const { slug } = await context.params;
   const existing = await getArticleBySlug(slug, true);
   if (!existing) {
     return NextResponse.json(
       { ok: false, error: "Article not found." },
       { status: 404 }
+    );
+  }
+
+  const isAuthor =
+    Boolean(currentUser?.id) &&
+    Boolean(existing.author_id) &&
+    currentUser?.id === existing.author_id;
+
+  if (!isHeaderAdmin && !isSessionAdmin && !isAuthor) {
+    return NextResponse.json(
+      { ok: false, error: "Forbidden: Only the author or an admin can edit this article." },
+      { status: 403 }
     );
   }
 
@@ -175,12 +178,19 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ slug: string }> }
 ) {
+  const { user: currentUser, isAdmin: isSessionAdmin } =
+    await getVerifiedSessionUser();
+  const isHeaderAdmin = verifyFounderAdminHeader(req);
+
+  if (!currentUser && !isHeaderAdmin) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized: Sign in required to delete articles." },
+      { status: 401 }
+    );
+  }
+
   const { slug } = await context.params;
   const existing = await getArticleBySlug(slug, true);
-  const currentUser = await getCurrentUser().catch(() => null);
-
-  const isHeaderAdmin = verifyFounderAdminHeader(req);
-  const isSessionAdmin = isAdminEmail(currentUser?.email);
   const isAuthor =
     Boolean(currentUser?.id) &&
     Boolean(existing?.author_id) &&
@@ -190,9 +200,9 @@ export async function DELETE(
     return NextResponse.json(
       {
         ok: false,
-        error: "Admin or post author authentication required to delete.",
+        error: "Forbidden: Only the post author or an admin can delete this article.",
       },
-      { status: 401 }
+      { status: 403 }
     );
   }
 

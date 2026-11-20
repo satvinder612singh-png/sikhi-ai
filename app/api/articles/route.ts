@@ -10,6 +10,7 @@ import {
   type ArticleRecord,
   type ArticleStatus,
 } from "@/lib/articles-store";
+import { getVerifiedSessionUser } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +56,16 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { user: currentUser, isAdmin: isSessionAdmin } =
+    await getVerifiedSessionUser();
+  const isHeaderAdmin = verifyFounderAdminHeader(req);
+  if (!currentUser && !isHeaderAdmin) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized: Sign in required to publish on SikhStacks." },
+      { status: 401 }
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -79,7 +90,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const isAdmin = verifyFounderAdminHeader(req);
+  const isAdmin = isHeaderAdmin || isSessionAdmin;
   const requestedStatus = String(body.status || "draft") as ArticleStatus;
   let finalStatus: ArticleStatus =
     requestedStatus === "draft" ||

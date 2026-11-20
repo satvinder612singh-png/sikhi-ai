@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import { getCurrentUser } from "@/lib/supabase/server";
+import {
+  getSupabaseAdminClient,
+  getVerifiedSessionUser,
+} from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,83 +25,66 @@ export interface ReshareRecord {
   created_at: string;
 }
 
-const FALLBACK_RESHARES_KEY = "learnsikhi_reshares_v1";
-
-function getSupabaseServerClient() {
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  const key =
+function getReadClient() {
+  const url = (
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    ""
+  ).trim();
+  const key = (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    "";
+    ""
+  ).trim();
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-async function readFallbackReshares(): Promise<ReshareRecord[]> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("site_state")
-    .select("value")
-    .eq("key", FALLBACK_RESHARES_KEY)
-    .maybeSingle();
-  return Array.isArray(data?.value) ? (data.value as ReshareRecord[]) : [];
-}
-
-async function writeFallbackReshares(list: ReshareRecord[]): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return;
-  await supabase.from("site_state").upsert(
-    {
-      key: FALLBACK_RESHARES_KEY,
-      value: list,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "key" }
-  );
-}
-
 export async function GET(req: NextRequest) {
   const userId = (req.nextUrl.searchParams.get("userId") || "").trim();
-
-  const supabase = getSupabaseServerClient();
-  if (supabase) {
-    let query = supabase
-      .from("reshares")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (userId) {
-      query = query.eq("user_id", userId);
-    }
-    const { data, error } = await query;
-    if (!error && Array.isArray(data)) {
-      return NextResponse.json(
-        { ok: true, reshares: data as ReshareRecord[] },
-        { headers: { "Cache-Control": "no-store, max-age=0" } }
-      );
-    }
+  const supabase = getReadClient();
+  if (!supabase) {
+    return NextResponse.json(
+      { ok: true, reshares: [] },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
   }
 
-  const all = await readFallbackReshares();
-  const filtered = userId
-    ? all.filter((r) => r.user_id === userId)
-    : all;
-  filtered.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  let query = supabase
+    .from("reshares")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+  const { data, error } = await query;
+  if (error) {
+    return NextResponse.json(
+      { ok: true, reshares: [], warning: error.message },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
+  }
 
   return NextResponse.json(
-    { ok: true, reshares: filtered },
+    { ok: true, reshares: (data || []) as ReshareRecord[] },
     { headers: { "Cache-Control": "no-store, max-age=0" } }
   );
 }
 
 export async function POST(req: NextRequest) {
-  const currentUser = await getCurrentUser().catch(() => null);
+  const { user: currentUser } = await getVerifiedSessionUser();
   if (!currentUser) {
     return NextResponse.json(
-      { ok: false, error: "Please sign in to reshare posts to your profile." },
+      { ok: false, error: "Unauthorized: Please sign in to reshare posts." },
       { status: 401 }
+    );
+  }
+
+  const admin = getSupabaseAdminClient();
+  if (!admin.client) {
+    return NextResponse.json(
+      { ok: false, error: admin.error },
+      { status: 500 }
     );
   }
 
@@ -145,25 +131,28 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     };
 
-    const supabase = getSupabaseServerClient();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("reshares")
-        .insert(record)
-        .select("*")
-        .single();
-      if (!error && data) {
-        return NextResponse.json(
-          { ok: true, reshare: data as ReshareRecord },
-          { status: 201 }
-        );
-      }
+    const { data, error } = await admin.client
+      .from("reshares")
+      .insert(record)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            error?.message ||
+            "Could not save reshare. Ensure public.reshares exists in Supabase.",
+        },
+        { status: 500 }
+      );
     }
 
-    const existing = await readFallbackReshares();
-    await writeFallbackReshares([record, ...existing]);
-
-    return NextResponse.json({ ok: true, reshare: record }, { status: 201 });
+    return NextResponse.json(
+      { ok: true, reshare: data as ReshareRecord },
+      { status: 201 }
+    );
   } catch (err) {
     return NextResponse.json(
       {
@@ -176,11 +165,19 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const currentUser = await getCurrentUser().catch(() => null);
+  const { user: currentUser, isAdmin } = await getVerifiedSessionUser();
   if (!currentUser) {
     return NextResponse.json(
-      { ok: false, error: "Sign in required." },
+      { ok: false, error: "Unauthorized: Sign in required." },
       { status: 401 }
+    );
+  }
+
+  const admin = getSupabaseAdminClient();
+  if (!admin.client) {
+    return NextResponse.json(
+      { ok: false, error: admin.error },
+      { status: 500 }
     );
   }
 
@@ -192,23 +189,26 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  const supabase = getSupabaseServerClient();
-  if (supabase) {
-    const { error } = await supabase
-      .from("reshares")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", currentUser.id);
-    if (!error) {
-      return NextResponse.json({ ok: true, deletedId: id });
-    }
+  const { data: existing } = await admin.client
+    .from("reshares")
+    .select("id, user_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existing && existing.user_id !== currentUser.id && !isAdmin) {
+    return NextResponse.json(
+      { ok: false, error: "Forbidden: You can only delete your own reshares." },
+      { status: 403 }
+    );
   }
 
-  const existing = await readFallbackReshares();
-  const next = existing.filter(
-    (r) => !(r.id === id && r.user_id === currentUser.id)
-  );
-  await writeFallbackReshares(next);
+  const { error } = await admin.client.from("reshares").delete().eq("id", id);
+  if (error) {
+    return NextResponse.json(
+      { ok: false, error: error.message },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ ok: true, deletedId: id });
 }
