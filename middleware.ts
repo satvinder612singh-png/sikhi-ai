@@ -91,8 +91,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Skip static assets and the API route (which does its own auth check).
-    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
-  ],
+  // Only run middleware on protected routes that require server-side auth gating.
+  // Excludes all static assets and public routes (/, /sangat, /granths, /foundations,
+  // /matriarchs, /games, /explore, /news, /sources, /articles/*, /u/*, /api/*)
+  // to minimize Vercel Fluid Active CPU and eliminate redundant Supabase auth calls.
+  matcher: ["/ask/:path*"],
 };

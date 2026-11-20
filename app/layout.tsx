@@ -6,7 +6,6 @@ import { SikhiIconDefs } from "@/components/sikhi-icons";
 import { KirtanAudioProvider } from "@/components/kirtan-audio-context";
 import { KirtanPlayerProvider } from "@/components/kirtan-player";
 import { SevaConcierge } from "@/components/seva-concierge";
-import { getCurrentUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import "./globals.css";
 
@@ -55,14 +54,11 @@ const THEME_INIT_SCRIPT = `
 })();
 `;
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-  const initialUser = user ? { id: user.id, email: user.email ?? null } : null;
-
   return (
     <html
       lang="en"
@@ -86,7 +82,7 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
-        <AuthProvider initialUser={initialUser} configured={isSupabaseConfigured}>
+        <AuthProvider initialUser={null} configured={isSupabaseConfigured}>
           <AmbientBackground />
           <SikhiIconDefs />
           <KirtanAudioProvider>

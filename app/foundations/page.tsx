@@ -3,6 +3,8 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { SikhiFoundationsDeck } from "@/components/sikhi-foundations-deck";
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Foundations of Sikhi — Traditional Sikh Scholarship & History",
   description:

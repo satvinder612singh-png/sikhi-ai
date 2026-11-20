@@ -46,17 +46,32 @@ export function AuthProvider({
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Hydrate session on the client so public pages stay static/ISR (zero server auth CPU).
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      const next = session?.user
+        ? { id: session.user.id, email: session.user.email ?? null }
+        : null;
+      lastId.current = next?.id ?? null;
+      setUser(next);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       const next = session?.user
         ? { id: session.user.id, email: session.user.email ?? null }
         : null;
       setUser(next);
 
-      // Re-run server components only when the signed-in identity changed.
       const nextId = next?.id ?? null;
-      if (nextId !== lastId.current) {
+      // Only refresh server components on explicit sign-in / sign-out transitions,
+      // not on INITIAL_SESSION hydration.
+      if (
+        (event === "SIGNED_IN" || event === "SIGNED_OUT") &&
+        nextId !== lastId.current
+      ) {
         lastId.current = nextId;
         router.refresh();
+      } else {
+        lastId.current = nextId;
       }
     });
 
