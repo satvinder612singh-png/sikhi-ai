@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowBigUp, MessageSquare, CornerDownRight, Send } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import type { PostCommentRecord } from "@/app/api/post-comments/route";
@@ -81,28 +81,36 @@ export function ThreadedComments({
     }
   }, []);
 
-  const loadComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/post-comments?postId=${encodeURIComponent(postId)}`,
-        { cache: "no-store" }
-      );
-      const data = await res.json();
-      if (data?.ok && Array.isArray(data.comments)) {
-        setComments(data.comments);
-        onCountChange?.(data.comments.length);
-      }
-    } catch {
-      // keep existing state
-    } finally {
-      setLoading(false);
-    }
-  }, [postId, onCountChange]);
+  const onCountChangeRef = useRef(onCountChange);
+  onCountChangeRef.current = onCountChange;
 
   useEffect(() => {
-    void loadComments();
-  }, [loadComments]);
+    const controller = new AbortController();
+    let active = true;
+    setLoading(true);
+
+    void fetch(`/api/post-comments?postId=${encodeURIComponent(postId)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active || !data?.ok || !Array.isArray(data.comments)) return;
+        setComments(data.comments);
+        onCountChangeRef.current?.(data.comments.length);
+      })
+      .catch((err) => {
+        if ((err as { name?: string })?.name === "AbortError") return;
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [postId]);
 
   const handlePostComment = async (parentId: string | null) => {
     const text = (parentId ? replyBody : newBody).trim();

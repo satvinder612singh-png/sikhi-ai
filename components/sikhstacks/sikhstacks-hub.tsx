@@ -130,6 +130,12 @@ export function SikhStacksHub() {
     void loadPostsAndCounts();
   }, [loadPostsAndCounts]);
 
+  const handleCommentCountChange = useCallback((postId: string, count: number) => {
+    setCommentCounts((prev) =>
+      prev[postId] === count ? prev : { ...prev, [postId]: count }
+    );
+  }, []);
+
   const allPosts = useMemo(() => dbPosts, [dbPosts]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -540,7 +546,7 @@ export function SikhStacksHub() {
         <ThreadedComments
           postId={selectedPost.id}
           onCountChange={(count) =>
-            setCommentCounts((prev) => ({ ...prev, [selectedPost.id]: count }))
+            handleCommentCountChange(selectedPost.id, count)
           }
         />
 
